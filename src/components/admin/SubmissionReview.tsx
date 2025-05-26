@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -73,7 +74,20 @@ const SubmissionReview = ({ openCallId }: SubmissionReviewProps) => {
   });
 
   const getSubmissionData = (submission: Submission): SubmissionData => {
-    return (submission.submission_data as SubmissionData) || {};
+    if (!submission.submission_data || Object.keys(submission.submission_data).length === 0) {
+      return {
+        title: submission.submission_title || 'Untitled Submission',
+        description: submission.submission_description || 'No description provided',
+        medium: '',
+        year: '',
+        dimensions: '',
+        artist_statement: submission.artist_statement || 'No artist statement provided',
+        image_urls: [],
+        external_links: [],
+        files: []
+      };
+    }
+    return submission.submission_data as SubmissionData;
   };
 
   const getStatusColor = (status: string) => {
@@ -88,17 +102,17 @@ const SubmissionReview = ({ openCallId }: SubmissionReviewProps) => {
 
   const getSubmissionTitle = (submission: Submission): string => {
     const submissionData = getSubmissionData(submission);
-    return submission.submission_title || submissionData.title || 'Untitled Submission';
+    return submissionData.title || 'Untitled Submission';
   };
 
   const getSubmissionDescription = (submission: Submission): string => {
     const submissionData = getSubmissionData(submission);
-    return submission.submission_description || submissionData.description || 'No description provided';
+    return submissionData.description || 'No description provided';
   };
 
   const getArtistStatement = (submission: Submission): string => {
     const submissionData = getSubmissionData(submission);
-    return submission.artist_statement || submissionData.artist_statement || 'No artist statement provided';
+    return submissionData.artist_statement || 'No artist statement provided';
   };
 
   if (isLoading) {
@@ -425,36 +439,6 @@ const SubmissionReview = ({ openCallId }: SubmissionReviewProps) => {
       )}
     </div>
   );
-};
-
-// Helper functions
-const getSubmissionData = (submission: Submission): SubmissionData => {
-  return (submission.submission_data as SubmissionData) || {};
-};
-
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'selected': return 'bg-green-500';
-    case 'rejected': return 'bg-red-500';
-    case 'under_review': return 'bg-yellow-500';
-    case 'shortlisted': return 'bg-blue-500';
-    default: return 'bg-gray-500';
-  }
-};
-
-const getSubmissionTitle = (submission: Submission): string => {
-  const submissionData = getSubmissionData(submission);
-  return submission.submission_title || submissionData.title || 'Untitled Submission';
-};
-
-const getSubmissionDescription = (submission: Submission): string => {
-  const submissionData = getSubmissionData(submission);
-  return submission.submission_description || submissionData.description || 'No description provided';
-};
-
-const getArtistStatement = (submission: Submission): string => {
-  const submissionData = getSubmissionData(submission);
-  return submission.artist_statement || submissionData.artist_statement || 'No artist statement provided';
 };
 
 export default SubmissionReview;

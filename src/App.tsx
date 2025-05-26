@@ -1,143 +1,62 @@
 
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AuthProvider } from "@/contexts/AuthContext";
-import { ThemeProvider } from "@/contexts/ThemeContext";
-import ErrorBoundary from "@/components/ErrorBoundary";
-import ProtectedRoute from "@/components/auth/ProtectedRoute";
-import AdminRoute from "@/components/auth/AdminRoute";
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Toaster } from '@/components/ui/toaster';
+import { AuthProvider } from '@/contexts/AuthContext';
 
-// Public pages
-import Landing from "@/pages/Landing";
-import Login from "@/pages/auth/Login";
-import Register from "@/pages/auth/Register";
-import ForgotPassword from "@/pages/auth/ForgotPassword";
-import Discover from "@/pages/Discover";
-import ArtistProfile from "@/pages/ArtistProfile";
-import PortfolioView from "@/pages/PortfolioView";
-import OpenCalls from "@/pages/OpenCalls";
-import OpenCallDetails from "@/pages/OpenCallDetails";
-import Education from "@/pages/Education";
-import EducationCategory from "@/pages/EducationCategory";
-import EducationContent from "@/pages/EducationContent";
-
-// AIFilm3 pages
-import AIFilm3Info from "@/pages/aifilm3/AIFilm3Info";
-import AIFilm3Announcements from "@/pages/aifilm3/AIFilm3Announcements";
-
-// Protected pages
-import Dashboard from "@/pages/Dashboard";
-import MyPortfolios from "@/pages/MyPortfolios";
-import PortfolioEditor from "@/pages/PortfolioEditor";
-import SubmissionForm from "@/pages/SubmissionForm";
-import ProfileSettings from "@/pages/ProfileSettings";
-
-// Admin pages
-import AdminDashboard from "@/pages/admin/AdminDashboard";
-import AdminUsers from "@/pages/admin/AdminUsers";
-import AdminOpenCalls from "@/pages/admin/AdminOpenCalls";
-import AdminEducation from "@/pages/admin/AdminEducation";
-
-import NotFound from "@/pages/NotFound";
+// Pages
+import Index from '@/pages/Index';
+import Auth from '@/pages/Auth';
+import Dashboard from '@/pages/Dashboard';
+import Profile from '@/pages/Profile';
+import PortfolioCreate from '@/pages/PortfolioCreate';
+import PortfolioEditor from '@/pages/PortfolioEditor';
+import PortfolioView from '@/pages/PortfolioView';
+import OpenCalls from '@/pages/OpenCalls';
+import OpenCallDetail from '@/pages/OpenCallDetail';
+import SubmissionForm from '@/pages/SubmissionForm';
+import HostApplication from '@/pages/HostApplication';
+import Discover from '@/pages/Discover';
+import Education from '@/pages/Education';
+import AdminDashboard from '@/pages/AdminDashboard';
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutes
       retry: 1,
-      staleTime: 5 * 60 * 1000, // 5 minutes
     },
   },
 });
 
-const App = () => (
-  <ErrorBoundary>
+function App() {
+  return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <AuthProvider>
-          <TooltipProvider>
+      <AuthProvider>
+        <Router>
+          <div className="min-h-screen bg-background">
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/create-portfolio" element={<PortfolioCreate />} />
+              <Route path="/portfolio/:id/edit" element={<PortfolioEditor />} />
+              <Route path="/portfolio/:slug" element={<PortfolioView />} />
+              <Route path="/open-calls" element={<OpenCalls />} />
+              <Route path="/open-calls/:callId" element={<OpenCallDetail />} />
+              <Route path="/open-calls/:callId/submit" element={<SubmissionForm />} />
+              <Route path="/host-application" element={<HostApplication />} />
+              <Route path="/discover" element={<Discover />} />
+              <Route path="/education" element={<Education />} />
+              <Route path="/admin" element={<AdminDashboard />} />
+            </Routes>
             <Toaster />
-            <Sonner />
-            <BrowserRouter>
-              <Routes>
-                {/* Public routes */}
-                <Route path="/" element={<Landing />} />
-                <Route path="/auth/login" element={<Login />} />
-                <Route path="/auth/register" element={<Register />} />
-                <Route path="/auth/forgot-password" element={<ForgotPassword />} />
-                <Route path="/discover" element={<Discover />} />
-                <Route path="/artists/:username" element={<ArtistProfile />} />
-                <Route path="/portfolio/:slug" element={<PortfolioView />} />
-                <Route path="/open-calls" element={<OpenCalls />} />
-                <Route path="/open-calls/:id" element={<OpenCallDetails />} />
-                <Route path="/education" element={<Education />} />
-                <Route path="/education/:category" element={<EducationCategory />} />
-                <Route path="/education/content/:slug" element={<EducationContent />} />
-
-                {/* AIFilm3 routes */}
-                <Route path="/aifilm3/info" element={<AIFilm3Info />} />
-                <Route path="/aifilm3/announcements" element={<AIFilm3Announcements />} />
-
-                {/* Protected routes */}
-                <Route path="/dashboard" element={
-                  <ProtectedRoute>
-                    <Dashboard />
-                  </ProtectedRoute>
-                } />
-                <Route path="/my-portfolios" element={
-                  <ProtectedRoute>
-                    <MyPortfolios />
-                  </ProtectedRoute>
-                } />
-                <Route path="/portfolio/:id/edit" element={
-                  <ProtectedRoute>
-                    <PortfolioEditor />
-                  </ProtectedRoute>
-                } />
-                <Route path="/submit/:callId" element={
-                  <ProtectedRoute>
-                    <SubmissionForm />
-                  </ProtectedRoute>
-                } />
-                <Route path="/profile/settings" element={
-                  <ProtectedRoute>
-                    <ProfileSettings />
-                  </ProtectedRoute>
-                } />
-
-                {/* Admin routes */}
-                <Route path="/admin" element={
-                  <AdminRoute>
-                    <AdminDashboard />
-                  </AdminRoute>
-                } />
-                <Route path="/admin/users" element={
-                  <AdminRoute>
-                    <AdminUsers />
-                  </AdminRoute>
-                } />
-                <Route path="/admin/open-calls" element={
-                  <AdminRoute>
-                    <AdminOpenCalls />
-                  </AdminRoute>
-                } />
-                <Route path="/admin/education" element={
-                  <AdminRoute>
-                    <AdminEducation />
-                  </AdminRoute>
-                } />
-
-                {/* Catch-all route */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </BrowserRouter>
-          </TooltipProvider>
-        </AuthProvider>
-      </ThemeProvider>
+          </div>
+        </Router>
+      </AuthProvider>
     </QueryClientProvider>
-  </ErrorBoundary>
-);
+  );
+}
 
 export default App;
