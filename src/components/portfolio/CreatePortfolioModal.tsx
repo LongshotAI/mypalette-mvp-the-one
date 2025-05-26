@@ -40,17 +40,28 @@ const CreatePortfolioModal = ({ onSuccess, trigger }: CreatePortfolioModalProps)
 
     try {
       setIsLoading(true);
-      await createPortfolio(formData);
+      console.log('Creating portfolio via modal with data:', formData);
+      
+      await createPortfolio({
+        title: formData.title.trim(),
+        description: formData.description.trim() || undefined,
+        template_id: formData.template_id,
+        is_public: formData.is_public,
+      });
+      
+      // Reset form
       setFormData({
         title: '',
         description: '',
         template_id: 'crestline',
         is_public: false,
       });
+      
       setOpen(false);
       onSuccess?.();
     } catch (error) {
       console.error('Failed to create portfolio:', error);
+      // Error handling is done in the createPortfolio function via toast
     } finally {
       setIsLoading(false);
     }
@@ -81,6 +92,7 @@ const CreatePortfolioModal = ({ onSuccess, trigger }: CreatePortfolioModalProps)
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
               placeholder="Enter portfolio title"
               required
+              disabled={isLoading}
             />
           </div>
 
@@ -92,6 +104,7 @@ const CreatePortfolioModal = ({ onSuccess, trigger }: CreatePortfolioModalProps)
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               placeholder="Describe your portfolio"
               rows={3}
+              disabled={isLoading}
             />
           </div>
 
@@ -100,6 +113,7 @@ const CreatePortfolioModal = ({ onSuccess, trigger }: CreatePortfolioModalProps)
             <Select
               value={formData.template_id}
               onValueChange={(value) => setFormData({ ...formData, template_id: value })}
+              disabled={isLoading}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Choose a template" />
@@ -122,15 +136,26 @@ const CreatePortfolioModal = ({ onSuccess, trigger }: CreatePortfolioModalProps)
               id="public"
               checked={formData.is_public}
               onCheckedChange={(checked) => setFormData({ ...formData, is_public: checked })}
+              disabled={isLoading}
             />
             <Label htmlFor="public">Make portfolio public</Label>
           </div>
 
           <div className="flex gap-2 pt-4">
-            <Button type="button" variant="outline" onClick={() => setOpen(false)} className="flex-1">
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => setOpen(false)} 
+              className="flex-1"
+              disabled={isLoading}
+            >
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading || !formData.title.trim()} className="flex-1">
+            <Button 
+              type="submit" 
+              disabled={isLoading || !formData.title.trim()} 
+              className="flex-1"
+            >
               {isLoading ? 'Creating...' : 'Create Portfolio'}
             </Button>
           </div>

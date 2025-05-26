@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 export interface Portfolio {
   id: string;
@@ -30,10 +31,13 @@ export const usePortfolios = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const fetchFeaturedPortfolios = async () => {
     try {
       setLoading(true);
+      console.log('Fetching featured portfolios...');
+      
       const { data, error } = await supabase
         .from('portfolios')
         .select(`
@@ -63,6 +67,7 @@ export const usePortfolios = () => {
         .limit(6);
 
       if (error) throw error;
+      console.log('Featured portfolios fetched:', data);
       setPortfolios(data || []);
     } catch (err) {
       console.error('Error fetching featured portfolios:', err);
@@ -72,9 +77,19 @@ export const usePortfolios = () => {
     }
   };
 
-  const fetchUserPortfolios = async (userId: string) => {
+  const fetchUserPortfolios = async (userId?: string) => {
     try {
       setLoading(true);
+      const targetUserId = userId || user?.id;
+      
+      if (!targetUserId) {
+        console.log('No user ID provided for portfolio fetch');
+        setPortfolios([]);
+        return;
+      }
+
+      console.log('Fetching portfolios for user:', targetUserId);
+      
       const { data, error } = await supabase
         .from('portfolios')
         .select(`
@@ -91,16 +106,48 @@ export const usePortfolios = () => {
           is_public,
           is_featured
         `)
-        .eq('user_id', userId)
+        .eq('user_id', targetUserId)
         .order('updated_at', { ascending: false });
 
       if (error) throw error;
+      console.log('User portfolios fetched:', data);
       setPortfolios(data || []);
     } catch (err) {
       console.error('Error fetching user portfolios:', err);
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const uploadCoverImage = async (file: File, portfolioId: string) => {
+    try {
+      if (!user?.id) throw new Error('User not authenticated');
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}/${portfolioId}/cover.${fileExt}`;
+
+      console.log('Uploading cover image:', fileName);
+
+      const { error: uploadError } = await supabase.storage
+        .from('portfolio-images')
+        .upload(fileName, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('portfolio-images')
+        .getPublicUrl(fileName);
+
+      return publicUrl;
+    } catch (err) {
+      console.error('Error uploading cover image:', err);
+      toast({
+        title: "Error",
+        description: err instanceof Error ? err.message : 'Failed to upload image',
+        variant: "destructive",
+      });
+      throw err;
     }
   };
 
@@ -111,8 +158,9 @@ export const usePortfolios = () => {
     is_public?: boolean;
   }) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('User not authenticated');
+      if (!user?.id) throw new Error('User not authenticated');
+
+      console.log('Creating portfolio with data:', portfolioData);
 
       // Generate slug using the database function
       const { data: slugData, error: slugError } = await supabase
@@ -135,10 +183,14 @@ export const usePortfolios = () => {
 
       if (error) throw error;
 
+      console.log('Portfolio created:', data);
       toast({
         title: "Portfolio created",
         description: "Your portfolio has been created successfully!",
       });
+
+      // Add to local state
+      setPortfolios(prev => [data, ...prev]);
 
       return data;
     } catch (err) {
@@ -154,6 +206,8 @@ export const usePortfolios = () => {
 
   const updatePortfolio = async (id: string, updates: Partial<Portfolio>) => {
     try {
+      console.log('Updating portfolio:', id, updates);
+
       const { data, error } = await supabase
         .from('portfolios')
         .update(updates)
@@ -163,10 +217,14 @@ export const usePortfolios = () => {
 
       if (error) throw error;
 
+      console.log('Portfolio updated:', data);
       toast({
         title: "Portfolio updated",
         description: "Your portfolio has been updated successfully!",
       });
+
+      // Update local state
+      setPortfolios(prev => prev.map(p => p.id === id ? data : p));
 
       return data;
     } catch (err) {
@@ -182,6 +240,8 @@ export const usePortfolios = () => {
 
   const deletePortfolio = async (id: string) => {
     try {
+      console.log('Deleting portfolio:', id);
+
       const { error } = await supabase
         .from('portfolios')
         .delete()
@@ -189,6 +249,7 @@ export const usePortfolios = () => {
 
       if (error) throw error;
 
+      console.log('Portfolio deleted successfully');
       toast({
         title: "Portfolio deleted",
         description: "Your portfolio has been deleted successfully!",
@@ -207,9 +268,15 @@ export const usePortfolios = () => {
     }
   };
 
+  // Auto-fetch user portfolios when user changes
   useEffect(() => {
-    fetchFeaturedPortfolios();
-  }, []);
+    if (user?.id) {
+      fetchUserPortfolios();
+    } else {
+      setPortfolios([]);
+      setLoading(false);
+    }
+  }, [user?.id]);
 
   return {
     portfolios,
@@ -220,6 +287,7 @@ export const usePortfolios = () => {
     createPortfolio,
     updatePortfolio,
     deletePortfolio,
-    refetch: fetchFeaturedPortfolios
+    uploadCoverImage,
+    refetch: () => fetchUserPortfolios()
   };
 };

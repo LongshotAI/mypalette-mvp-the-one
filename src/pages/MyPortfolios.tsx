@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,47 +7,24 @@ import { Badge } from '@/components/ui/badge';
 import { Plus, Eye, Edit, Share2, MoreVertical, Palette } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-
-interface Portfolio {
-  id: string;
-  title: string;
-  description: string;
-  slug: string;
-  isPublic: boolean;
-  isFeatured: boolean;
-  coverImage?: string;
-  viewCount: number;
-  createdAt: string;
-}
+import { usePortfolios } from '@/hooks/usePortfolios';
+import { useAuth } from '@/contexts/AuthContext';
+import CreatePortfolioModal from '@/components/portfolio/CreatePortfolioModal';
+import { format } from 'date-fns';
 
 const MyPortfolios = () => {
   const navigate = useNavigate();
-  const [portfolios] = useState<Portfolio[]>([
-    {
-      id: '1',
-      title: 'Digital Dreams',
-      description: 'A collection of surreal digital artworks exploring the subconscious mind.',
-      slug: 'digital-dreams',
-      isPublic: true,
-      isFeatured: false,
-      viewCount: 234,
-      createdAt: '2024-01-15'
-    },
-    {
-      id: '2', 
-      title: 'Urban Landscapes',
-      description: 'Photography and digital art capturing the essence of city life.',
-      slug: 'urban-landscapes',
-      isPublic: false,
-      isFeatured: true,
-      viewCount: 189,
-      createdAt: '2024-02-10'
-    }
-  ]);
+  const { user } = useAuth();
+  const { portfolios, loading, error, refetch } = usePortfolios();
 
-  const handleCreatePortfolio = () => {
-    // For now, navigate to a placeholder
-    navigate('/portfolio/new/edit');
+  console.log('MyPortfolios - Current user:', user?.id);
+  console.log('MyPortfolios - Portfolios:', portfolios);
+  console.log('MyPortfolios - Loading:', loading);
+  console.log('MyPortfolios - Error:', error);
+
+  const handleCreatePortfolioSuccess = () => {
+    console.log('Portfolio created successfully, refreshing list...');
+    refetch();
   };
 
   const handleEditPortfolio = (portfolioId: string) => {
@@ -55,8 +32,25 @@ const MyPortfolios = () => {
   };
 
   const handleViewPortfolio = (slug: string) => {
-    navigate(`/portfolio/${slug}`);
+    if (slug) {
+      navigate(`/portfolio/${slug}`);
+    } else {
+      console.warn('Portfolio slug is missing');
+    }
   };
+
+  if (!user) {
+    return (
+      <Layout>
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center">
+            <h1 className="text-3xl font-bold mb-4">Please Login</h1>
+            <p className="text-muted-foreground">You need to be logged in to view your portfolios.</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -72,14 +66,49 @@ const MyPortfolios = () => {
               <h1 className="text-3xl font-bold mb-2">My Portfolios</h1>
               <p className="text-muted-foreground">Create and manage your art portfolios</p>
             </div>
-            <Button onClick={handleCreatePortfolio} className="flex items-center gap-2">
-              <Plus className="h-4 w-4" />
-              Create Portfolio
-            </Button>
+            <CreatePortfolioModal 
+              onSuccess={handleCreatePortfolioSuccess}
+              trigger={
+                <Button className="flex items-center gap-2">
+                  <Plus className="h-4 w-4" />
+                  Create Portfolio
+                </Button>
+              }
+            />
           </motion.div>
 
+          {/* Loading State */}
+          {loading && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-center py-16"
+            >
+              <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-muted-foreground">Loading your portfolios...</p>
+            </motion.div>
+          )}
+
+          {/* Error State */}
+          {error && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-center py-16"
+            >
+              <div className="w-24 h-24 mx-auto mb-6 bg-destructive/10 rounded-full flex items-center justify-center">
+                <Palette className="h-12 w-12 text-destructive/60" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">Error Loading Portfolios</h3>
+              <p className="text-muted-foreground mb-6">{error}</p>
+              <Button onClick={refetch} variant="outline">
+                Try Again
+              </Button>
+            </motion.div>
+          )}
+
           {/* Portfolios Grid */}
-          {portfolios.length > 0 ? (
+          {!loading && !error && portfolios.length > 0 && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -95,9 +124,9 @@ const MyPortfolios = () => {
                 >
                   <Card className="group hover:shadow-lg transition-all duration-300">
                     <div className="relative aspect-video overflow-hidden rounded-t-lg">
-                      {portfolio.coverImage ? (
+                      {portfolio.cover_image ? (
                         <img
-                          src={portfolio.coverImage}
+                          src={portfolio.cover_image}
                           alt={portfolio.title}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         />
@@ -108,28 +137,35 @@ const MyPortfolios = () => {
                       )}
                       
                       <div className="absolute top-4 left-4 flex gap-2">
-                        {portfolio.isFeatured && (
+                        {portfolio.is_featured && (
                           <Badge variant="secondary" className="bg-yellow-500/90 text-white">
                             Featured
                           </Badge>
                         )}
                         <Badge 
-                          variant={portfolio.isPublic ? "default" : "secondary"}
-                          className={portfolio.isPublic ? "bg-green-500" : ""}
+                          variant={portfolio.is_public ? "default" : "secondary"}
+                          className={portfolio.is_public ? "bg-green-500" : ""}
                         >
-                          {portfolio.isPublic ? 'Public' : 'Private'}
+                          {portfolio.is_public ? 'Public' : 'Private'}
                         </Badge>
                       </div>
                       
                       <div className="absolute bottom-4 right-4 flex items-center space-x-1 text-white bg-black/50 backdrop-blur-sm rounded-full px-2 py-1">
                         <Eye className="h-3 w-3" />
-                        <span className="text-xs">{portfolio.viewCount}</span>
+                        <span className="text-xs">{portfolio.view_count || 0}</span>
                       </div>
                     </div>
                     
                     <CardHeader>
                       <div className="flex justify-between items-start">
-                        <CardTitle className="text-lg">{portfolio.title}</CardTitle>
+                        <div className="flex-1">
+                          <CardTitle className="text-lg">{portfolio.title}</CardTitle>
+                          {portfolio.created_at && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Created {format(new Date(portfolio.created_at), 'MMM d, yyyy')}
+                            </p>
+                          )}
+                        </div>
                         <Button variant="ghost" size="sm">
                           <MoreVertical className="h-4 w-4" />
                         </Button>
@@ -137,9 +173,11 @@ const MyPortfolios = () => {
                     </CardHeader>
                     
                     <CardContent>
-                      <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-                        {portfolio.description}
-                      </p>
+                      {portfolio.description && (
+                        <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
+                          {portfolio.description}
+                        </p>
+                      )}
                       
                       <div className="flex gap-2">
                         <Button 
@@ -155,7 +193,8 @@ const MyPortfolios = () => {
                           variant="outline" 
                           size="sm" 
                           className="flex-1"
-                          onClick={() => handleViewPortfolio(portfolio.slug)}
+                          onClick={() => handleViewPortfolio(portfolio.slug || '')}
+                          disabled={!portfolio.slug}
                         >
                           <Eye className="h-3 w-3 mr-1" />
                           View
@@ -169,7 +208,10 @@ const MyPortfolios = () => {
                 </motion.div>
               ))}
             </motion.div>
-          ) : (
+          )}
+
+          {/* Empty State */}
+          {!loading && !error && portfolios.length === 0 && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -183,10 +225,15 @@ const MyPortfolios = () => {
               <p className="text-muted-foreground mb-6 max-w-md mx-auto">
                 Create your first portfolio to showcase your amazing artwork to the world.
               </p>
-              <Button onClick={handleCreatePortfolio} size="lg">
-                <Plus className="h-4 w-4 mr-2" />
-                Create Your First Portfolio
-              </Button>
+              <CreatePortfolioModal 
+                onSuccess={handleCreatePortfolioSuccess}
+                trigger={
+                  <Button size="lg">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Your First Portfolio
+                  </Button>
+                }
+              />
             </motion.div>
           )}
         </div>
