@@ -1,61 +1,54 @@
 
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import { useProfile } from '@/hooks/useProfile';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Menu, X, Search, User, Bell, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
+import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  NavigationMenu,
-  NavigationMenuContent,
-  NavigationMenuItem,
-  NavigationMenuList,
-  NavigationMenuTrigger,
-} from '@/components/ui/navigation-menu';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Menu, X, User, Settings, LogOut, Palette, Search, Plus, ChevronDown } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useProfile } from '@/hooks/useProfile';
+import { useAdminCheck } from '@/hooks/useAdminCheck';
+import GlobalSearch from './GlobalSearch';
 
 const Header = () => {
+  const [isOpen, setIsOpen] = useState(false);
   const { user, logout } = useAuth();
-  const { profile } = useProfile();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const location = useLocation();
+  const { data: profile } = useProfile();
+  const { data: userRole } = useAdminCheck();
 
-  const handleSignOut = async () => {
+  // Close mobile menu when route changes
+  useEffect(() => {
+    setIsOpen(false);
+  }, [location.pathname]);
+
+  const handleLogout = async () => {
     try {
-      logout();
+      await logout();
       navigate('/');
     } catch (error) {
-      console.error('Error signing out:', error);
+      console.error('Logout error:', error);
     }
   };
 
-  const getInitials = (firstName?: string | null, lastName?: string | null) => {
-    if (firstName && lastName) {
-      return `${firstName[0]}${lastName[0]}`.toUpperCase();
-    }
-    if (firstName) {
-      return firstName[0].toUpperCase();
-    }
-    if (user?.email) {
-      return user.email[0].toUpperCase();
-    }
-    return 'U';
+  const getInitials = (firstName?: string, lastName?: string) => {
+    if (!firstName && !lastName) return 'U';
+    return `${firstName?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase();
   };
 
-  const getDisplayName = () => {
-    if (profile?.first_name && profile?.last_name) {
-      return `${profile.first_name} ${profile.last_name}`;
-    }
-    return profile?.username || 'User';
+  const isActivePath = (path: string) => {
+    if (path === '/') return location.pathname === '/';
+    return location.pathname.startsWith(path);
   };
 
   return (
@@ -67,243 +60,223 @@ const Header = () => {
             <img 
               src="/lovable-uploads/17ab5ff7-92d6-4e07-ba7a-67585c399503.png" 
               alt="MyPalette Logo" 
-              className="h-8 w-auto"
+              className="h-6 w-auto"
             />
-            <div className="hidden sm:block">
-              <h1 className="text-xl font-bold bg-gradient-to-r from-red-500 via-green-500 to-blue-500 bg-clip-text text-transparent">
-                MyPalette
-              </h1>
-              <p className="text-xs text-muted-foreground">Showcase Your Art, Discover Opportunities</p>
-            </div>
+            <span className="text-xl font-bold bg-gradient-to-r from-red-500 via-green-500 to-blue-500 bg-clip-text text-transparent">
+              MyPalette
+            </span>
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-6">
-            <Link 
-              to="/discover" 
-              className="text-sm font-medium hover:text-primary transition-colors"
+          <nav className="hidden md:flex items-center space-x-8">
+            <Link
+              to="/discover"
+              className={`text-sm font-medium transition-colors hover:text-primary ${
+                isActivePath('/discover') ? 'text-primary' : 'text-muted-foreground'
+              }`}
             >
               Discover
             </Link>
-            <Link 
-              to="/open-calls" 
-              className="text-sm font-medium hover:text-primary transition-colors"
+            <Link
+              to="/open-calls"
+              className={`text-sm font-medium transition-colors hover:text-primary ${
+                isActivePath('/open-calls') ? 'text-primary' : 'text-muted-foreground'
+              }`}
             >
               Open Calls
             </Link>
-            <Link 
-              to="/education" 
-              className="text-sm font-medium hover:text-primary transition-colors"
+            <Link
+              to="/education"
+              className={`text-sm font-medium transition-colors hover:text-primary ${
+                isActivePath('/education') ? 'text-primary' : 'text-muted-foreground'
+              }`}
             >
               Education
             </Link>
             
             {/* AIFilm3 Dropdown */}
-            <NavigationMenu>
-              <NavigationMenuList>
-                <NavigationMenuItem>
-                  <NavigationMenuTrigger className="text-sm font-medium hover:text-primary transition-colors">
-                    AIFilm3
-                  </NavigationMenuTrigger>
-                  <NavigationMenuContent className="p-4 w-48">
-                    <div className="grid gap-3">
-                      <Link 
-                        to="/aifilm3/info" 
-                        className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
-                      >
-                        <div className="text-sm font-medium leading-none">Project Info</div>
-                        <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
-                          Overview, events, and team details
-                        </p>
-                      </Link>
-                      <Link 
-                        to="/aifilm3/announcements" 
-                        className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
-                      >
-                        <div className="text-sm font-medium leading-none">Announcements</div>
-                        <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
-                          Latest news and updates
-                        </p>
-                      </Link>
-                    </div>
-                  </NavigationMenuContent>
-                </NavigationMenuItem>
-              </NavigationMenuList>
-            </NavigationMenu>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className={`flex items-center space-x-1 text-sm font-medium transition-colors hover:text-primary ${
+                  isActivePath('/aifilm3') ? 'text-primary' : 'text-muted-foreground'
+                }`}>
+                  <span>AIFilm3</span>
+                  <ChevronDown className="h-4 w-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-48">
+                <DropdownMenuItem asChild>
+                  <Link to="/aifilm3/info" className="w-full">
+                    About AIFilm3
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/aifilm3/announcements" className="w-full">
+                    Announcements
+                  </Link>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </nav>
 
-          {/* Right side */}
+          {/* Right side actions */}
           <div className="flex items-center space-x-4">
             {/* Search */}
-            <Button variant="ghost" size="sm" className="hidden sm:flex">
-              <Search className="h-4 w-4" />
+            <GlobalSearch />
+
+            {/* Theme toggle */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleTheme}
+              className="hidden sm:flex"
+            >
+              {theme === 'dark' ? '🌙' : '☀️'}
             </Button>
 
+            {/* User menu or auth buttons */}
             {user ? (
-              <div className="flex items-center space-x-2">
-                {/* Create button */}
-                <Button
-                  onClick={() => navigate('/my-portfolios')}
-                  size="sm"
-                  className="hidden sm:flex items-center space-x-1"
-                >
-                  <Plus className="h-4 w-4" />
-                  <span>Create</span>
-                </Button>
-
-                {/* User menu */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage src={profile?.avatar_url || ""} alt="Profile" />
-                        <AvatarFallback>
-                          {getInitials(profile?.first_name, profile?.last_name)}
-                        </AvatarFallback>
-                      </Avatar>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-56" align="end" forceMount>
-                    <DropdownMenuLabel className="font-normal">
-                      <div className="flex flex-col space-y-1">
-                        <p className="text-sm font-medium leading-none">
-                          {getDisplayName()}
-                        </p>
-                        <p className="text-xs leading-none text-muted-foreground">
-                          {user?.email}
-                        </p>
-                      </div>
-                    </DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => navigate('/dashboard')}>
-                      <User className="mr-2 h-4 w-4" />
-                      <span>Dashboard</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => navigate('/my-portfolios')}>
-                      <Palette className="mr-2 h-4 w-4" />
-                      <span>My Portfolios</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => navigate('/profile/settings')}>
-                      <Settings className="mr-2 h-4 w-4" />
-                      <span>Settings</span>
-                    </DropdownMenuItem>
-                    {profile?.role === 'admin' && (
-                      <>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => navigate('/admin')}>
-                          <span>Admin Dashboard</span>
-                        </DropdownMenuItem>
-                      </>
-                    )}
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleSignOut}>
-                      <LogOut className="mr-2 h-4 w-4" />
-                      <span>Sign out</span>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={profile?.avatar_url} alt={profile?.username} />
+                      <AvatarFallback>
+                        {getInitials(profile?.first_name, profile?.last_name)}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56" align="end" forceMount>
+                  <div className="flex items-center justify-start gap-2 p-2">
+                    <div className="flex flex-col space-y-1 leading-none">
+                      <p className="font-medium">{profile?.first_name} {profile?.last_name}</p>
+                      <p className="w-[200px] truncate text-sm text-muted-foreground">
+                        {user.email}
+                      </p>
+                    </div>
+                  </div>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link to="/dashboard">Dashboard</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/my-portfolios">My Portfolios</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/profile/settings">Settings</Link>
+                  </DropdownMenuItem>
+                  {userRole === 'admin' && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem asChild>
+                        <Link to="/admin">
+                          <Badge variant="secondary" className="mr-2">Admin</Badge>
+                          Admin Dashboard
+                        </Link>
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleLogout}>
+                    Sign out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             ) : (
-              <div className="flex items-center space-x-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => navigate('/auth/login')}
-                >
-                  Sign In
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={() => navigate('/auth/register')}
-                >
-                  Sign Up
-                </Button>
+              <div className="hidden md:flex items-center space-x-2">
+                <Link to="/auth/login">
+                  <Button variant="ghost" size="sm">
+                    Sign In
+                  </Button>
+                </Link>
+                <Link to="/auth/register">
+                  <Button size="sm">
+                    Join MyPalette
+                  </Button>
+                </Link>
               </div>
             )}
 
             {/* Mobile menu button */}
             <Button
               variant="ghost"
-              size="sm"
+              size="icon"
               className="md:hidden"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              onClick={() => setIsOpen(!isOpen)}
             >
-              {mobileMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+              {isOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </Button>
           </div>
         </div>
 
         {/* Mobile Navigation */}
-        <AnimatePresence>
-          {mobileMenuOpen && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="md:hidden border-t"
-            >
-              <nav className="flex flex-col space-y-4 py-4">
-                <Link 
-                  to="/discover"
-                  className="text-sm font-medium hover:text-primary transition-colors"
-                  onClick={() => setMobileMenuOpen(false)}
+        {isOpen && (
+          <div className="md:hidden border-t bg-background">
+            <nav className="flex flex-col space-y-4 px-4 py-6">
+              <Link
+                to="/discover"
+                className={`text-sm font-medium transition-colors hover:text-primary ${
+                  isActivePath('/discover') ? 'text-primary' : 'text-muted-foreground'
+                }`}
+              >
+                Discover
+              </Link>
+              <Link
+                to="/open-calls"
+                className={`text-sm font-medium transition-colors hover:text-primary ${
+                  isActivePath('/open-calls') ? 'text-primary' : 'text-muted-foreground'
+                }`}
+              >
+                Open Calls
+              </Link>
+              <Link
+                to="/education"
+                className={`text-sm font-medium transition-colors hover:text-primary ${
+                  isActivePath('/education') ? 'text-primary' : 'text-muted-foreground'
+                }`}
+              >
+                Education
+              </Link>
+              
+              {/* AIFilm3 Mobile Links */}
+              <div className="pl-4 border-l-2 border-muted">
+                <div className="text-sm font-medium text-muted-foreground mb-2">AIFilm3</div>
+                <Link
+                  to="/aifilm3/info"
+                  className={`block text-sm font-medium transition-colors hover:text-primary ${
+                    isActivePath('/aifilm3/info') ? 'text-primary' : 'text-muted-foreground'
+                  }`}
                 >
-                  Discover
+                  About AIFilm3
                 </Link>
-                <Link 
-                  to="/open-calls"
-                  className="text-sm font-medium hover:text-primary transition-colors"
-                  onClick={() => setMobileMenuOpen(false)}
+                <Link
+                  to="/aifilm3/announcements"
+                  className={`block text-sm font-medium transition-colors hover:text-primary mt-2 ${
+                    isActivePath('/aifilm3/announcements') ? 'text-primary' : 'text-muted-foreground'
+                  }`}
                 >
-                  Open Calls
+                  Announcements
                 </Link>
-                <Link 
-                  to="/education"
-                  className="text-sm font-medium hover:text-primary transition-colors"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Education
-                </Link>
-                <div className="border-t pt-4">
-                  <Link 
-                    to="/aifilm3/info"
-                    className="text-sm font-medium hover:text-primary transition-colors block pb-2"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    AIFilm3 Info
+              </div>
+
+              {!user && (
+                <div className="flex flex-col space-y-2 pt-4 border-t">
+                  <Link to="/auth/login">
+                    <Button variant="outline" className="w-full">
+                      Sign In
+                    </Button>
                   </Link>
-                  <Link 
-                    to="/aifilm3/announcements"
-                    className="text-sm font-medium hover:text-primary transition-colors block"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    AIFilm3 Announcements
+                  <Link to="/auth/register">
+                    <Button className="w-full">
+                      Join MyPalette
+                    </Button>
                   </Link>
                 </div>
-                {user && (
-                  <>
-                    <div className="border-t pt-4 mt-4">
-                      <Link 
-                        to="/dashboard"
-                        className="text-sm font-medium hover:text-primary transition-colors"
-                        onClick={() => setMobileMenuOpen(false)}
-                      >
-                        Dashboard
-                      </Link>
-                    </div>
-                    <Link 
-                      to="/my-portfolios"
-                      className="text-sm font-medium hover:text-primary transition-colors"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      My Portfolios
-                    </Link>
-                  </>
-                )}
-              </nav>
-            </motion.div>
-          )}
-        </AnimatePresence>
+              )}
+            </nav>
+          </div>
+        )}
       </div>
     </header>
   );
