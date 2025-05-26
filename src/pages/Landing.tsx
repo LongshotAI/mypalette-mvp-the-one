@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -59,7 +58,14 @@ const Landing = () => {
           .limit(6);
 
         if (error) throw error;
-        setFeaturedPortfolios(data || []);
+        
+        // Transform the data to match our interface
+        const transformedData: FeaturedPortfolio[] = (data || []).map(item => ({
+          ...item,
+          profiles: Array.isArray(item.profiles) ? item.profiles[0] : item.profiles
+        }));
+        
+        setFeaturedPortfolios(transformedData);
       } catch (error) {
         console.error('Error fetching featured portfolios:', error);
       } finally {
