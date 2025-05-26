@@ -15,17 +15,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import SubmissionFormFields from '@/components/submissions/SubmissionFormFields';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
-
-interface SubmissionData {
-  title: string;
-  description: string;
-  medium: string;
-  year: string;
-  dimensions: string;
-  artist_statement: string;
-  image_urls: string[];
-  external_links: string[];
-}
+import { SubmissionData } from '@/types/submission';
 
 const SubmissionForm = () => {
   const { callId } = useParams();
@@ -105,14 +95,17 @@ const SubmissionForm = () => {
         throw new Error('At least one image is required');
       }
 
+      // Convert to proper format for database
+      const submissionPayload = {
+        open_call_id: callId,
+        artist_id: user.id,
+        submission_data: submissionData as any, // Cast to any to satisfy Json type
+        payment_status: openCall?.submission_fee > 0 ? 'pending' : 'free'
+      };
+
       const { data, error } = await supabase
         .from('submissions')
-        .insert({
-          open_call_id: callId,
-          artist_id: user.id,
-          submission_data: submissionData,
-          payment_status: openCall?.submission_fee > 0 ? 'pending' : 'free'
-        })
+        .insert(submissionPayload)
         .select()
         .single();
 

@@ -1,52 +1,9 @@
+
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-
-export interface SubmissionData {
-  title: string;
-  description: string;
-  artistStatement: string;
-  files?: File[];
-}
-
-export interface Submission {
-  id: string;
-  open_call_id: string;
-  artist_id: string;
-  artwork_id?: string;
-  submission_data: any;
-  payment_status: string;
-  payment_id?: string;
-  is_selected: boolean;
-  curator_notes?: string;
-  submitted_at: string;
-  submission_title?: string;
-  submission_description?: string;
-  artist_statement?: string;
-  is_first_submission?: boolean;
-  payment_amount?: number;
-  open_calls?: {
-    title: string;
-    organization_name?: string;
-  };
-  profiles?: {
-    username?: string;
-    first_name?: string;
-    last_name?: string;
-    avatar_url?: string;
-  };
-  submission_workflow?: Array<{
-    status: string;
-    notes?: string;
-    created_at: string;
-  }>;
-  submission_reviews?: Array<{
-    rating?: number;
-    overall_score?: number;
-    review_notes?: string;
-  }>;
-}
+import { SubmissionData, Submission } from '@/types/submission';
 
 // Add function to check if user has made any submissions before
 const checkIsFirstSubmission = async (userId: string): Promise<boolean> => {
@@ -88,12 +45,7 @@ export const useSubmissions = () => {
         .insert({
           open_call_id: openCallId,
           artist_id: user.id,
-          submission_data: {
-            title: submissionData.title,
-            description: submissionData.description,
-            artist_statement: submissionData.artistStatement,
-            files: []
-          },
+          submission_data: submissionData as any, // Cast to satisfy Json type
           payment_status: isFirst ? 'free' : 'pending',
           is_selected: false
         })
@@ -106,14 +58,6 @@ export const useSubmissions = () => {
       }
 
       console.log('Submission created:', submission);
-
-      // Create initial workflow entry - skip if table doesn't exist in schema
-      try {
-        // Since submission_workflow isn't in the schema, we'll skip this for now
-        console.log('Skipping workflow entry creation - table not in schema');
-      } catch (error) {
-        console.log('Workflow table not available:', error);
-      }
 
       // If first submission, mark as free and return success
       if (isFirst) {
@@ -191,8 +135,7 @@ export const useSubmissions = () => {
         .from('submissions')
         .select(`
           *,
-          open_calls(title, organization_name),
-          submission_workflow(status, notes, created_at)
+          open_calls(title, organization_name)
         `)
         .eq('artist_id', user.id)
         .order('submitted_at', { ascending: false });
@@ -203,13 +146,7 @@ export const useSubmissions = () => {
       }
       
       console.log('User submissions fetched:', data);
-      // Transform the data to match expected structure
-      const transformedData = data?.map(submission => ({
-        ...submission,
-        submission_workflow: [] as any[]
-      })) || [];
-      
-      return transformedData as Submission[];
+      return data as Submission[];
     },
   });
 
@@ -223,9 +160,7 @@ export const useSubmissions = () => {
           .from('submissions')
           .select(`
             *,
-            profiles(username, first_name, last_name, avatar_url),
-            submission_workflow(status, notes, created_at),
-            submission_reviews(rating, overall_score, review_notes)
+            profiles(username, first_name, last_name, avatar_url)
           `)
           .eq('open_call_id', openCallId)
           .in('payment_status', ['paid', 'free'])
@@ -237,14 +172,7 @@ export const useSubmissions = () => {
         }
         
         console.log('Submissions by call fetched:', data);
-        // Transform the data to match expected structure
-        const transformedData = data?.map(submission => ({
-          ...submission,
-          submission_workflow: [] as any[],
-          submission_reviews: [] as any[]
-        })) || [];
-        
-        return transformedData as Submission[];
+        return data as Submission[];
       },
       enabled: !!openCallId,
     });

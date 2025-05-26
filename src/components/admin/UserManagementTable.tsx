@@ -1,150 +1,173 @@
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Input } from '@/components/ui/input';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Search, MoreVertical, User, Mail, Calendar, Shield, UserX } from 'lucide-react';
+import { MoreHorizontal, Search, Shield, User, Mail } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import LoadingSpinner from '@/components/ui/LoadingSpinner';
 
 interface UserProfile {
   id: string;
+  username: string | null;
   first_name: string | null;
   last_name: string | null;
-  username: string | null;
-  role: 'user' | 'admin';
+  role: string;
   created_at: string;
   updated_at: string;
+  avatar_url: string | null;
+  bio: string | null;
+  location: string | null;
+  website: string | null;
+  artistic_medium: string | null;
 }
 
 const UserManagementTable = () => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedRole, setSelectedRole] = useState<'all' | 'user' | 'admin'>('all');
   const queryClient = useQueryClient();
 
-  // Fetch users
-  const { data: users = [], isLoading } = useQuery({
+  const { data: users, isLoading, error } = useQuery({
     queryKey: ['admin-users'],
     queryFn: async () => {
+      console.log('Fetching users for admin management...');
+      
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching users:', error);
+        throw error;
+      }
+
+      console.log('Users fetched:', data);
       return data as UserProfile[];
     },
   });
 
-  // Update user role mutation
   const updateUserRole = useMutation({
-    mutationFn: async ({ userId, newRole }: { userId: string; newRole: 'user' | 'admin' }) => {
+    mutationFn: async ({ userId, newRole }: { userId: string; newRole: string }) => {
+      console.log('Updating user role:', userId, newRole);
+      
       const { error } = await supabase
         .from('profiles')
-        .update({ role: newRole })
+        .update({ role: newRole, updated_at: new Date().toISOString() })
         .eq('id', userId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error updating user role:', error);
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
       toast({
-        title: "Success",
-        description: "User role updated successfully",
+        title: "Role Updated",
+        description: "User role has been updated successfully.",
       });
     },
-    onError: (error) => {
-      console.error('Error updating user role:', error);
+    onError: (error: any) => {
       toast({
         title: "Error",
-        description: "Failed to update user role",
+        description: error.message || "Failed to update user role.",
         variant: "destructive",
       });
     },
   });
 
-  const filteredUsers = users.filter(user => {
-    const matchesSearch = 
-      user.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.username?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesRole = selectedRole === 'all' || user.role === selectedRole;
-    return matchesSearch && matchesRole;
-  });
-
-  const handleRoleChange = (userId: string, newRole: 'user' | 'admin') => {
-    updateUserRole.mutate({ userId, newRole });
-  };
+  const filteredUsers = users?.filter(user =>
+    user.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.artistic_medium?.toLowerCase().includes(searchTerm.toLowerCase())
+  ) || [];
 
   const getRoleBadgeVariant = (role: string) => {
-    return role === 'admin' ? 'default' : 'secondary';
+    switch (role) {
+      case 'admin':
+        return 'destructive';
+      case 'curator':
+        return 'secondary';
+      default:
+        return 'outline';
+    }
   };
 
-  const getDisplayName = (user: UserProfile) => {
-    if (user.first_name || user.last_name) {
-      return `${user.first_name || ''} ${user.last_name || ''}`.trim();
+  const getRoleIcon = (role: string) => {
+    switch (role) {
+      case 'admin':
+        return <Shield className="h-3 w-3" />;
+      case 'curator':
+        return <Mail className="h-3 w-3" />;
+      default:
+        return <User className="h-3 w-3" />;
     }
-    return user.username || 'Unknown User';
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <LoadingSpinner size="lg" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-8">
+        <p className="text-destructive">Error loading users. Please try again.</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search users by name or username..."
-            className="pl-10"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-        <div className="flex gap-2">
-          {(['all', 'user', 'admin'] as const).map((role) => (
-            <Button
-              key={role}
-              variant={selectedRole === role ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setSelectedRole(role)}
-            >
-              {role.charAt(0).toUpperCase() + role.slice(1)}
-            </Button>
-          ))}
-        </div>
+    <div className="space-y-4">
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Search users..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="pl-10"
+        />
       </div>
 
       {/* Users Table */}
-      <div className="border rounded-lg">
+      <div className="border rounded-md">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>User</TableHead>
+              <TableHead>Username</TableHead>
               <TableHead>Role</TableHead>
-              <TableHead>Join Date</TableHead>
-              <TableHead>Last Updated</TableHead>
-              <TableHead className="w-[100px]">Actions</TableHead>
+              <TableHead>Medium</TableHead>
+              <TableHead>Location</TableHead>
+              <TableHead>Joined</TableHead>
+              <TableHead className="w-12"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {isLoading ? (
+            {filteredUsers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-8">
-                  Loading users...
-                </TableCell>
-              </TableRow>
-            ) : filteredUsers.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5} className="text-center py-8">
+                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                   No users found
                 </TableCell>
               </TableRow>
@@ -152,71 +175,81 @@ const UserManagementTable = () => {
               filteredUsers.map((user) => (
                 <TableRow key={user.id}>
                   <TableCell>
-                    <div className="flex items-center space-x-3">
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/20 to-primary/40 flex items-center justify-center">
-                        <User className="h-4 w-4" />
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                        {user.avatar_url ? (
+                          <img
+                            src={user.avatar_url}
+                            alt={user.first_name || 'User'}
+                            className="w-8 h-8 rounded-full object-cover"
+                          />
+                        ) : (
+                          <User className="h-4 w-4" />
+                        )}
                       </div>
                       <div>
-                        <p className="font-medium">{getDisplayName(user)}</p>
-                        {user.username && (
-                          <p className="text-sm text-muted-foreground">@{user.username}</p>
+                        <p className="font-medium">
+                          {user.first_name} {user.last_name}
+                        </p>
+                        {user.bio && (
+                          <p className="text-xs text-muted-foreground line-clamp-1">
+                            {user.bio}
+                          </p>
                         )}
                       </div>
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant={getRoleBadgeVariant(user.role)}>
-                      {user.role === 'admin' ? (
-                        <>
-                          <Shield className="h-3 w-3 mr-1" />
-                          Admin
-                        </>
-                      ) : (
-                        <>
-                          <User className="h-3 w-3 mr-1" />
-                          User
-                        </>
-                      )}
+                    <span className="font-mono text-sm">
+                      {user.username || 'No username'}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={getRoleBadgeVariant(user.role)} className="gap-1">
+                      {getRoleIcon(user.role)}
+                      {user.role}
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center text-sm text-muted-foreground">
-                      <Calendar className="h-3 w-3 mr-1" />
-                      {new Date(user.created_at).toLocaleDateString()}
-                    </div>
+                    <span className="text-sm">
+                      {user.artistic_medium || 'Not specified'}
+                    </span>
                   </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {new Date(user.updated_at).toLocaleDateString()}
+                  <TableCell>
+                    <span className="text-sm">
+                      {user.location || 'Not specified'}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <span className="text-sm text-muted-foreground">
+                      {new Date(user.created_at).toLocaleDateString()}
+                    </span>
                   </TableCell>
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm">
-                          <MoreVertical className="h-4 w-4" />
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                          <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        {user.role === 'user' ? (
-                          <DropdownMenuItem 
-                            onClick={() => handleRoleChange(user.id, 'admin')}
-                            disabled={updateUserRole.isPending}
-                          >
-                            <Shield className="h-4 w-4 mr-2" />
-                            Make Admin
-                          </DropdownMenuItem>
-                        ) : (
-                          <DropdownMenuItem 
-                            onClick={() => handleRoleChange(user.id, 'user')}
-                            disabled={updateUserRole.isPending}
-                          >
-                            <UserX className="h-4 w-4 mr-2" />
-                            Remove Admin
-                          </DropdownMenuItem>
-                        )}
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem>
-                          <Mail className="h-4 w-4 mr-2" />
-                          Send Message
+                        <DropdownMenuItem
+                          onClick={() => updateUserRole.mutate({
+                            userId: user.id,
+                            newRole: user.role === 'admin' ? 'user' : 'admin'
+                          })}
+                          disabled={updateUserRole.isPending}
+                        >
+                          {user.role === 'admin' ? 'Remove Admin' : 'Make Admin'}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => updateUserRole.mutate({
+                            userId: user.id,
+                            newRole: user.role === 'curator' ? 'user' : 'curator'
+                          })}
+                          disabled={updateUserRole.isPending}
+                        >
+                          {user.role === 'curator' ? 'Remove Curator' : 'Make Curator'}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -229,40 +262,11 @@ const UserManagementTable = () => {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-muted/50 rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">Total Users</p>
-              <p className="text-2xl font-bold">{users.length}</p>
-            </div>
-            <User className="h-8 w-8 text-blue-500" />
-          </div>
-        </div>
-
-        <div className="bg-muted/50 rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">Admins</p>
-              <p className="text-2xl font-bold">
-                {users.filter(u => u.role === 'admin').length}
-              </p>
-            </div>
-            <Shield className="h-8 w-8 text-purple-500" />
-          </div>
-        </div>
-
-        <div className="bg-muted/50 rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">Regular Users</p>
-              <p className="text-2xl font-bold">
-                {users.filter(u => u.role === 'user').length}
-              </p>
-            </div>
-            <User className="h-8 w-8 text-green-500" />
-          </div>
-        </div>
+      <div className="flex gap-4 text-sm text-muted-foreground">
+        <span>Total Users: {users?.length || 0}</span>
+        <span>Admins: {users?.filter(u => u.role === 'admin').length || 0}</span>
+        <span>Curators: {users?.filter(u => u.role === 'curator').length || 0}</span>
+        <span>Users: {users?.filter(u => u.role === 'user').length || 0}</span>
       </div>
     </div>
   );
