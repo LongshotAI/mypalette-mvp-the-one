@@ -6,6 +6,7 @@ type Theme = 'dark' | 'light' | 'system';
 interface ThemeContextType {
   theme: Theme;
   setTheme: (theme: Theme) => void;
+  toggleTheme: () => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -51,12 +52,26 @@ export const ThemeProvider = ({
     root.classList.add(theme);
   }, [theme]);
 
+  const handleSetTheme = (theme: Theme) => {
+    localStorage.setItem(storageKey, theme);
+    setTheme(theme);
+  };
+
+  const toggleTheme = () => {
+    if (theme === 'light') {
+      handleSetTheme('dark');
+    } else if (theme === 'dark') {
+      handleSetTheme('light');
+    } else {
+      // If system, toggle to light first
+      handleSetTheme('light');
+    }
+  };
+
   const value = {
     theme,
-    setTheme: (theme: Theme) => {
-      localStorage.setItem(storageKey, theme);
-      setTheme(theme);
-    },
+    setTheme: handleSetTheme,
+    toggleTheme,
   };
 
   return (
