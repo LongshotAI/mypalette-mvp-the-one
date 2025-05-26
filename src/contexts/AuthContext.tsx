@@ -10,6 +10,7 @@ interface AuthContextType {
   register: (email: string, password: string, userData?: any) => Promise<void>;
   logout: () => Promise<void>;
   loading: boolean;
+  isLoading: boolean; // Add missing property
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -194,6 +195,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     register,
     logout,
     loading,
+    isLoading: loading, // Provide both for compatibility
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useProfile } from '@/hooks/useProfile';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -17,6 +18,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 const Header = () => {
   const { user, logout } = useAuth();
+  const { profile } = useProfile();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -40,6 +42,13 @@ const Header = () => {
       return user.email[0].toUpperCase();
     }
     return 'U';
+  };
+
+  const getDisplayName = () => {
+    if (profile?.first_name && profile?.last_name) {
+      return `${profile.first_name} ${profile.last_name}`;
+    }
+    return profile?.username || 'User';
   };
 
   return (
@@ -107,9 +116,9 @@ const Header = () => {
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                       <Avatar className="h-8 w-8">
-                        <AvatarImage src="" alt="Profile" />
+                        <AvatarImage src={profile?.avatar_url || ""} alt="Profile" />
                         <AvatarFallback>
-                          {getInitials(user?.firstName, user?.lastName)}
+                          {getInitials(profile?.first_name, profile?.last_name)}
                         </AvatarFallback>
                       </Avatar>
                     </Button>
@@ -118,9 +127,7 @@ const Header = () => {
                     <DropdownMenuLabel className="font-normal">
                       <div className="flex flex-col space-y-1">
                         <p className="text-sm font-medium leading-none">
-                          {user?.firstName && user?.lastName
-                            ? `${user.firstName} ${user.lastName}`
-                            : 'User'}
+                          {getDisplayName()}
                         </p>
                         <p className="text-xs leading-none text-muted-foreground">
                           {user?.email}
@@ -140,7 +147,7 @@ const Header = () => {
                       <Settings className="mr-2 h-4 w-4" />
                       <span>Settings</span>
                     </DropdownMenuItem>
-                    {user?.role === 'admin' && (
+                    {profile?.role === 'admin' && (
                       <>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={() => navigate('/admin')}>

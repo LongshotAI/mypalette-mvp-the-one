@@ -21,25 +21,99 @@ export const useSubmissions = () => {
     }) => {
       console.log('Creating submission for open call:', openCallId);
       
-      const { data, error } = await supabase.functions.invoke('create-submission-payment', {
-        body: { openCallId, submissionData }
-      });
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
 
-      if (error) {
-        console.error('Submission creation error:', error);
+      // Check submission count first
+      const { data: existingSubmissions } = await supabase
+        .from('submissions')
+        .select('id')
+        .eq('artist_id', user.id)
+        .eq('open_call_id', openCallId);
+
+      const submissionCount = existingSubmissions?.length || 0;
+      const isFirstSubmission = submissionCount === 0;
+      
+      // Create submission record
+      const { data: submission, error: submissionError } = await supabase
+        .from('submissions')
+        .insert({
+          open_call_id: openCallId,
+          artist_id: user.id,
+          submission_data: {
+            title: submissionData.title,
+            description: submissionData.description,
+            artist_statement: submissionData.artistStatement,
+          },
+          payment_status: isFirstSubmission ? 'free' : 'pending'
+        })
+        .select()
+        .single();
+
+      if (submissionError) {
+        console.error('Submission creation error:', submissionError);
+        throw submissionError;
+      }
+
+      console.log('Submission created:', submission);
+
+      // If first submission, mark as paid/free and return success
+      if (isFirstSubmission) {
+        await supabase
+          .from('submissions')
+          .update({ payment_status: 'free' })
+          .eq('id', submission.id);
+
+        return { 
+          submissionId: submission.id, 
+          paymentRequired: false,
+          success: true 
+        };
+      }
+
+      // For paid submissions, call the payment function
+      try {
+        const { data, error } = await supabase.functions.invoke('create-submission-payment', {
+          body: { 
+            openCallId, 
+            submissionId: submission.id,
+            submissionData 
+          }
+        });
+
+        if (error) {
+          console.error('Payment creation error:', error);
+          throw error;
+        }
+        
+        console.log('Payment creation response:', data);
+        return {
+          submissionId: submission.id,
+          paymentRequired: true,
+          clientSecret: data.clientSecret,
+          ...data
+        };
+      } catch (error) {
+        // If payment fails, clean up the submission
+        await supabase
+          .from('submissions')
+          .delete()
+          .eq('id', submission.id);
+        
         throw error;
       }
-      
-      console.log('Submission creation response:', data);
-      return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['submissions'] });
       queryClient.invalidateQueries({ queryKey: ['user-submissions'] });
-      toast({
-        title: "Submission Created",
-        description: "Your submission has been created successfully.",
-      });
+      
+      if (!data.paymentRequired) {
+        toast({
+          title: "Submission Created",
+          description: "Your free submission has been created successfully.",
+        });
+      }
     },
     onError: (error: any) => {
       console.error('Submission mutation error:', error);
@@ -88,7 +162,7 @@ export const useSubmissions = () => {
             profiles(username, first_name, last_name, avatar_url)
           `)
           .eq('open_call_id', openCallId)
-          .eq('payment_status', 'paid')
+          .in('payment_status', ['paid', 'free'])
           .order('submitted_at', { ascending: false });
 
         if (error) {
