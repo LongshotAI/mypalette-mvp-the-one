@@ -26,6 +26,42 @@ export interface HostApplicationData {
   marketingPlan?: string;
 }
 
+export interface HostApplication {
+  id: string;
+  applicant_id: string;
+  organization_name: string;
+  organization_type: string;
+  website_url?: string;
+  contact_email: string;
+  phone?: string;
+  address?: string;
+  proposed_title: string;
+  proposed_description: string;
+  proposed_theme?: string;
+  proposed_deadline: string;
+  proposed_exhibition_dates?: string;
+  proposed_venue?: string;
+  proposed_budget?: number;
+  proposed_prize_amount?: number;
+  target_submissions?: number;
+  experience_description: string;
+  previous_exhibitions?: string;
+  curatorial_statement: string;
+  technical_requirements?: string;
+  marketing_plan?: string;
+  application_status: string;
+  admin_notes?: string;
+  reviewed_by?: string;
+  reviewed_at?: string;
+  created_at: string;
+  updated_at: string;
+  profiles?: {
+    username?: string;
+    first_name?: string;
+    last_name?: string;
+  };
+}
+
 export const useHostApplications = () => {
   const queryClient = useQueryClient();
 
@@ -84,13 +120,17 @@ export const useHostApplications = () => {
   const getUserHostApplications = useQuery({
     queryKey: ['user-host-applications'],
     queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
       const { data, error } = await supabase
         .from('host_applications')
         .select('*')
+        .eq('applicant_id', user.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data;
+      return data as HostApplication[];
     },
   });
 
@@ -101,12 +141,12 @@ export const useHostApplications = () => {
         .from('host_applications')
         .select(`
           *,
-          profiles(username, first_name, last_name, email)
+          profiles(username, first_name, last_name)
         `)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data;
+      return data as HostApplication[];
     },
   });
 

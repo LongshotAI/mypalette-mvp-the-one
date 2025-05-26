@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,12 +8,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { CheckCircle, XCircle, Clock, Search, Filter, Building, Mail, Phone, MapPin, Calendar, DollarSign, Users, Eye } from 'lucide-react';
-import { useHostApplications } from '@/hooks/useHostApplications';
+import { useHostApplications, type HostApplication } from '@/hooks/useHostApplications';
 
 const AdminHostApplications = () => {
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
-  const [selectedApplication, setSelectedApplication] = useState<any>(null);
+  const [selectedApplication, setSelectedApplication] = useState<HostApplication | null>(null);
   const [adminNotes, setAdminNotes] = useState('');
 
   const { getAllHostApplications, updateHostApplicationStatus } = useHostApplications();

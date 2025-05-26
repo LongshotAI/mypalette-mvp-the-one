@@ -11,6 +11,61 @@ export interface SubmissionData {
   files?: File[];
 }
 
+export interface Submission {
+  id: string;
+  open_call_id: string;
+  artist_id: string;
+  artwork_id?: string;
+  submission_data: any;
+  payment_status: string;
+  payment_id?: string;
+  is_selected: boolean;
+  curator_notes?: string;
+  submitted_at: string;
+  submission_title?: string;
+  submission_description?: string;
+  artist_statement?: string;
+  is_first_submission?: boolean;
+  payment_amount?: number;
+  open_calls?: {
+    title: string;
+    organization_name?: string;
+  };
+  profiles?: {
+    username?: string;
+    first_name?: string;
+    last_name?: string;
+    avatar_url?: string;
+  };
+  submission_workflow?: Array<{
+    status: string;
+    notes?: string;
+    created_at: string;
+  }>;
+  submission_reviews?: Array<{
+    rating?: number;
+    overall_score?: number;
+    review_notes?: string;
+  }>;
+}
+
+// Add function to check if user has made any submissions before
+const checkIsFirstSubmission = async (userId: string): Promise<boolean> => {
+  const { data, error } = await supabase
+    .from('submissions')
+    .select('id')
+    .eq('artist_id', userId)
+    .eq('payment_status', 'paid')
+    .limit(1);
+
+  if (error) {
+    console.error('Error checking first submission:', error);
+    return false;
+  }
+
+  return !data || data.length === 0;
+};
+
 export const useSubmissions = () => {
   const queryClient = useQueryClient();
 
@@ -25,10 +80,8 @@ export const useSubmissions = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      // Check if this is user's first submission using the new function
-      const { data: isFirst } = await supabase.rpc('is_first_submission', {
-        user_id: user.id
-      });
+      // Check if this is user's first submission
+      const isFirst = await checkIsFirstSubmission(user.id);
 
       // Create submission record with enhanced data structure
       const { data: submission, error: submissionError } = await supabase
@@ -40,13 +93,10 @@ export const useSubmissions = () => {
             title: submissionData.title,
             description: submissionData.description,
             artist_statement: submissionData.artistStatement,
+            files: []
           },
-          submission_title: submissionData.title,
-          submission_description: submissionData.description,
-          artist_statement: submissionData.artistStatement,
           payment_status: isFirst ? 'free' : 'pending',
-          is_first_submission: isFirst,
-          payment_amount: isFirst ? 0 : 2
+          is_selected: false
         })
         .select()
         .single();
@@ -136,6 +186,9 @@ export const useSubmissions = () => {
     queryFn: async () => {
       console.log('Fetching user submissions...');
       
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
       const { data, error } = await supabase
         .from('submissions')
         .select(`
@@ -143,6 +196,7 @@ export const useSubmissions = () => {
           open_calls(title, organization_name),
           submission_workflow(status, notes, created_at)
         `)
+        .eq('artist_id', user.id)
         .order('submitted_at', { ascending: false });
 
       if (error) {
@@ -151,7 +205,7 @@ export const useSubmissions = () => {
       }
       
       console.log('User submissions fetched:', data);
-      return data;
+      return data as Submission[];
     },
   });
 
@@ -165,7 +219,7 @@ export const useSubmissions = () => {
           .from('submissions')
           .select(`
             *,
-            profiles(username, first_name, last_name, avatar_url, email),
+            profiles(username, first_name, last_name, avatar_url),
             submission_workflow(status, notes, created_at),
             submission_reviews(rating, overall_score, review_notes)
           `)
@@ -179,7 +233,7 @@ export const useSubmissions = () => {
         }
         
         console.log('Submissions by call fetched:', data);
-        return data;
+        return data as Submission[];
       },
       enabled: !!openCallId,
     });
