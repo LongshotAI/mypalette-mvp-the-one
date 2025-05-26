@@ -26,7 +26,7 @@ export interface Submission {
   open_call_id: string;
   artist_id: string;
   artwork_id?: string;
-  submission_data: SubmissionData | any;
+  submission_data: SubmissionData;
   payment_status: string;
   payment_id?: string;
   is_selected: boolean;

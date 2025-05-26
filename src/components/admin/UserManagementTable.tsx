@@ -251,6 +251,15 @@ const UserManagementTable = () => {
                         >
                           {user.role === 'curator' ? 'Remove Curator' : 'Make Curator'}
                         </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => updateUserRole.mutate({
+                            userId: user.id,
+                            newRole: 'user'
+                          })}
+                          disabled={updateUserRole.isPending || user.role === 'user'}
+                        >
+                          Make Regular User
+                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>

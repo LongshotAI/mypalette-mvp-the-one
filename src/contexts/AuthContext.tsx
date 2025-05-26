@@ -1,13 +1,31 @@
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
+interface Profile {
+  id: string;
+  username?: string;
+  first_name?: string;
+  last_name?: string;
+  role: 'user' | 'admin' | 'curator';
+  created_at: string;
+  updated_at: string;
+  avatar_url?: string;
+  bio?: string;
+  location?: string;
+  website?: string;
+  artistic_medium?: string;
+}
+
 interface AuthContextType {
   user: User | null;
+  profile: Profile | null;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, userData?: any) => Promise<void>;
   logout: () => Promise<void>;
+  signOut: () => Promise<void>;
   loading: boolean;
   isLoading: boolean;
 }
@@ -24,6 +42,7 @@ export const useAuth = () => {
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -53,6 +72,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setTimeout(() => {
             ensureProfileExists(session.user);
           }, 0);
+        } else {
+          setProfile(null);
         }
         
         setLoading(false);
@@ -71,7 +92,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.log('FORCE UPDATING ADMIN ROLE for lshot.crypto@gmail.com');
         
         // Upsert profile with admin role
-        const { error: upsertError } = await supabase
+        const { data: profileData, error: upsertError } = await supabase
           .from('profiles')
           .upsert({
             id: authUser.id,
@@ -81,26 +102,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             role: 'admin'
           }, {
             onConflict: 'id'
-          });
+          })
+          .select()
+          .single();
 
         if (upsertError) {
           console.error('Error upserting admin profile:', upsertError);
         } else {
           console.log('ADMIN PROFILE UPSERTED SUCCESSFULLY');
+          setProfile(profileData);
         }
         return;
       }
 
       // For other users, check if profile exists
-      const { data: existingProfile } = await supabase
+      const { data: existingProfile, error: fetchError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', authUser.id)
         .single();
 
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        console.error('Error fetching profile:', fetchError);
+        return;
+      }
+
       if (!existingProfile) {
         // Create profile for non-admin users
-        const { error } = await supabase
+        const { data: newProfile, error } = await supabase
           .from('profiles')
           .insert({
             id: authUser.id,
@@ -108,13 +137,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             first_name: authUser.user_metadata?.first_name || '',
             last_name: authUser.user_metadata?.last_name || '',
             role: 'user'
-          });
+          })
+          .select()
+          .single();
 
         if (error) {
           console.error('Error creating profile:', error);
         } else {
           console.log('Profile created successfully for:', authUser.email);
+          setProfile(newProfile);
         }
+      } else {
+        setProfile(existingProfile);
       }
     } catch (error) {
       console.error('Error in ensureProfileExists:', error);
@@ -196,6 +230,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
       
+      setProfile(null);
       console.log('Logout successful');
       toast({
         title: "Logged Out",
@@ -212,11 +247,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const signOut = logout; // Alias for consistency
+
   const value = {
     user,
+    profile,
     login,
     register,
     logout,
+    signOut,
     loading,
     isLoading: loading,
   };

@@ -41,7 +41,17 @@ export const useSubmissionFiles = () => {
           .eq('id', submissionId)
           .single();
 
-        const existingData = (submission?.submission_data as SubmissionData) || {};
+        const existingData = (submission?.submission_data as SubmissionData) || {
+          title: '',
+          description: '',
+          medium: '',
+          year: '',
+          dimensions: '',
+          artist_statement: '',
+          image_urls: [],
+          external_links: [],
+          files: []
+        };
         const existingFiles = existingData.files || [];
         
         const newFile: SubmissionFile = {

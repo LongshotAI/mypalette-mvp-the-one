@@ -1,60 +1,34 @@
 
-import { motion } from 'framer-motion';
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePortfolios } from '@/hooks/usePortfolios';
+import { useSubmissions } from '@/hooks/useSubmissions';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
-  User, 
-  Briefcase, 
-  Image, 
-  FileText, 
   Plus, 
+  Palette, 
+  FileText, 
+  Calendar, 
+  Settings,
   Eye,
-  Calendar,
-  Award,
-  Users,
+  Edit,
   TrendingUp,
-  Building2,
-  Send
+  Award
 } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
-import { usePortfolios } from '@/hooks/usePortfolios';
-import { useSubmissions } from '@/hooks/useSubmissions';
-import { useHostApplications } from '@/hooks/useHostApplications';
 
 const Dashboard = () => {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
   const { portfolios, loading: portfoliosLoading } = usePortfolios();
   const { getUserSubmissions } = useSubmissions();
-  const { getUserHostApplications } = useHostApplications();
-
   const { data: submissions, isLoading: submissionsLoading } = getUserSubmissions;
-  const { data: hostApplications, isLoading: hostApplicationsLoading } = getUserHostApplications;
-
-  // Fetch user's open calls if they're an admin
-  const { data: userOpenCalls, isLoading: openCallsLoading } = useQuery({
-    queryKey: ['user-open-calls'],
-    queryFn: async () => {
-      if (!user?.id || profile?.role !== 'admin') return [];
-      
-      const { data, error } = await supabase
-        .from('open_calls')
-        .select('*')
-        .eq('host_user_id', user.id)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!user?.id && profile?.role === 'admin'
-  });
 
   if (!user) {
     return (
@@ -62,9 +36,9 @@ const Dashboard = () => {
         <div className="container mx-auto px-4 py-8">
           <Card>
             <CardContent className="p-8 text-center">
-              <h2 className="text-2xl font-bold mb-4">Please Sign In</h2>
+              <h2 className="text-2xl font-bold mb-4">Access Denied</h2>
               <p className="text-muted-foreground mb-4">
-                You need to be signed in to access your dashboard.
+                Please sign in to access your dashboard.
               </p>
               <Button onClick={() => navigate('/auth')}>Sign In</Button>
             </CardContent>
@@ -74,215 +48,242 @@ const Dashboard = () => {
     );
   }
 
-  const isLoading = portfoliosLoading || submissionsLoading || openCallsLoading || hostApplicationsLoading;
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 18) return 'Good afternoon';
+    return 'Good evening';
+  };
+
+  const getUserName = () => {
+    if (profile?.first_name) {
+      return profile.first_name;
+    }
+    return profile?.username || 'Artist';
+  };
 
   return (
     <Layout>
       <div className="container mx-auto px-4 py-8">
-        <div className="max-w-6xl mx-auto">
-          {/* Header */}
+        <div className="max-w-7xl mx-auto">
+          {/* Welcome Header */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="mb-8"
           >
             <h1 className="text-3xl font-bold mb-2">
-              Welcome back, {profile?.first_name || user.email}!
+              {getGreeting()}, {getUserName()}!
             </h1>
             <p className="text-muted-foreground">
-              Manage your portfolios, submissions, and artistic journey
+              Welcome to your creative dashboard. Manage your portfolios, submissions, and artistic journey.
             </p>
           </motion.div>
 
-          {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <LoadingSpinner size="lg" />
-            </div>
-          ) : (
+          {/* Quick Stats */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
+          >
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Portfolios</p>
+                    <p className="text-2xl font-bold">{portfolios?.length || 0}</p>
+                  </div>
+                  <Palette className="h-8 w-8 text-primary" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Submissions</p>
+                    <p className="text-2xl font-bold">{submissions?.length || 0}</p>
+                  </div>
+                  <FileText className="h-8 w-8 text-primary" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Profile Views</p>
+                    <p className="text-2xl font-bold">0</p>
+                  </div>
+                  <Eye className="h-8 w-8 text-primary" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Awards</p>
+                    <p className="text-2xl font-bold">0</p>
+                  </div>
+                  <Award className="h-8 w-8 text-primary" />
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Main Dashboard Content */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+          >
             <Tabs defaultValue="overview" className="space-y-6">
               <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="overview">Overview</TabsTrigger>
                 <TabsTrigger value="portfolios">Portfolios</TabsTrigger>
                 <TabsTrigger value="submissions">Submissions</TabsTrigger>
-                <TabsTrigger value="hosting">Hosting</TabsTrigger>
+                <TabsTrigger value="settings">Settings</TabsTrigger>
               </TabsList>
 
               {/* Overview Tab */}
               <TabsContent value="overview" className="space-y-6">
-                {/* Quick Stats */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 }}
-                  className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"
-                >
-                  <Card>
-                    <CardContent className="p-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-muted-foreground">Portfolios</p>
-                          <p className="text-2xl font-bold">{portfolios?.length || 0}</p>
-                        </div>
-                        <Briefcase className="h-8 w-8 text-primary" />
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardContent className="p-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-muted-foreground">Submissions</p>
-                          <p className="text-2xl font-bold">{submissions?.length || 0}</p>
-                        </div>
-                        <FileText className="h-8 w-8 text-primary" />
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardContent className="p-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-muted-foreground">Selected</p>
-                          <p className="text-2xl font-bold">
-                            {submissions?.filter(s => s.is_selected).length || 0}
-                          </p>
-                        </div>
-                        <Award className="h-8 w-8 text-primary" />
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardContent className="p-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-muted-foreground">Host Apps</p>
-                          <p className="text-2xl font-bold">{hostApplications?.length || 0}</p>
-                        </div>
-                        <Building2 className="h-8 w-8 text-primary" />
-                      </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-
-                {/* Quick Actions */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 }}
-                >
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Quick Actions */}
                   <Card>
                     <CardHeader>
-                      <CardTitle>Quick Actions</CardTitle>
+                      <CardTitle className="flex items-center gap-2">
+                        <TrendingUp className="h-5 w-5" />
+                        Quick Actions
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <Button 
+                        className="w-full justify-start" 
+                        onClick={() => navigate('/create-portfolio')}
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Create New Portfolio
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        className="w-full justify-start"
+                        onClick={() => navigate('/open-calls')}
+                      >
+                        <Calendar className="h-4 w-4 mr-2" />
+                        Browse Open Calls
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        className="w-full justify-start"
+                        onClick={() => navigate('/profile')}
+                      >
+                        <Settings className="h-4 w-4 mr-2" />
+                        Edit Profile
+                      </Button>
+                    </CardContent>
+                  </Card>
+
+                  {/* Recent Activity */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Recent Activity</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <Button 
-                          onClick={() => navigate('/create-portfolio')}
-                          className="h-20 flex-col gap-2"
-                        >
-                          <Plus className="h-6 w-6" />
-                          Create Portfolio
-                        </Button>
-                        <Button 
-                          onClick={() => navigate('/open-calls')}
-                          variant="outline"
-                          className="h-20 flex-col gap-2"
-                        >
-                          <Eye className="h-6 w-6" />
-                          Browse Open Calls
-                        </Button>
-                        <Button 
-                          onClick={() => navigate('/host-application')}
-                          variant="outline"
-                          className="h-20 flex-col gap-2"
-                        >
-                          <Send className="h-6 w-6" />
-                          Apply to Host
-                        </Button>
-                        <Button 
-                          onClick={() => navigate('/profile')}
-                          variant="outline"
-                          className="h-20 flex-col gap-2"
-                        >
-                          <User className="h-6 w-6" />
-                          Edit Profile
-                        </Button>
+                      <div className="space-y-3">
+                        {submissions && submissions.length > 0 ? (
+                          submissions.slice(0, 3).map((submission) => (
+                            <div key={submission.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                              <div>
+                                <p className="font-medium text-sm">
+                                  {submission.submission_data?.title || 'Submission'}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  Submitted {new Date(submission.submitted_at).toLocaleDateString()}
+                                </p>
+                              </div>
+                              <Badge variant="outline">
+                                {submission.payment_status}
+                              </Badge>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-sm text-muted-foreground">No recent activity</p>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
-                </motion.div>
+                </div>
               </TabsContent>
 
               {/* Portfolios Tab */}
               <TabsContent value="portfolios" className="space-y-6">
                 <div className="flex justify-between items-center">
-                  <h2 className="text-2xl font-bold">Your Portfolios</h2>
+                  <h2 className="text-2xl font-bold">My Portfolios</h2>
                   <Button onClick={() => navigate('/create-portfolio')}>
                     <Plus className="h-4 w-4 mr-2" />
-                    New Portfolio
+                    Create Portfolio
                   </Button>
                 </div>
 
-                {portfolios && portfolios.length > 0 ? (
+                {portfoliosLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <LoadingSpinner size="lg" />
+                  </div>
+                ) : portfolios && portfolios.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {portfolios.map((portfolio) => (
-                      <motion.div
-                        key={portfolio.id}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        whileHover={{ y: -5 }}
-                      >
-                        <Card className="h-full cursor-pointer hover:shadow-lg transition-shadow">
-                          <CardContent className="p-6">
-                            <div className="space-y-4">
-                              <div className="aspect-video bg-muted rounded-lg flex items-center justify-center">
-                                {portfolio.cover_image ? (
-                                  <img 
-                                    src={portfolio.cover_image} 
-                                    alt={portfolio.title}
-                                    className="w-full h-full object-cover rounded-lg"
-                                  />
-                                ) : (
-                                  <Image className="h-12 w-12 text-muted-foreground" />
-                                )}
-                              </div>
-                              <div>
-                                <h3 className="font-semibold text-lg mb-1">{portfolio.title}</h3>
-                                <p className="text-sm text-muted-foreground line-clamp-2">
-                                  {portfolio.description || 'No description'}
-                                </p>
-                              </div>
-                              <div className="flex justify-between items-center">
-                                <Badge variant={portfolio.is_public ? 'default' : 'secondary'}>
-                                  {portfolio.is_public ? 'Public' : 'Private'}
-                                </Badge>
-                                <Button 
-                                  size="sm" 
-                                  onClick={() => navigate(`/portfolio/${portfolio.id}/edit`)}
-                                >
-                                  Edit
-                                </Button>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      </motion.div>
+                      <Card key={portfolio.id} className="overflow-hidden">
+                        {portfolio.cover_image && (
+                          <div className="aspect-video bg-muted">
+                            <img
+                              src={portfolio.cover_image}
+                              alt={portfolio.title}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        )}
+                        <CardContent className="p-4">
+                          <h3 className="font-semibold mb-2">{portfolio.title}</h3>
+                          <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
+                            {portfolio.description}
+                          </p>
+                          <div className="flex gap-2">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => navigate(`/portfolio/${portfolio.slug}`)}
+                            >
+                              <Eye className="h-4 w-4 mr-1" />
+                              View
+                            </Button>
+                            <Button 
+                              size="sm"
+                              onClick={() => navigate(`/portfolio/${portfolio.id}/edit`)}
+                            >
+                              <Edit className="h-4 w-4 mr-1" />
+                              Edit
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
                     ))}
                   </div>
                 ) : (
                   <Card>
                     <CardContent className="p-8 text-center">
-                      <Image className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                      <Palette className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
                       <h3 className="text-lg font-semibold mb-2">No portfolios yet</h3>
                       <p className="text-muted-foreground mb-4">
                         Create your first portfolio to showcase your artwork
                       </p>
                       <Button onClick={() => navigate('/create-portfolio')}>
                         <Plus className="h-4 w-4 mr-2" />
-                        Create Portfolio
+                        Create Your First Portfolio
                       </Button>
                     </CardContent>
                   </Card>
@@ -291,29 +292,36 @@ const Dashboard = () => {
 
               {/* Submissions Tab */}
               <TabsContent value="submissions" className="space-y-6">
-                <h2 className="text-2xl font-bold">Your Submissions</h2>
+                <h2 className="text-2xl font-bold">My Submissions</h2>
 
-                {submissions && submissions.length > 0 ? (
+                {submissionsLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <LoadingSpinner size="lg" />
+                  </div>
+                ) : submissions && submissions.length > 0 ? (
                   <div className="space-y-4">
                     {submissions.map((submission) => (
                       <Card key={submission.id}>
                         <CardContent className="p-6">
                           <div className="flex justify-between items-start">
                             <div>
-                              <h3 className="font-semibold text-lg mb-1">
-                                {submission.open_calls?.title || 'Open Call'}
+                              <h3 className="font-semibold mb-1">
+                                {submission.submission_data?.title || 'Untitled Submission'}
                               </h3>
                               <p className="text-sm text-muted-foreground mb-2">
-                                Submitted: {new Date(submission.submitted_at).toLocaleDateString()}
+                                Submitted to: {submission.open_calls?.title}
                               </p>
-                              <div className="flex gap-2">
-                                <Badge variant={submission.payment_status === 'paid' ? 'default' : 'secondary'}>
-                                  {submission.payment_status}
-                                </Badge>
-                                {submission.is_selected && (
-                                  <Badge className="bg-green-500">Selected</Badge>
-                                )}
-                              </div>
+                              <p className="text-xs text-muted-foreground">
+                                {new Date(submission.submitted_at).toLocaleDateString()}
+                              </p>
+                            </div>
+                            <div className="flex flex-col gap-2">
+                              <Badge variant={submission.payment_status === 'paid' ? 'default' : 'secondary'}>
+                                {submission.payment_status}
+                              </Badge>
+                              {submission.is_selected && (
+                                <Badge variant="default">Selected</Badge>
+                              )}
                             </div>
                           </div>
                         </CardContent>
@@ -326,9 +334,10 @@ const Dashboard = () => {
                       <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
                       <h3 className="text-lg font-semibold mb-2">No submissions yet</h3>
                       <p className="text-muted-foreground mb-4">
-                        Browse open calls and submit your artwork
+                        Start by browsing open calls and submitting your work
                       </p>
                       <Button onClick={() => navigate('/open-calls')}>
+                        <Calendar className="h-4 w-4 mr-2" />
                         Browse Open Calls
                       </Button>
                     </CardContent>
@@ -336,86 +345,32 @@ const Dashboard = () => {
                 )}
               </TabsContent>
 
-              {/* Hosting Tab */}
-              <TabsContent value="hosting" className="space-y-6">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-2xl font-bold">Host Applications & Open Calls</h2>
-                  <Button onClick={() => navigate('/host-application')}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Apply to Host
-                  </Button>
-                </div>
-
-                {/* Host Applications */}
-                {hostApplications && hostApplications.length > 0 && (
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold">Your Host Applications</h3>
-                    {hostApplications.map((application) => (
-                      <Card key={application.id}>
-                        <CardContent className="p-6">
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <h4 className="font-semibold">{application.proposed_title}</h4>
-                              <p className="text-sm text-muted-foreground">
-                                {application.organization_name} • Applied: {new Date(application.created_at).toLocaleDateString()}
-                              </p>
-                            </div>
-                            <Badge variant={
-                              application.application_status === 'approved' ? 'default' : 
-                              application.application_status === 'rejected' ? 'destructive' : 
-                              'secondary'
-                            }>
-                              {application.application_status}
-                            </Badge>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-
-                {/* User's Open Calls (if admin) */}
-                {userOpenCalls && userOpenCalls.length > 0 && (
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold">Your Open Calls</h3>
-                    {userOpenCalls.map((openCall) => (
-                      <Card key={openCall.id}>
-                        <CardContent className="p-6">
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <h4 className="font-semibold">{openCall.title}</h4>
-                              <p className="text-sm text-muted-foreground">
-                                Deadline: {new Date(openCall.submission_deadline).toLocaleDateString()}
-                              </p>
-                            </div>
-                            <Badge variant={openCall.status === 'live' ? 'default' : 'secondary'}>
-                              {openCall.status}
-                            </Badge>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-
-                {(!hostApplications || hostApplications.length === 0) && (!userOpenCalls || userOpenCalls.length === 0) && (
-                  <Card>
-                    <CardContent className="p-8 text-center">
-                      <Building2 className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                      <h3 className="text-lg font-semibold mb-2">No hosting activity yet</h3>
-                      <p className="text-muted-foreground mb-4">
-                        Apply to host an open call and start curating artwork
-                      </p>
-                      <Button onClick={() => navigate('/host-application')}>
-                        <Plus className="h-4 w-4 mr-2" />
-                        Apply to Host
-                      </Button>
-                    </CardContent>
-                  </Card>
-                )}
+              {/* Settings Tab */}
+              <TabsContent value="settings" className="space-y-6">
+                <h2 className="text-2xl font-bold">Dashboard Settings</h2>
+                
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Account Information</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium">Email</p>
+                      <p className="text-sm text-muted-foreground">{user.email}</p>
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium">Role</p>
+                      <Badge variant="outline">{profile?.role}</Badge>
+                    </div>
+                    <Button onClick={() => navigate('/profile')}>
+                      <Settings className="h-4 w-4 mr-2" />
+                      Edit Profile
+                    </Button>
+                  </CardContent>
+                </Card>
               </TabsContent>
             </Tabs>
-          )}
+          </motion.div>
         </div>
       </div>
     </Layout>
