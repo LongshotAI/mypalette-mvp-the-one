@@ -33,30 +33,48 @@ export const useSubmissionFiles = () => {
           throw error;
         }
 
-        // Get public URL
         const { data: { publicUrl } } = supabase.storage
           .from('submission-files')
           .getPublicUrl(fileName);
 
-        // Save file record to database
-        const { data: fileRecord, error: dbError } = await supabase
-          .from('submission_files')
-          .insert({
-            submission_id: submissionId,
-            file_name: file.name,
-            file_url: publicUrl,
-            file_type: file.type,
-            file_size: file.size
-          })
-          .select()
+        // Update submission with file info in submission_data
+        const { data: submission } = await supabase
+          .from('submissions')
+          .select('submission_data')
+          .eq('id', submissionId)
           .single();
 
-        if (dbError) {
-          console.error('Database error:', dbError);
-          throw dbError;
-        }
+        const existingData = submission?.submission_data || {};
+        const files = existingData.files || [];
+        
+        files.push({
+          id: Math.random().toString(),
+          file_name: file.name,
+          file_url: publicUrl,
+          file_type: file.type,
+          file_size: file.size,
+          created_at: new Date().toISOString()
+        });
 
-        return fileRecord;
+        await supabase
+          .from('submissions')
+          .update({
+            submission_data: {
+              ...existingData,
+              files
+            }
+          })
+          .eq('id', submissionId);
+
+        return {
+          id: Math.random().toString(),
+          submission_id: submissionId,
+          file_name: file.name,
+          file_url: publicUrl,
+          file_type: file.type,
+          file_size: file.size,
+          created_at: new Date().toISOString()
+        };
       });
 
       const results = await Promise.all(uploadPromises);
@@ -86,18 +104,19 @@ export const useSubmissionFiles = () => {
         console.log('Fetching files for submission:', submissionId);
         
         const { data, error } = await supabase
-          .from('submission_files')
-          .select('*')
-          .eq('submission_id', submissionId)
-          .order('created_at', { ascending: false });
+          .from('submissions')
+          .select('submission_data')
+          .eq('id', submissionId)
+          .single();
 
         if (error) {
-          console.error('Error fetching submission files:', error);
+          console.error('Error fetching submission:', error);
           throw error;
         }
         
-        console.log('Submission files fetched:', data);
-        return data as SubmissionFile[];
+        const files = data?.submission_data?.files || [];
+        console.log('Submission files fetched:', files);
+        return files as SubmissionFile[];
       },
       enabled: !!submissionId,
     });

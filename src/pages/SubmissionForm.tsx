@@ -9,16 +9,17 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, Upload, DollarSign, Calendar, Info, CreditCard, AlertCircle } from 'lucide-react';
+import { ArrowLeft, DollarSign, Calendar, Info, CreditCard, AlertCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useSubmissions } from '@/hooks/useSubmissions';
+import { useSubmissionFiles } from '@/hooks/useSubmissionFiles';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import SubmissionPricing from '@/components/open-calls/SubmissionPricing';
+import FileUploadZone from '@/components/submissions/FileUploadZone';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
-// Use a placeholder key for development - users will need to set their actual Stripe publishable key
 const stripePromise = loadStripe('pk_test_placeholder');
 
 const SubmissionFormContent = () => {
@@ -26,6 +27,7 @@ const SubmissionFormContent = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { createSubmission } = useSubmissions();
+  const { uploadFiles } = useSubmissionFiles();
   const stripe = useStripe();
   const elements = useElements();
   
@@ -44,7 +46,6 @@ const SubmissionFormContent = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Validate UUID format
   const isValidUUID = (uuid: string) => {
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     return uuidRegex.test(uuid);
@@ -52,7 +53,6 @@ const SubmissionFormContent = () => {
 
   useEffect(() => {
     if (callId) {
-      // Validate UUID format before making database calls
       if (!isValidUUID(callId)) {
         setError('Invalid open call ID format. Please check the URL.');
         setLoading(false);
@@ -113,15 +113,6 @@ const SubmissionFormContent = () => {
     }
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      setSubmission(prev => ({ 
-        ...prev, 
-        files: Array.from(e.target.files || [])
-      }));
-    }
-  };
-
   const handleSubmit = async () => {
     if (!user || !callId) {
       toast({
@@ -150,6 +141,15 @@ const SubmissionFormContent = () => {
       return;
     }
 
+    if (submission.files.length === 0) {
+      toast({
+        title: "No Files Selected",
+        description: "Please upload at least one artwork file.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -158,11 +158,17 @@ const SubmissionFormContent = () => {
         submissionData: submission
       });
 
+      if (result.submissionId && submission.files.length > 0) {
+        await uploadFiles.mutateAsync({
+          submissionId: result.submissionId,
+          files: submission.files
+        });
+      }
+
       if (result.paymentRequired && result.clientSecret) {
         setClientSecret(result.clientSecret);
         setSubmissionId(result.submissionId);
       } else {
-        // Free submission successful
         toast({
           title: "Submission Successful",
           description: "Your free submission has been created!",
@@ -198,7 +204,6 @@ const SubmissionFormContent = () => {
         variant: "destructive",
       });
     } else {
-      // Update submission status
       await supabase
         .from('submissions')
         .update({ payment_status: 'paid' })
@@ -329,31 +334,12 @@ const SubmissionFormContent = () => {
                       </div>
 
                       <div>
-                        <Label htmlFor="files">Upload Artwork *</Label>
-                        <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center">
-                          <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                          <p className="text-sm text-muted-foreground mb-2">
-                            Drag and drop your files here, or click to browse
-                          </p>
-                          <input
-                            type="file"
-                            multiple
-                            accept="image/*,video/*"
-                            onChange={handleFileUpload}
-                            className="hidden"
-                            id="file-upload"
-                          />
-                          <Button variant="outline" size="sm" asChild>
-                            <label htmlFor="file-upload">Select Files</label>
-                          </Button>
-                        </div>
-                        {submission.files.length > 0 && (
-                          <div className="mt-2">
-                            <p className="text-sm text-muted-foreground">
-                              {submission.files.length} file(s) selected
-                            </p>
-                          </div>
-                        )}
+                        <Label>Upload Artwork Files *</Label>
+                        <FileUploadZone
+                          onFilesSelected={(files) => setSubmission(prev => ({ ...prev, files }))}
+                          selectedFiles={submission.files}
+                          maxFiles={5}
+                        />
                       </div>
                     </CardContent>
                   </Card>
