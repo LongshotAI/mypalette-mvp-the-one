@@ -1,260 +1,153 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { loadStripe } from '@stripe/stripe-js';
-import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { motion } from 'framer-motion';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import { ArrowLeft, DollarSign, Calendar, Info, CreditCard, AlertCircle } from 'lucide-react';
-import { motion } from 'framer-motion';
-import { useSubmissions } from '@/hooks/useSubmissions';
-import { useSubmissionFiles } from '@/hooks/useSubmissionFiles';
-import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/hooks/use-toast';
-import SubmissionPricing from '@/components/open-calls/SubmissionPricing';
-import FileUploadZone from '@/components/submissions/FileUploadZone';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { AlertCircle, Calendar, DollarSign, Send, ArrowLeft } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from '@/hooks/use-toast';
+import SubmissionFormFields from '@/components/submissions/SubmissionFormFields';
+import LoadingSpinner from '@/components/ui/LoadingSpinner';
 
-const stripePromise = loadStripe('pk_test_placeholder');
+interface SubmissionData {
+  title: string;
+  description: string;
+  medium: string;
+  year: string;
+  dimensions: string;
+  artist_statement: string;
+  image_urls: string[];
+  external_links: string[];
+}
 
-const SubmissionFormContent = () => {
+const SubmissionForm = () => {
   const { callId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { createSubmission } = useSubmissions();
-  const { uploadFiles } = useSubmissionFiles();
-  const stripe = useStripe();
-  const elements = useElements();
   
-  const [submission, setSubmission] = useState({
+  const [submissionData, setSubmissionData] = useState<SubmissionData>({
     title: '',
     description: '',
-    artistStatement: '',
-    files: [] as File[]
+    medium: '',
+    year: '',
+    dimensions: '',
+    artist_statement: '',
+    image_urls: [],
+    external_links: []
   });
-  
-  const [openCall, setOpenCall] = useState<any>(null);
-  const [submissionCount, setSubmissionCount] = useState(0);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [clientSecret, setClientSecret] = useState<string | null>(null);
-  const [submissionId, setSubmissionId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  const isValidUUID = (uuid: string) => {
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    return uuidRegex.test(uuid);
-  };
-
-  useEffect(() => {
-    if (callId) {
-      if (!isValidUUID(callId)) {
-        setError('Invalid open call ID format. Please check the URL.');
-        setLoading(false);
-        return;
-      }
+  // Fetch open call details
+  const { data: openCall, isLoading } = useQuery({
+    queryKey: ['open-call', callId],
+    queryFn: async () => {
+      if (!callId) throw new Error('No call ID provided');
       
-      fetchOpenCall();
-      checkUserSubmissions();
-    }
-  }, [callId]);
-
-  const fetchOpenCall = async () => {
-    try {
-      if (!callId || !isValidUUID(callId)) {
-        throw new Error('Invalid open call ID');
-      }
-
       const { data, error } = await supabase
         .from('open_calls')
-        .select('*')
+        .select(`
+          *,
+          profiles (
+            first_name,
+            last_name,
+            username
+          )
+        `)
         .eq('id', callId)
         .single();
 
-      if (error) {
-        console.error('Error fetching open call:', error);
-        if (error.code === 'PGRST116') {
-          setError('Open call not found.');
-        } else {
-          setError('Failed to load open call details.');
-        }
-        return;
-      }
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!callId,
+  });
 
-      setOpenCall(data);
-    } catch (err) {
-      console.error('Error in fetchOpenCall:', err);
-      setError('Failed to load open call details.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const checkUserSubmissions = async () => {
-    if (!user || !callId || !isValidUUID(callId)) return;
-    
-    try {
+  // Check existing submissions
+  const { data: existingSubmissions } = useQuery({
+    queryKey: ['user-submissions', callId, user?.id],
+    queryFn: async () => {
+      if (!callId || !user?.id) return [];
+      
       const { data, error } = await supabase
         .from('submissions')
         .select('*')
         .eq('open_call_id', callId)
         .eq('artist_id', user.id);
 
-      if (!error) {
-        setSubmissionCount(data?.length || 0);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!callId && !!user?.id,
+  });
+
+  // Submit submission
+  const submitMutation = useMutation({
+    mutationFn: async () => {
+      if (!callId || !user?.id) throw new Error('Missing required data');
+
+      // Validate form
+      if (!submissionData.title.trim()) {
+        throw new Error('Artwork title is required');
       }
-    } catch (err) {
-      console.error('Error checking user submissions:', err);
-    }
-  };
-
-  const handleSubmit = async () => {
-    if (!user || !callId) {
-      toast({
-        title: "Authentication Required",
-        description: "Please log in to submit your work.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!isValidUUID(callId)) {
-      toast({
-        title: "Invalid Open Call",
-        description: "This open call ID is not valid.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!submission.title || !submission.description || !submission.artistStatement) {
-      toast({
-        title: "Missing Information",
-        description: "Please fill in all required fields.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (submission.files.length === 0) {
-      toast({
-        title: "No Files Selected",
-        description: "Please upload at least one artwork file.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    try {
-      const result = await createSubmission.mutateAsync({
-        openCallId: callId,
-        submissionData: submission
-      });
-
-      if (result.submissionId && submission.files.length > 0) {
-        await uploadFiles.mutateAsync({
-          submissionId: result.submissionId,
-          files: submission.files
-        });
+      if (!submissionData.description.trim()) {
+        throw new Error('Artwork description is required');
+      }
+      if (!submissionData.medium) {
+        throw new Error('Medium is required');
+      }
+      if (submissionData.image_urls.length === 0) {
+        throw new Error('At least one image is required');
       }
 
-      if (result.paymentRequired && result.clientSecret) {
-        setClientSecret(result.clientSecret);
-        setSubmissionId(result.submissionId);
-      } else {
-        toast({
-          title: "Submission Successful",
-          description: "Your free submission has been created!",
-        });
-        navigate('/dashboard');
-      }
-    } catch (error) {
-      console.error('Submission error:', error);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+      const { data, error } = await supabase
+        .from('submissions')
+        .insert({
+          open_call_id: callId,
+          artist_id: user.id,
+          submission_data: submissionData,
+          payment_status: openCall?.submission_fee > 0 ? 'pending' : 'free'
+        })
+        .select()
+        .single();
 
-  const handlePayment = async () => {
-    if (!stripe || !elements || !clientSecret) return;
-
-    const cardElement = elements.getElement(CardElement);
-    if (!cardElement) return;
-
-    const { error } = await stripe.confirmCardPayment(clientSecret, {
-      payment_method: {
-        card: cardElement,
-        billing_details: {
-          email: user?.email,
-        },
-      },
-    });
-
-    if (error) {
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
       toast({
-        title: "Payment Failed",
+        title: "Submission Successful!",
+        description: "Your artwork has been submitted successfully.",
+      });
+      navigate('/dashboard');
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Submission Failed",
         description: error.message,
         variant: "destructive",
       });
-    } else {
-      await supabase
-        .from('submissions')
-        .update({ payment_status: 'paid' })
-        .eq('id', submissionId);
+    },
+  });
 
-      toast({
-        title: "Payment Successful",
-        description: "Your submission has been completed!",
-      });
-      navigate('/dashboard');
-    }
+  const handleSubmit = () => {
+    submitMutation.mutate();
   };
 
-  const handleBack = () => {
-    if (callId && isValidUUID(callId)) {
-      navigate(`/open-calls/${callId}`);
-    } else {
-      navigate('/open-calls');
-    }
-  };
+  const isDeadlinePassed = openCall && new Date(openCall.submission_deadline) < new Date();
+  const hasExistingSubmission = existingSubmissions && existingSubmissions.length > 0;
+  const canSubmit = !isDeadlinePassed && !hasExistingSubmission && openCall?.status === 'live';
 
-  if (loading) {
+  if (isLoading) {
     return (
       <Layout>
-        <div className="container mx-auto px-4 py-8">
-          <div className="max-w-4xl mx-auto">
-            <div className="animate-pulse space-y-4">
-              <div className="h-8 bg-gray-200 rounded w-3/4"></div>
-              <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-              <div className="h-64 bg-gray-200 rounded"></div>
-            </div>
-          </div>
-        </div>
-      </Layout>
-    );
-  }
-
-  if (error) {
-    return (
-      <Layout>
-        <div className="container mx-auto px-4 py-8">
-          <div className="max-w-4xl mx-auto">
-            <Alert variant="destructive" className="mb-6">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-            <Button variant="outline" onClick={() => navigate('/open-calls')}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Open Calls
-            </Button>
-          </div>
+        <div className="min-h-screen flex items-center justify-center">
+          <LoadingSpinner size="lg" />
         </div>
       </Layout>
     );
@@ -264,14 +157,18 @@ const SubmissionFormContent = () => {
     return (
       <Layout>
         <div className="container mx-auto px-4 py-8">
-          <div className="max-w-4xl mx-auto text-center">
-            <h1 className="text-2xl font-bold mb-4">Open Call Not Found</h1>
-            <p className="text-muted-foreground mb-6">The open call you're looking for doesn't exist or has been removed.</p>
-            <Button onClick={() => navigate('/open-calls')}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Open Calls
-            </Button>
-          </div>
+          <Card>
+            <CardContent className="p-8 text-center">
+              <h2 className="text-2xl font-bold mb-2">Open Call Not Found</h2>
+              <p className="text-muted-foreground mb-4">
+                The open call you're looking for doesn't exist or has been removed.
+              </p>
+              <Button onClick={() => navigate('/open-calls')}>
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Open Calls
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       </Layout>
     );
@@ -281,166 +178,163 @@ const SubmissionFormContent = () => {
     <Layout>
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
+          {/* Header */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex items-center gap-4 mb-8"
+            className="mb-8"
           >
-            <Button variant="outline" size="sm" onClick={handleBack}>
+            <Button
+              variant="ghost"
+              onClick={() => navigate(`/open-calls/${callId}`)}
+              className="mb-4"
+            >
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
+              Back to Open Call
             </Button>
-            <div>
-              <h1 className="text-3xl font-bold">Submit Your Work</h1>
-              <p className="text-muted-foreground">Submit to: {openCall.title}</p>
-            </div>
+            
+            <h1 className="text-3xl font-bold mb-2">Submit to: {openCall.title}</h1>
+            <p className="text-muted-foreground">
+              Hosted by {openCall.profiles?.first_name} {openCall.profiles?.last_name}
+            </p>
           </motion.div>
 
+          {/* Alerts */}
+          {!canSubmit && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-6"
+            >
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  {isDeadlinePassed && "This open call has passed its submission deadline."}
+                  {hasExistingSubmission && "You have already submitted to this open call."}
+                  {openCall.status !== 'live' && "This open call is not currently accepting submissions."}
+                </AlertDescription>
+              </Alert>
+            </motion.div>
+          )}
+
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2">
-              {!clientSecret ? (
+            {/* Submission Form */}
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.1 }}
+              className="lg:col-span-2"
+            >
+              <SubmissionFormFields
+                submissionData={submissionData}
+                onDataChange={setSubmissionData}
+                requirements={openCall.submission_requirements}
+              />
+
+              {canSubmit && (
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 }}
-                  className="space-y-6"
+                  transition={{ delay: 0.3 }}
+                  className="mt-8"
                 >
                   <Card>
-                    <CardHeader>
-                      <CardTitle>Artwork Information</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div>
-                        <Label htmlFor="title">Artwork Title *</Label>
-                        <Input
-                          id="title"
-                          value={submission.title}
-                          onChange={(e) => setSubmission(prev => ({ ...prev, title: e.target.value }))}
-                          placeholder="Enter artwork title"
-                          required
-                        />
-                      </div>
-
-                      <div>
-                        <Label htmlFor="description">Artwork Description *</Label>
-                        <Textarea
-                          id="description"
-                          value={submission.description}
-                          onChange={(e) => setSubmission(prev => ({ ...prev, description: e.target.value }))}
-                          placeholder="Describe your artwork"
-                          rows={4}
-                          required
-                        />
-                      </div>
-
-                      <div>
-                        <Label>Upload Artwork Files *</Label>
-                        <FileUploadZone
-                          onFilesSelected={(files) => setSubmission(prev => ({ ...prev, files }))}
-                          selectedFiles={submission.files}
-                          maxFiles={5}
-                        />
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Artist Statement</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div>
-                        <Label htmlFor="artistStatement">Artist Statement *</Label>
-                        <Textarea
-                          id="artistStatement"
-                          value={submission.artistStatement}
-                          onChange={(e) => setSubmission(prev => ({ ...prev, artistStatement: e.target.value }))}
-                          placeholder="Provide context about your work and artistic practice"
-                          rows={6}
-                          required
-                        />
+                    <CardContent className="p-6">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <h3 className="font-semibold">Ready to submit?</h3>
+                          <p className="text-sm text-muted-foreground">
+                            Review your submission and click submit when ready.
+                          </p>
+                        </div>
+                        <Button 
+                          onClick={handleSubmit}
+                          disabled={submitMutation.isPending}
+                          size="lg"
+                        >
+                          <Send className="h-4 w-4 mr-2" />
+                          {submitMutation.isPending ? 'Submitting...' : 'Submit Artwork'}
+                        </Button>
                       </div>
                     </CardContent>
                   </Card>
                 </motion.div>
-              ) : (
+              )}
+            </motion.div>
+
+            {/* Open Call Info Sidebar */}
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.2 }}
+              className="space-y-6"
+            >
+              <Card>
+                <CardHeader>
+                  <CardTitle>Open Call Details</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <h4 className="font-medium mb-2">{openCall.title}</h4>
+                    <p className="text-sm text-muted-foreground">{openCall.description}</p>
+                  </div>
+
+                  <Separator />
+
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4" />
+                      <div>
+                        <p className="text-sm font-medium">Deadline</p>
+                        <p className="text-sm text-muted-foreground">
+                          {new Date(openCall.submission_deadline).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <DollarSign className="h-4 w-4" />
+                      <div>
+                        <p className="text-sm font-medium">Submission Fee</p>
+                        <p className="text-sm text-muted-foreground">
+                          {openCall.submission_fee > 0 ? `$${openCall.submission_fee}` : 'Free'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="text-sm font-medium mb-1">Status</p>
+                      <Badge variant={openCall.status === 'live' ? 'default' : 'secondary'}>
+                        {openCall.status}
+                      </Badge>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {openCall.submission_requirements && (
                 <Card>
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <CreditCard className="h-5 w-5" />
-                      Complete Payment
-                    </CardTitle>
+                    <CardTitle>Requirements</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="p-4 border rounded-lg">
-                      <CardElement
-                        options={{
-                          style: {
-                            base: {
-                              fontSize: '16px',
-                              color: '#424770',
-                              '::placeholder': {
-                                color: '#aab7c4',
-                              },
-                            },
-                          },
-                        }}
-                      />
+                  <CardContent>
+                    <div className="text-sm space-y-2">
+                      {typeof openCall.submission_requirements === 'object' && 
+                        Object.entries(openCall.submission_requirements).map(([key, value]) => (
+                          <div key={key}>
+                            <span className="font-medium">{key}:</span> {String(value)}
+                          </div>
+                        ))
+                      }
                     </div>
-                    <Button onClick={handlePayment} className="w-full" size="lg">
-                      Pay $2.00
-                    </Button>
                   </CardContent>
                 </Card>
               )}
-            </div>
-
-            <div className="space-y-6">
-              <SubmissionPricing
-                currentSubmissions={submissionCount}
-                maxSubmissions={6}
-                onSubmit={handleSubmit}
-              />
-
-              <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.2 }}
-              >
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Info className="h-5 w-5" />
-                      Submission Details
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center gap-2">
-                      <DollarSign className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">Fee: Free first submission, then $2</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">
-                        Deadline: {new Date(openCall.submission_deadline).toLocaleDateString()}
-                      </span>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            </div>
+            </motion.div>
           </div>
         </div>
       </div>
     </Layout>
-  );
-};
-
-const SubmissionForm = () => {
-  return (
-    <Elements stripe={stripePromise}>
-      <SubmissionFormContent />
-    </Elements>
   );
 };
 
