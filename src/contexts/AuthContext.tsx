@@ -9,7 +9,7 @@ interface Profile {
   username?: string;
   first_name?: string;
   last_name?: string;
-  role: 'user' | 'admin' | 'curator';
+  role: 'user' | 'admin';
   created_at: string;
   updated_at: string;
   avatar_url?: string;

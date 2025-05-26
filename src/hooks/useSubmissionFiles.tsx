@@ -52,6 +52,7 @@ export const useSubmissionFiles = () => {
           external_links: [],
           files: []
         };
+        
         const existingFiles = existingData.files || [];
         
         const newFile: SubmissionFile = {

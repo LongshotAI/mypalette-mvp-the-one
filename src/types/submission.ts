@@ -17,7 +17,7 @@ export interface SubmissionData {
   artist_statement: string;
   image_urls: string[];
   external_links: string[];
-  files?: SubmissionFile[];
+  files: SubmissionFile[];
   [key: string]: any; // This allows it to be compatible with Json type
 }
 

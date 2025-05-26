@@ -1,79 +1,25 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useProfile } from '@/hooks/useProfile';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { User, Edit, Palette, MapPin, Globe, Mail } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { User, Settings, Palette, Save, Camera } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import LoadingSpinner from '@/components/ui/LoadingSpinner';
 
 const Profile = () => {
-  const { user } = useAuth();
-  const { profile, isLoading } = useProfile();
-  const { toast } = useToast();
-  const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState({
-    first_name: '',
-    last_name: '',
-    username: '',
-    bio: '',
-    location: '',
-    website: '',
-    artistic_medium: '',
-  });
+  const { user, profile } = useAuth();
 
-  React.useEffect(() => {
-    if (profile) {
-      setFormData({
-        first_name: profile.first_name || '',
-        last_name: profile.last_name || '',
-        username: profile.username || '',
-        bio: profile.bio || '',
-        location: profile.location || '',
-        website: profile.website || '',
-        artistic_medium: profile.artistic_medium || '',
-      });
-    }
-  }, [profile]);
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setFormData(prev => ({
-      ...prev,
-      [e.target.name]: e.target.value
-    }));
-  };
-
-  const handleSave = async () => {
-    try {
-      // Here you would typically update the profile in Supabase
-      toast({
-        title: "Profile Updated",
-        description: "Your profile has been saved successfully.",
-      });
-      setIsEditing(false);
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to update profile. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  if (isLoading) {
+  if (!user || !profile) {
     return (
       <Layout>
         <div className="container mx-auto px-4 py-8">
-          <div className="flex items-center justify-center py-12">
-            <LoadingSpinner size="lg" />
-          </div>
+          <Card>
+            <CardContent className="p-8 text-center">
+              <h2 className="text-2xl font-bold mb-4">Authentication Required</h2>
+              <p className="text-muted-foreground">Please sign in to view your profile.</p>
+            </CardContent>
+          </Card>
         </div>
       </Layout>
     );
@@ -83,204 +29,135 @@ const Profile = () => {
     <Layout>
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold mb-2">Profile Settings</h1>
-            <p className="text-muted-foreground">Manage your account and artistic profile</p>
-          </div>
-
-          <Tabs defaultValue="profile" className="space-y-6">
-            <TabsList>
-              <TabsTrigger value="profile" className="flex items-center gap-2">
-                <User className="h-4 w-4" />
-                Profile
-              </TabsTrigger>
-              <TabsTrigger value="portfolio" className="flex items-center gap-2">
-                <Palette className="h-4 w-4" />
-                Portfolio Settings
-              </TabsTrigger>
-              <TabsTrigger value="account" className="flex items-center gap-2">
-                <Settings className="h-4 w-4" />
-                Account
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="profile" className="space-y-6">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                  <div>
-                    <CardTitle>Profile Information</CardTitle>
-                    <p className="text-sm text-muted-foreground">
-                      This information will be displayed on your public profile
-                    </p>
-                  </div>
-                  <Button
-                    variant={isEditing ? "default" : "outline"}
-                    onClick={() => setIsEditing(!isEditing)}
-                  >
-                    {isEditing ? 'Cancel' : 'Edit'}
-                  </Button>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  {/* Avatar Section */}
-                  <div className="flex items-center gap-4">
-                    <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary/20 to-primary/40 flex items-center justify-center">
-                      {profile?.avatar_url ? (
-                        <img
-                          src={profile.avatar_url}
-                          alt="Profile"
-                          className="w-20 h-20 rounded-full object-cover"
-                        />
-                      ) : (
-                        <User className="h-8 w-8" />
-                      )}
-                    </div>
-                    {isEditing && (
-                      <Button variant="outline" size="sm">
-                        <Camera className="h-4 w-4 mr-2" />
-                        Change Photo
-                      </Button>
+          {/* Profile Header */}
+          <Card className="mb-8">
+            <CardContent className="p-8">
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-6">
+                  <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center">
+                    {profile.avatar_url ? (
+                      <img
+                        src={profile.avatar_url}
+                        alt={profile.first_name || 'User'}
+                        className="w-24 h-24 rounded-full object-cover"
+                      />
+                    ) : (
+                      <User className="h-12 w-12 text-primary" />
                     )}
                   </div>
-
-                  {/* Profile Form */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="first_name">First Name</Label>
-                      <Input
-                        id="first_name"
-                        name="first_name"
-                        value={formData.first_name}
-                        onChange={handleInputChange}
-                        disabled={!isEditing}
-                      />
+                  <div>
+                    <h1 className="text-3xl font-bold mb-2">
+                      {profile.first_name} {profile.last_name}
+                    </h1>
+                    <p className="text-lg text-muted-foreground mb-2">
+                      @{profile.username || 'artist'}
+                    </p>
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                      {profile.location && (
+                        <div className="flex items-center gap-1">
+                          <MapPin className="h-4 w-4" />
+                          <span>{profile.location}</span>
+                        </div>
+                      )}
+                      {profile.website && (
+                        <div className="flex items-center gap-1">
+                          <Globe className="h-4 w-4" />
+                          <a href={profile.website} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                            Website
+                          </a>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-1">
+                        <Mail className="h-4 w-4" />
+                        <span>{user.email}</span>
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="last_name">Last Name</Label>
-                      <Input
-                        id="last_name"
-                        name="last_name"
-                        value={formData.last_name}
-                        onChange={handleInputChange}
-                        disabled={!isEditing}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="username">Username</Label>
-                    <Input
-                      id="username"
-                      name="username"
-                      value={formData.username}
-                      onChange={handleInputChange}
-                      disabled={!isEditing}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="bio">Bio</Label>
-                    <Textarea
-                      id="bio"
-                      name="bio"
-                      value={formData.bio}
-                      onChange={handleInputChange}
-                      disabled={!isEditing}
-                      placeholder="Tell us about yourself and your artistic journey..."
-                      rows={4}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="location">Location</Label>
-                      <Input
-                        id="location"
-                        name="location"
-                        value={formData.location}
-                        onChange={handleInputChange}
-                        disabled={!isEditing}
-                        placeholder="City, Country"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="website">Website</Label>
-                      <Input
-                        id="website"
-                        name="website"
-                        value={formData.website}
-                        onChange={handleInputChange}
-                        disabled={!isEditing}
-                        placeholder="https://yourwebsite.com"
-                      />
+                    <div className="mt-3">
+                      <Badge variant={profile.role === 'admin' ? 'destructive' : 'outline'}>
+                        {profile.role}
+                      </Badge>
                     </div>
                   </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="artistic_medium">Artistic Medium</Label>
-                    <Input
-                      id="artistic_medium"
-                      name="artistic_medium"
-                      value={formData.artistic_medium}
-                      onChange={handleInputChange}
-                      disabled={!isEditing}
-                      placeholder="e.g., Oil Painting, Digital Art, Photography"
-                    />
+                </div>
+                <Button>
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit Profile
+                </Button>
+              </div>
+              
+              {profile.bio && (
+                <div className="mt-6">
+                  <p className="text-muted-foreground">{profile.bio}</p>
+                </div>
+              )}
+              
+              {profile.artistic_medium && (
+                <div className="mt-4">
+                  <div className="flex items-center gap-2">
+                    <Palette className="h-4 w-4 text-primary" />
+                    <span className="font-medium">Medium:</span>
+                    <span className="text-muted-foreground">{profile.artistic_medium}</span>
                   </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
-                  {isEditing && (
-                    <div className="flex justify-end gap-2">
-                      <Button variant="outline" onClick={() => setIsEditing(false)}>
-                        Cancel
-                      </Button>
-                      <Button onClick={handleSave}>
-                        <Save className="h-4 w-4 mr-2" />
-                        Save Changes
-                      </Button>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
+          {/* Profile Details */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Artist Information</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Artistic Style</label>
+                  <p className="mt-1">{profile.artistic_style || 'Not specified'}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Years Active</label>
+                  <p className="mt-1">{profile.years_active || 'Not specified'}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Available for Commission</label>
+                  <p className="mt-1">{profile.available_for_commission ? 'Yes' : 'No'}</p>
+                </div>
+              </CardContent>
+            </Card>
 
-            <TabsContent value="portfolio" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Portfolio Settings</CardTitle>
-                  <p className="text-sm text-muted-foreground">
-                    Configure how your portfolio appears to visitors
-                  </p>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground">Portfolio settings coming soon...</p>
-                </CardContent>
-              </Card>
-            </TabsContent>
+            <Card>
+              <CardHeader>
+                <CardTitle>Professional Background</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Education</label>
+                  <p className="mt-1">{profile.education || 'Not specified'}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Awards</label>
+                  <p className="mt-1">{profile.awards || 'Not specified'}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Exhibitions</label>
+                  <p className="mt-1">{profile.exhibitions || 'Not specified'}</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
 
-            <TabsContent value="account" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Account Information</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Email</Label>
-                    <Input value={user?.email || ''} disabled />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Role</Label>
-                    <Badge variant="outline">{profile?.role}</Badge>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Member Since</Label>
-                    <Input 
-                      value={profile?.created_at ? new Date(profile.created_at).toLocaleDateString() : ''} 
-                      disabled 
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
+          {profile.artist_statement && (
+            <Card className="mt-6">
+              <CardHeader>
+                <CardTitle>Artist Statement</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground leading-relaxed">
+                  {profile.artist_statement}
+                </p>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </Layout>
