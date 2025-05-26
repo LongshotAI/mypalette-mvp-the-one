@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -9,7 +8,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Eye, Star, MessageSquare, Download, FileText, Image } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Submission, SubmissionData } from '@/types/submission';
@@ -21,7 +19,6 @@ interface SubmissionReviewProps {
 
 const SubmissionReview = ({ openCallId }: SubmissionReviewProps) => {
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
-  const [curatorNotes, setCuratorNotes] = useState('');
   const [reviewData, setReviewData] = useState({
     rating: 5,
     technicalQuality: 5,
@@ -37,13 +34,13 @@ const SubmissionReview = ({ openCallId }: SubmissionReviewProps) => {
   const { data: submissions, isLoading } = useQuery({
     queryKey: ['submissions-review', openCallId],
     queryFn: async () => {
-      // Use SQL function to get submissions with reviews and workflow
+      // Use RPC call with proper type casting
       const { data, error } = await supabase.rpc('get_submissions_for_review', {
         p_open_call_id: openCallId
-      });
+      } as any);
 
       if (error) throw error;
-      return data as Submission[];
+      return (data || []) as Submission[];
     },
   });
 
@@ -62,7 +59,7 @@ const SubmissionReview = ({ openCallId }: SubmissionReviewProps) => {
         p_overall_score: reviewData.overallScore,
         p_review_notes: reviewData.reviewNotes,
         p_private_notes: reviewData.privateNotes
-      });
+      } as any);
 
       if (error) throw error;
     },

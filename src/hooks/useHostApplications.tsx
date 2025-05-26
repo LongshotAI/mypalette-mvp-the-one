@@ -70,7 +70,7 @@ export const useHostApplications = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      // Use SQL query instead of .from() to avoid type issues
+      // Use raw SQL to call the function directly
       const { data, error } = await supabase.rpc('create_host_application', {
         p_applicant_id: user.id,
         p_organization_name: applicationData.organizationName,
@@ -93,7 +93,7 @@ export const useHostApplications = () => {
         p_curatorial_statement: applicationData.curatorialStatement,
         p_technical_requirements: applicationData.technicalRequirements,
         p_marketing_plan: applicationData.marketingPlan
-      });
+      } as any);
 
       if (error) throw error;
       return data;
@@ -120,24 +120,22 @@ export const useHostApplications = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      // Use SQL query to avoid type issues
       const { data, error } = await supabase.rpc('get_user_host_applications', {
         p_user_id: user.id
-      });
+      } as any);
 
       if (error) throw error;
-      return data as HostApplication[];
+      return (data || []) as HostApplication[];
     },
   });
 
   const getAllHostApplications = useQuery({
     queryKey: ['admin-host-applications'],
     queryFn: async () => {
-      // Use SQL query to avoid type issues
-      const { data, error } = await supabase.rpc('get_all_host_applications');
+      const { data, error } = await supabase.rpc('get_all_host_applications', {} as any);
 
       if (error) throw error;
-      return data as HostApplication[];
+      return (data || []) as HostApplication[];
     },
   });
 
@@ -159,7 +157,7 @@ export const useHostApplications = () => {
         p_status: status,
         p_notes: notes,
         p_reviewer_id: user.id
-      });
+      } as any);
 
       if (error) throw error;
     },

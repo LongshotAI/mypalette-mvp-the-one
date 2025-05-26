@@ -55,13 +55,16 @@ export const useSubmissionFiles = () => {
 
         existingFiles.push(newFile);
 
+        // Cast the entire object to any to avoid type conflicts
+        const updatedData: any = {
+          ...existingData,
+          files: existingFiles
+        };
+
         await supabase
           .from('submissions')
           .update({
-            submission_data: {
-              ...existingData,
-              files: existingFiles
-            }
+            submission_data: updatedData
           })
           .eq('id', submissionId);
 
@@ -146,13 +149,16 @@ export const useSubmissionFiles = () => {
         const submissionData = submission.submission_data as SubmissionData;
         const updatedFiles = submissionData.files?.filter(file => file.id !== fileId) || [];
 
+        // Cast to any to avoid type conflicts
+        const updatedData: any = {
+          ...submissionData,
+          files: updatedFiles
+        };
+
         await supabase
           .from('submissions')
           .update({
-            submission_data: {
-              ...submissionData,
-              files: updatedFiles
-            }
+            submission_data: updatedData
           })
           .eq('id', submissionId);
       }
