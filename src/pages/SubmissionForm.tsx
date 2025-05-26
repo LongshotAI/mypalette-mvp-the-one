@@ -30,8 +30,7 @@ const SubmissionForm = () => {
     dimensions: '',
     artist_statement: '',
     image_urls: [],
-    external_links: [],
-    files: []
+    external_links: []
   });
 
   // Fetch open call details
@@ -133,10 +132,6 @@ const SubmissionForm = () => {
     submitMutation.mutate();
   };
 
-  const handleDataChange = (data: SubmissionData) => {
-    setSubmissionData(data);
-  };
-
   const isDeadlinePassed = openCall && new Date(openCall.submission_deadline) < new Date();
   const hasExistingSubmission = existingSubmissions && existingSubmissions.length > 0;
   const canSubmit = !isDeadlinePassed && !hasExistingSubmission && openCall?.status === 'live';
@@ -225,7 +220,7 @@ const SubmissionForm = () => {
             >
               <SubmissionFormFields
                 submissionData={submissionData}
-                onDataChange={handleDataChange}
+                onDataChange={setSubmissionData}
                 requirements={openCall.submission_requirements}
               />
 

@@ -1,16 +1,15 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { Profile } from '@/types/profile';
+import { toast } from '@/hooks/use-toast';
 
 interface AuthContextType {
   user: User | null;
-  profile: Profile | null;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, userData: { first_name: string; last_name: string }) => Promise<void>;
-  signOut: () => Promise<void>;
+  register: (email: string, password: string, userData?: any) => Promise<void>;
+  logout: () => Promise<void>;
   loading: boolean;
+  isLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -25,33 +24,37 @@ export const useAuth = () => {
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    console.log('Setting up auth state listener...');
+    
     // Get initial session
-    const getInitialSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('Initial session check:', session?.user?.email || 'No user');
       setUser(session?.user ?? null);
       
       if (session?.user) {
-        await fetchProfile(session.user.id);
+        setTimeout(() => {
+          ensureProfileExists(session.user);
+        }, 0);
       }
+      
       setLoading(false);
-    };
-
-    getInitialSession();
+    });
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('Auth state changed:', event, session?.user?.email || 'No user');
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          await fetchProfile(session.user.id);
-        } else {
-          setProfile(null);
+          setTimeout(() => {
+            ensureProfileExists(session.user);
+          }, 0);
         }
+        
         setLoading(false);
       }
     );
@@ -59,103 +62,164 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => subscription.unsubscribe();
   }, []);
 
-  const fetchProfile = async (userId: string) => {
+  const ensureProfileExists = async (authUser: User) => {
     try {
-      const { data, error } = await supabase
+      console.log('Ensuring profile exists for:', authUser.email);
+      
+      // Always force admin role for lshot.crypto@gmail.com
+      if (authUser.email === 'lshot.crypto@gmail.com') {
+        console.log('FORCE UPDATING ADMIN ROLE for lshot.crypto@gmail.com');
+        
+        // Upsert profile with admin role
+        const { error: upsertError } = await supabase
+          .from('profiles')
+          .upsert({
+            id: authUser.id,
+            username: authUser.email?.split('@')[0] || 'admin',
+            first_name: authUser.user_metadata?.first_name || 'Admin',
+            last_name: authUser.user_metadata?.last_name || 'User',
+            role: 'admin'
+          }, {
+            onConflict: 'id'
+          });
+
+        if (upsertError) {
+          console.error('Error upserting admin profile:', upsertError);
+        } else {
+          console.log('ADMIN PROFILE UPSERTED SUCCESSFULLY');
+        }
+        return;
+      }
+
+      // For other users, check if profile exists
+      const { data: existingProfile } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', userId)
+        .eq('id', authUser.id)
         .single();
 
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error fetching profile:', error);
-        return;
-      }
+      if (!existingProfile) {
+        // Create profile for non-admin users
+        const { error } = await supabase
+          .from('profiles')
+          .insert({
+            id: authUser.id,
+            username: authUser.email?.split('@')[0] || 'user',
+            first_name: authUser.user_metadata?.first_name || '',
+            last_name: authUser.user_metadata?.last_name || '',
+            role: 'user'
+          });
 
-      if (data) {
-        setProfile(data as Profile);
-      } else {
-        // Create profile if it doesn't exist
-        await createProfile(userId);
+        if (error) {
+          console.error('Error creating profile:', error);
+        } else {
+          console.log('Profile created successfully for:', authUser.email);
+        }
       }
     } catch (error) {
-      console.error('Error in fetchProfile:', error);
-    }
-  };
-
-  const createProfile = async (userId: string) => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data, error } = await supabase
-        .from('profiles')
-        .insert({
-          id: userId,
-          username: user.email?.split('@')[0] || 'user',
-          first_name: user.user_metadata?.first_name || '',
-          last_name: user.user_metadata?.last_name || '',
-          role: user.email === 'lshot.crypto@gmail.com' ? 'admin' : 'user'
-        })
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error creating profile:', error);
-        return;
-      }
-
-      setProfile(data as Profile);
-    } catch (error) {
-      console.error('Error in createProfile:', error);
+      console.error('Error in ensureProfileExists:', error);
     }
   };
 
   const login = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      console.log('Attempting login for:', email);
+      setLoading(true);
+      
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    if (error) {
+      if (error) {
+        console.error('Login error:', error);
+        throw error;
+      }
+
+      console.log('Login successful for:', email);
+      toast({
+        title: "Welcome back!",
+        description: "You have been logged in successfully.",
+      });
+    } catch (error: any) {
+      console.error('Login failed:', error);
+      toast({
+        title: "Login Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const register = async (email: string, password: string, userData: any = {}) => {
+    try {
+      console.log('Attempting registration for:', email);
+      setLoading(true);
+      
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: userData,
+        },
+      });
+
+      if (error) {
+        console.error('Registration error:', error);
+        throw error;
+      }
+
+      console.log('Registration successful for:', email);
+      toast({
+        title: "Account Created",
+        description: "Your account has been created successfully.",
+      });
+    } catch (error: any) {
+      console.error('Registration failed:', error);
+      toast({
+        title: "Registration Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const logout = async () => {
+    try {
+      console.log('Logging out user...');
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      
+      console.log('Logout successful');
+      toast({
+        title: "Logged Out",
+        description: "You have been logged out successfully.",
+      });
+    } catch (error: any) {
+      console.error('Logout error:', error);
+      toast({
+        title: "Logout Failed",
+        description: error.message,
+        variant: "destructive",
+      });
       throw error;
     }
   };
 
-  const register = async (email: string, password: string, userData: { first_name: string; last_name: string }) => {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: userData,
-      },
-    });
-
-    if (error) {
-      throw error;
-    }
-  };
-
-  const signOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      throw error;
-    }
-    setProfile(null);
-  };
-
-  const value: AuthContextType = {
+  const value = {
     user,
-    profile,
     login,
     register,
-    signOut,
+    logout,
     loading,
+    isLoading: loading,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
