@@ -46,6 +46,8 @@ export const useProfile = () => {
         return;
       }
 
+      console.log('Fetching profile for user:', targetUserId);
+      
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -53,9 +55,11 @@ export const useProfile = () => {
         .single();
 
       if (error && error.code !== 'PGRST116') { // PGRST116 is "not found"
+        console.error('Profile fetch error:', error);
         throw error;
       }
 
+      console.log('Profile fetched:', data);
       setProfile(data);
     } catch (err) {
       console.error('Error fetching profile:', err);
@@ -68,6 +72,8 @@ export const useProfile = () => {
   const updateProfile = async (updates: Partial<UserProfile>) => {
     try {
       if (!user?.id) throw new Error('User not authenticated');
+
+      console.log('Updating profile with:', updates);
 
       const { data, error } = await supabase
         .from('profiles')
@@ -102,6 +108,8 @@ export const useProfile = () => {
 
       const fileExt = file.name.split('.').pop();
       const fileName = `${user.id}/avatar.${fileExt}`;
+
+      console.log('Uploading avatar:', fileName);
 
       const { error: uploadError } = await supabase.storage
         .from('avatars')

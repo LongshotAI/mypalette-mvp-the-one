@@ -47,9 +47,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    console.log('Setting up auth state listener...');
+    
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        console.log('Auth state changed:', event, session?.user?.email);
         setSession(session);
         if (session?.user) {
           // Convert Supabase user to our AuthUser format
@@ -70,6 +73,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
     // Check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('Initial session check:', session?.user?.email);
       setSession(session);
       if (session?.user) {
         const authUser: AuthUser = {
@@ -90,13 +94,18 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     try {
+      console.log('Attempting login for:', email);
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
       });
       
-      if (error) throw error;
+      if (error) {
+        console.error('Login error:', error);
+        throw error;
+      }
       
+      console.log('Login successful for:', email);
       // User state will be updated by the auth state listener
     } catch (error) {
       console.error('Login failed:', error);
@@ -109,6 +118,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const register = async (data: RegisterData) => {
     setIsLoading(true);
     try {
+      console.log('Attempting registration for:', data.email);
       const { error } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
@@ -120,8 +130,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         }
       });
       
-      if (error) throw error;
+      if (error) {
+        console.error('Registration error:', error);
+        throw error;
+      }
       
+      console.log('Registration successful for:', data.email);
       // User state will be updated by the auth state listener
     } catch (error) {
       console.error('Registration failed:', error);
@@ -133,7 +147,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const logout = async () => {
     try {
+      console.log('Attempting logout...');
       await supabase.auth.signOut();
+      console.log('Logout successful');
       // User state will be updated by the auth state listener
     } catch (error) {
       console.error('Logout failed:', error);
