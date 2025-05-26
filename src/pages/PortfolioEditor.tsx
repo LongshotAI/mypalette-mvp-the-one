@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,28 +9,120 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Save, ArrowLeft, Plus, Image, Settings } from 'lucide-react';
+import { Save, ArrowLeft, Settings, Image, Upload } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { usePortfolios } from '@/hooks/usePortfolios';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
+import ArtworkUpload from '@/components/portfolio/ArtworkUpload';
+import ArtworkGrid from '@/components/portfolio/ArtworkGrid';
+import { supabase } from '@/integrations/supabase/client';
 
 const PortfolioEditor = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { updatePortfolio } = usePortfolios();
+  const { toast } = useToast();
   const isNew = id === 'new';
   
   const [portfolio, setPortfolio] = useState({
-    title: isNew ? '' : 'Digital Dreams',
-    description: isNew ? '' : 'A collection of surreal digital artworks exploring the subconscious mind.',
-    slug: isNew ? '' : 'digital-dreams',
-    isPublic: isNew ? false : true,
-    template: 'crestline'
+    id: '',
+    title: '',
+    description: '',
+    slug: '',
+    is_public: false,
+    template_id: 'crestline',
+    cover_image: null as string | null
   });
 
   const [activeTab, setActiveTab] = useState<'details' | 'artworks' | 'settings'>('details');
+  const [loading, setLoading] = useState(!isNew);
+  const [saving, setSaving] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  // Load portfolio data if editing existing portfolio
+  useEffect(() => {
+    const loadPortfolio = async () => {
+      if (isNew || !id || !user?.id) return;
+
+      try {
+        console.log('Loading portfolio for editing:', id);
+        
+        const { data, error } = await supabase
+          .from('portfolios')
+          .select('*')
+          .eq('id', id)
+          .eq('user_id', user.id)
+          .single();
+
+        if (error) {
+          console.error('Error loading portfolio:', error);
+          toast({
+            title: "Error",
+            description: "Failed to load portfolio. You may not have permission to edit this portfolio.",
+            variant: "destructive"
+          });
+          navigate('/my-portfolios');
+          return;
+        }
+
+        console.log('Portfolio loaded:', data);
+        setPortfolio({
+          id: data.id,
+          title: data.title,
+          description: data.description || '',
+          slug: data.slug || '',
+          is_public: data.is_public || false,
+          template_id: data.template_id || 'crestline',
+          cover_image: data.cover_image
+        });
+      } catch (error) {
+        console.error('Error loading portfolio:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load portfolio",
+          variant: "destructive"
+        });
+        navigate('/my-portfolios');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadPortfolio();
+  }, [id, isNew, user?.id, navigate, toast]);
 
   const handleSave = async () => {
-    // TODO: Implement save functionality
-    console.log('Saving portfolio:', portfolio);
-    navigate('/my-portfolios');
+    if (!portfolio.title.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Portfolio title is required",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      setSaving(true);
+      console.log('Saving portfolio:', portfolio);
+      
+      await updatePortfolio(portfolio.id, {
+        title: portfolio.title.trim(),
+        description: portfolio.description.trim() || null,
+        is_public: portfolio.is_public,
+        template_id: portfolio.template_id
+      });
+      
+      toast({
+        title: "Portfolio saved",
+        description: "Your changes have been saved successfully!"
+      });
+    } catch (error) {
+      console.error('Error saving portfolio:', error);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleBack = () => {
@@ -49,12 +141,66 @@ const PortfolioEditor = () => {
     }));
   };
 
+  const handleCoverImageUpload = async (file: File) => {
+    if (!user?.id || !portfolio.id) return;
+
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}/${portfolio.id}/cover.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('portfolio-images')
+        .upload(fileName, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('portfolio-images')
+        .getPublicUrl(fileName);
+
+      // Update portfolio with new cover image
+      await updatePortfolio(portfolio.id, { cover_image: publicUrl });
+      
+      setPortfolio(prev => ({ ...prev, cover_image: publicUrl }));
+      
+      toast({
+        title: "Cover image updated",
+        description: "Portfolio cover image has been updated successfully!"
+      });
+    } catch (error) {
+      console.error('Error uploading cover image:', error);
+      toast({
+        title: "Upload failed",
+        description: "Failed to upload cover image",
+        variant: "destructive"
+      });
+    }
+  };
+
   const templates = [
-    { id: 'crestline', name: 'Crestline', description: 'Fullscreen gallery with sidebar navigation' },
-    { id: 'artfolio', name: 'Artfolio', description: 'Spinning logo with parallax scrolling' },
-    { id: 'rowan', name: 'Rowan', description: 'Collection headers with series portfolios' },
-    { id: 'panorama', name: 'Panorama', description: 'Horizontal parallax for video/AI artists' }
+    { id: 'crestline', name: 'Crestline', description: 'Clean and professional' },
+    { id: 'minimalist', name: 'Minimalist', description: 'Simple and elegant' },
+    { id: 'gallery', name: 'Gallery', description: 'Image-focused layout' },
+    { id: 'modern', name: 'Modern', description: 'Contemporary design' },
   ];
+
+  if (isNew) {
+    navigate('/my-portfolios');
+    return null;
+  }
+
+  if (loading) {
+    return (
+      <Layout>
+        <div className="container mx-auto px-4 py-8">
+          <div className="max-w-4xl mx-auto">
+            <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin mx-auto"></div>
+            <p className="text-center text-muted-foreground mt-4">Loading portfolio...</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -72,17 +218,15 @@ const PortfolioEditor = () => {
                 Back
               </Button>
               <div>
-                <h1 className="text-3xl font-bold">
-                  {isNew ? 'Create Portfolio' : 'Edit Portfolio'}
-                </h1>
+                <h1 className="text-3xl font-bold">Edit Portfolio</h1>
                 <p className="text-muted-foreground">
-                  {isNew ? 'Create a new portfolio to showcase your work' : 'Modify your portfolio settings and content'}
+                  Modify your portfolio settings and content
                 </p>
               </div>
             </div>
-            <Button onClick={handleSave} className="flex items-center gap-2">
+            <Button onClick={handleSave} disabled={saving} className="flex items-center gap-2">
               <Save className="h-4 w-4" />
-              Save Portfolio
+              {saving ? 'Saving...' : 'Save Portfolio'}
             </Button>
           </motion.div>
 
@@ -159,6 +303,43 @@ const PortfolioEditor = () => {
                         rows={3}
                       />
                     </div>
+
+                    <div>
+                      <Label htmlFor="cover-image">Cover Image</Label>
+                      <div className="mt-2">
+                        {portfolio.cover_image ? (
+                          <div className="relative">
+                            <img
+                              src={portfolio.cover_image}
+                              alt="Cover"
+                              className="w-full h-48 object-cover rounded-lg border"
+                            />
+                            <div className="absolute inset-0 bg-black/50 opacity-0 hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
+                              <Label htmlFor="cover-upload" className="cursor-pointer">
+                                <Button variant="secondary" size="sm">
+                                  <Upload className="h-4 w-4 mr-2" />
+                                  Change Cover
+                                </Button>
+                              </Label>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center">
+                            <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                            <Label htmlFor="cover-upload" className="cursor-pointer text-primary hover:text-primary/80">
+                              Upload Cover Image
+                            </Label>
+                          </div>
+                        )}
+                        <input
+                          id="cover-upload"
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => e.target.files?.[0] && handleCoverImageUpload(e.target.files[0])}
+                          className="hidden"
+                        />
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
 
@@ -172,15 +353,15 @@ const PortfolioEditor = () => {
                         <div
                           key={template.id}
                           className={`p-4 border rounded-lg cursor-pointer transition-all ${
-                            portfolio.template === template.id
+                            portfolio.template_id === template.id
                               ? 'border-primary bg-primary/5'
                               : 'border-muted hover:border-primary/50'
                           }`}
-                          onClick={() => setPortfolio(prev => ({ ...prev, template: template.id }))}
+                          onClick={() => setPortfolio(prev => ({ ...prev, template_id: template.id }))}
                         >
                           <h3 className="font-medium mb-1">{template.name}</h3>
                           <p className="text-sm text-muted-foreground">{template.description}</p>
-                          {portfolio.template === template.id && (
+                          {portfolio.template_id === template.id && (
                             <Badge className="mt-2">Selected</Badge>
                           )}
                         </div>
@@ -192,26 +373,24 @@ const PortfolioEditor = () => {
             )}
 
             {activeTab === 'artworks' && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Artworks</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-center py-12">
-                    <div className="w-16 h-16 mx-auto mb-4 bg-primary/10 rounded-full flex items-center justify-center">
-                      <Image className="h-8 w-8 text-primary/60" />
-                    </div>
-                    <h3 className="text-lg font-semibold mb-2">No artworks yet</h3>
-                    <p className="text-muted-foreground mb-4">
-                      Add your first artwork to start building your portfolio.
-                    </p>
-                    <Button>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Artwork
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+              <div className="space-y-6">
+                <ArtworkUpload 
+                  portfolioId={portfolio.id} 
+                  onSuccess={() => setRefreshKey(prev => prev + 1)}
+                />
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Portfolio Artworks</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ArtworkGrid 
+                      portfolioId={portfolio.id} 
+                      key={refreshKey}
+                      onRefresh={() => setRefreshKey(prev => prev + 1)}
+                    />
+                  </CardContent>
+                </Card>
+              </div>
             )}
 
             {activeTab === 'settings' && (
@@ -229,8 +408,8 @@ const PortfolioEditor = () => {
                     </div>
                     <Switch
                       id="public"
-                      checked={portfolio.isPublic}
-                      onCheckedChange={(checked) => setPortfolio(prev => ({ ...prev, isPublic: checked }))}
+                      checked={portfolio.is_public}
+                      onCheckedChange={(checked) => setPortfolio(prev => ({ ...prev, is_public: checked }))}
                     />
                   </div>
                   

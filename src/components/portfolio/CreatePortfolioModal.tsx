@@ -8,7 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { usePortfolios } from '@/hooks/usePortfolios';
-import { Plus } from 'lucide-react';
+import { Plus, AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface CreatePortfolioModalProps {
   onSuccess?: () => void;
@@ -23,6 +24,7 @@ const CreatePortfolioModal = ({ onSuccess, trigger }: CreatePortfolioModalProps)
     template_id: 'crestline',
     is_public: false,
   });
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
   const { createPortfolio } = usePortfolios();
 
@@ -33,16 +35,35 @@ const CreatePortfolioModal = ({ onSuccess, trigger }: CreatePortfolioModalProps)
     { id: 'modern', name: 'Modern', description: 'Contemporary design' },
   ];
 
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+
+    if (!formData.title.trim()) {
+      newErrors.title = 'Portfolio title is required';
+    } else if (formData.title.trim().length < 3) {
+      newErrors.title = 'Portfolio title must be at least 3 characters';
+    } else if (formData.title.trim().length > 100) {
+      newErrors.title = 'Portfolio title must be less than 100 characters';
+    }
+
+    if (formData.description && formData.description.length > 500) {
+      newErrors.description = 'Description must be less than 500 characters';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.title.trim()) return;
+    if (!validateForm()) return;
 
     try {
       setIsLoading(true);
       console.log('Creating portfolio via modal with data:', formData);
       
-      await createPortfolio({
+      const newPortfolio = await createPortfolio({
         title: formData.title.trim(),
         description: formData.description.trim() || undefined,
         template_id: formData.template_id,
@@ -56,14 +77,31 @@ const CreatePortfolioModal = ({ onSuccess, trigger }: CreatePortfolioModalProps)
         template_id: 'crestline',
         is_public: false,
       });
+      setErrors({});
       
       setOpen(false);
       onSuccess?.();
+      
+      console.log('Portfolio created successfully:', newPortfolio);
     } catch (error) {
       console.error('Failed to create portfolio:', error);
       // Error handling is done in the createPortfolio function via toast
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleTitleChange = (value: string) => {
+    setFormData({ ...formData, title: value });
+    if (errors.title) {
+      setErrors({ ...errors, title: '' });
+    }
+  };
+
+  const handleDescriptionChange = (value: string) => {
+    setFormData({ ...formData, description: value });
+    if (errors.description) {
+      setErrors({ ...errors, description: '' });
     }
   };
 
@@ -89,11 +127,15 @@ const CreatePortfolioModal = ({ onSuccess, trigger }: CreatePortfolioModalProps)
             <Input
               id="title"
               value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              onChange={(e) => handleTitleChange(e.target.value)}
               placeholder="Enter portfolio title"
               required
               disabled={isLoading}
+              className={errors.title ? 'border-destructive' : ''}
             />
+            {errors.title && (
+              <p className="text-sm text-destructive mt-1">{errors.title}</p>
+            )}
           </div>
 
           <div>
@@ -101,11 +143,18 @@ const CreatePortfolioModal = ({ onSuccess, trigger }: CreatePortfolioModalProps)
             <Textarea
               id="description"
               value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              onChange={(e) => handleDescriptionChange(e.target.value)}
               placeholder="Describe your portfolio"
               rows={3}
               disabled={isLoading}
+              className={errors.description ? 'border-destructive' : ''}
             />
+            <p className="text-xs text-muted-foreground mt-1">
+              {formData.description.length}/500 characters
+            </p>
+            {errors.description && (
+              <p className="text-sm text-destructive mt-1">{errors.description}</p>
+            )}
           </div>
 
           <div>
@@ -140,6 +189,15 @@ const CreatePortfolioModal = ({ onSuccess, trigger }: CreatePortfolioModalProps)
             />
             <Label htmlFor="public">Make portfolio public</Label>
           </div>
+
+          {formData.is_public && (
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                Public portfolios can be discovered and viewed by anyone on MyPalette.
+              </AlertDescription>
+            </Alert>
+          )}
 
           <div className="flex gap-2 pt-4">
             <Button 
