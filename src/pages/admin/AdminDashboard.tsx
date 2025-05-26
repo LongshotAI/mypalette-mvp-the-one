@@ -1,13 +1,15 @@
+
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Users, FileText, Calendar, DollarSign, TrendingUp, Eye } from 'lucide-react';
+import { Users, FileText, Calendar, DollarSign, TrendingUp, Eye, Film } from 'lucide-react';
 import AdminOpenCallManagement from '@/components/admin/AdminOpenCallManagement';
 import SubmissionReview from '@/components/admin/SubmissionReview';
 import AdminDebugInfo from '@/components/admin/AdminDebugInfo';
+import AIFilm3AdminPanel from '@/components/admin/AIFilm3AdminPanel';
 
 const AdminDashboard = () => {
   const [selectedOpenCall, setSelectedOpenCall] = useState<string | null>(null);
@@ -144,10 +146,11 @@ const AdminDashboard = () => {
 
         {/* Main Content Tabs */}
         <Tabs defaultValue="open-calls" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="open-calls">Open Calls</TabsTrigger>
             <TabsTrigger value="submissions">Submissions</TabsTrigger>
             <TabsTrigger value="users">Users</TabsTrigger>
+            <TabsTrigger value="aifilm3">AIFilm3</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
           </TabsList>
 
@@ -206,6 +209,10 @@ const AdminDashboard = () => {
                 <p className="text-gray-600">User management interface coming soon...</p>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="aifilm3" className="space-y-6">
+            <AIFilm3AdminPanel />
           </TabsContent>
 
           <TabsContent value="analytics" className="space-y-6">

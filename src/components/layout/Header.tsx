@@ -24,7 +24,7 @@ const Header = () => {
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
-  const { data: profile } = useProfile();
+  const { profile } = useProfile();
   const { data: userRole } = useAdminCheck();
 
   // Close mobile menu when route changes
