@@ -510,8 +510,29 @@ export type Database = {
         Args: { title: string; user_id: string }
         Returns: string
       }
+      get_open_call_stats: {
+        Args: { p_open_call_id: string }
+        Returns: {
+          total_submissions: number
+          paid_submissions: number
+          selected_submissions: number
+          average_score: number
+        }[]
+      }
+      get_user_submission_count: {
+        Args: { p_user_id: string; p_open_call_id: string }
+        Returns: number
+      }
       increment_portfolio_views: {
         Args: { portfolio_id: string }
+        Returns: undefined
+      }
+      update_submission_status: {
+        Args: {
+          p_submission_id: string
+          p_new_status: string
+          p_notes?: string
+        }
         Returns: undefined
       }
     }

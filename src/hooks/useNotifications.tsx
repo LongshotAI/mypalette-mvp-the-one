@@ -23,8 +23,8 @@ export const useNotifications = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      // Use raw SQL query to avoid type issues
-      const { data, error } = await supabase.rpc('get_user_notifications', {
+      // Use raw SQL query with proper type casting
+      const { data, error } = await supabase.rpc('get_user_notifications' as any, {
         p_user_id: user.id
       });
 
@@ -32,7 +32,7 @@ export const useNotifications = () => {
         console.log('Notifications table may not exist yet, returning empty array');
         return [] as Notification[];
       }
-      return data as Notification[];
+      return (data || []) as Notification[];
     },
   });
 
@@ -42,8 +42,8 @@ export const useNotifications = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      // Use raw SQL query to avoid type issues
-      const { data, error } = await supabase.rpc('get_unread_notifications_count', {
+      // Use raw SQL query with proper type casting
+      const { data, error } = await supabase.rpc('get_unread_notifications_count' as any, {
         p_user_id: user.id
       });
 
@@ -57,7 +57,7 @@ export const useNotifications = () => {
 
   const markAsRead = useMutation({
     mutationFn: async (notificationId: string) => {
-      const { error } = await supabase.rpc('mark_notification_as_read', {
+      const { error } = await supabase.rpc('mark_notification_as_read' as any, {
         p_notification_id: notificationId
       });
 
@@ -74,7 +74,7 @@ export const useNotifications = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      const { error } = await supabase.rpc('mark_all_notifications_as_read', {
+      const { error } = await supabase.rpc('mark_all_notifications_as_read' as any, {
         p_user_id: user.id
       });
 

@@ -35,9 +35,9 @@ const SubmissionReview = ({ openCallId }: SubmissionReviewProps) => {
     queryKey: ['submissions-review', openCallId],
     queryFn: async () => {
       // Use RPC call with proper type casting
-      const { data, error } = await supabase.rpc('get_submissions_for_review', {
+      const { data, error } = await supabase.rpc('get_submissions_for_review' as any, {
         p_open_call_id: openCallId
-      } as any);
+      });
 
       if (error) throw error;
       return (data || []) as Submission[];
@@ -49,7 +49,7 @@ const SubmissionReview = ({ openCallId }: SubmissionReviewProps) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      const { error } = await supabase.rpc('create_submission_review', {
+      const { error } = await supabase.rpc('create_submission_review' as any, {
         p_submission_id: submissionId,
         p_reviewer_id: user.id,
         p_rating: reviewData.rating,
@@ -59,7 +59,7 @@ const SubmissionReview = ({ openCallId }: SubmissionReviewProps) => {
         p_overall_score: reviewData.overallScore,
         p_review_notes: reviewData.reviewNotes,
         p_private_notes: reviewData.privateNotes
-      } as any);
+      });
 
       if (error) throw error;
     },
@@ -425,6 +425,36 @@ const SubmissionReview = ({ openCallId }: SubmissionReviewProps) => {
       )}
     </div>
   );
+};
+
+// Helper functions
+const getSubmissionData = (submission: Submission): SubmissionData => {
+  return (submission.submission_data as SubmissionData) || {};
+};
+
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case 'selected': return 'bg-green-500';
+    case 'rejected': return 'bg-red-500';
+    case 'under_review': return 'bg-yellow-500';
+    case 'shortlisted': return 'bg-blue-500';
+    default: return 'bg-gray-500';
+  }
+};
+
+const getSubmissionTitle = (submission: Submission): string => {
+  const submissionData = getSubmissionData(submission);
+  return submission.submission_title || submissionData.title || 'Untitled Submission';
+};
+
+const getSubmissionDescription = (submission: Submission): string => {
+  const submissionData = getSubmissionData(submission);
+  return submission.submission_description || submissionData.description || 'No description provided';
+};
+
+const getArtistStatement = (submission: Submission): string => {
+  const submissionData = getSubmissionData(submission);
+  return submission.artist_statement || submissionData.artist_statement || 'No artist statement provided';
 };
 
 export default SubmissionReview;

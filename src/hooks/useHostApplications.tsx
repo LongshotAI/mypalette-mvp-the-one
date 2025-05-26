@@ -70,8 +70,8 @@ export const useHostApplications = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      // Use raw SQL to call the function directly
-      const { data, error } = await supabase.rpc('create_host_application', {
+      // Use raw SQL to call the function directly with proper type casting
+      const { data, error } = await supabase.rpc('create_host_application' as any, {
         p_applicant_id: user.id,
         p_organization_name: applicationData.organizationName,
         p_organization_type: applicationData.organizationType,
@@ -93,7 +93,7 @@ export const useHostApplications = () => {
         p_curatorial_statement: applicationData.curatorialStatement,
         p_technical_requirements: applicationData.technicalRequirements,
         p_marketing_plan: applicationData.marketingPlan
-      } as any);
+      });
 
       if (error) throw error;
       return data;
@@ -120,9 +120,9 @@ export const useHostApplications = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      const { data, error } = await supabase.rpc('get_user_host_applications', {
+      const { data, error } = await supabase.rpc('get_user_host_applications' as any, {
         p_user_id: user.id
-      } as any);
+      });
 
       if (error) throw error;
       return (data || []) as HostApplication[];
@@ -132,7 +132,7 @@ export const useHostApplications = () => {
   const getAllHostApplications = useQuery({
     queryKey: ['admin-host-applications'],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_all_host_applications', {} as any);
+      const { data, error } = await supabase.rpc('get_all_host_applications' as any, {});
 
       if (error) throw error;
       return (data || []) as HostApplication[];
@@ -152,12 +152,12 @@ export const useHostApplications = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      const { error } = await supabase.rpc('update_host_application_status', {
+      const { error } = await supabase.rpc('update_host_application_status' as any, {
         p_application_id: applicationId,
         p_status: status,
         p_notes: notes,
         p_reviewer_id: user.id
-      } as any);
+      });
 
       if (error) throw error;
     },
