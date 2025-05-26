@@ -11,13 +11,19 @@ export const useSubmissionFiles = () => {
     mutationFn: async ({ submissionId, files }: { submissionId: string; files: File[] }) => {
       console.log('Uploading files for submission:', submissionId);
       
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+      
       const uploadPromises = files.map(async (file) => {
         const fileExt = file.name.split('.').pop();
-        const fileName = `${submissionId}/${Math.random()}.${fileExt}`;
+        const fileName = `${user.id}/${submissionId}/${Math.random()}.${fileExt}`;
         
         const { data, error } = await supabase.storage
           .from('submission-files')
-          .upload(fileName, file);
+          .upload(fileName, file, {
+            cacheControl: '3600',
+            upsert: false
+          });
 
         if (error) {
           console.error('File upload error:', error);
@@ -49,22 +55,12 @@ export const useSubmissionFiles = () => {
 
         existingFiles.push(newFile);
 
-        // Convert SubmissionFile objects to plain JSON objects
-        const filesAsJson = existingFiles.map(f => ({
-          id: f.id,
-          file_name: f.file_name,
-          file_url: f.file_url,
-          file_type: f.file_type,
-          file_size: f.file_size,
-          created_at: f.created_at
-        }));
-
         await supabase
           .from('submissions')
           .update({
             submission_data: {
               ...existingData,
-              files: filesAsJson
+              files: existingFiles
             }
           })
           .eq('id', submissionId);
@@ -81,6 +77,7 @@ export const useSubmissionFiles = () => {
         title: "Files Uploaded",
         description: "Your artwork files have been uploaded successfully.",
       });
+      queryClient.invalidateQueries({ queryKey: ['submission-files'] });
     },
     onError: (error: any) => {
       console.error('File upload error:', error);
@@ -118,8 +115,67 @@ export const useSubmissionFiles = () => {
     });
   };
 
+  const deleteFile = useMutation({
+    mutationFn: async ({ submissionId, fileId, fileName }: { 
+      submissionId: string; 
+      fileId: string; 
+      fileName: string; 
+    }) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
+      // Delete from storage
+      const filePath = `${user.id}/${submissionId}/${fileName}`;
+      const { error: storageError } = await supabase.storage
+        .from('submission-files')
+        .remove([filePath]);
+
+      if (storageError) {
+        console.error('Storage deletion error:', storageError);
+        // Continue even if storage deletion fails
+      }
+
+      // Remove from submission_data
+      const { data: submission } = await supabase
+        .from('submissions')
+        .select('submission_data')
+        .eq('id', submissionId)
+        .single();
+
+      if (submission) {
+        const submissionData = submission.submission_data as SubmissionData;
+        const updatedFiles = submissionData.files?.filter(file => file.id !== fileId) || [];
+
+        await supabase
+          .from('submissions')
+          .update({
+            submission_data: {
+              ...submissionData,
+              files: updatedFiles
+            }
+          })
+          .eq('id', submissionId);
+      }
+    },
+    onSuccess: () => {
+      toast({
+        title: "File Deleted",
+        description: "File has been removed successfully.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['submission-files'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Delete Failed",
+        description: error.message || "Failed to delete file.",
+        variant: "destructive",
+      });
+    },
+  });
+
   return {
     uploadFiles,
     getSubmissionFiles,
+    deleteFile,
   };
 };

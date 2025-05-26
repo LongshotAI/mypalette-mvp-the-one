@@ -25,17 +25,12 @@ export const useSubmissions = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      // Check submission count first
-      const { data: existingSubmissions } = await supabase
-        .from('submissions')
-        .select('id')
-        .eq('artist_id', user.id)
-        .eq('open_call_id', openCallId);
+      // Check if this is user's first submission using the new function
+      const { data: isFirst } = await supabase.rpc('is_first_submission', {
+        user_id: user.id
+      });
 
-      const submissionCount = existingSubmissions?.length || 0;
-      const isFirstSubmission = submissionCount === 0;
-      
-      // Create submission record
+      // Create submission record with enhanced data structure
       const { data: submission, error: submissionError } = await supabase
         .from('submissions')
         .insert({
@@ -46,7 +41,12 @@ export const useSubmissions = () => {
             description: submissionData.description,
             artist_statement: submissionData.artistStatement,
           },
-          payment_status: isFirstSubmission ? 'free' : 'pending'
+          submission_title: submissionData.title,
+          submission_description: submissionData.description,
+          artist_statement: submissionData.artistStatement,
+          payment_status: isFirst ? 'free' : 'pending',
+          is_first_submission: isFirst,
+          payment_amount: isFirst ? 0 : 2
         })
         .select()
         .single();
@@ -58,13 +58,17 @@ export const useSubmissions = () => {
 
       console.log('Submission created:', submission);
 
-      // If first submission, mark as paid/free and return success
-      if (isFirstSubmission) {
-        await supabase
-          .from('submissions')
-          .update({ payment_status: 'free' })
-          .eq('id', submission.id);
+      // Create initial workflow entry
+      await supabase
+        .from('submission_workflow')
+        .insert({
+          submission_id: submission.id,
+          status: 'submitted',
+          notes: 'Initial submission created'
+        });
 
+      // If first submission, mark as free and return success
+      if (isFirst) {
         return { 
           submissionId: submission.id, 
           paymentRequired: false,
@@ -78,7 +82,8 @@ export const useSubmissions = () => {
           body: { 
             openCallId, 
             submissionId: submission.id,
-            submissionData 
+            submissionData,
+            amount: 200 // $2.00 in cents
           }
         });
 
@@ -107,6 +112,7 @@ export const useSubmissions = () => {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['submissions'] });
       queryClient.invalidateQueries({ queryKey: ['user-submissions'] });
+      queryClient.invalidateQueries({ queryKey: ['open-call-stats'] });
       
       if (!data.paymentRequired) {
         toast({
@@ -135,7 +141,7 @@ export const useSubmissions = () => {
         .select(`
           *,
           open_calls(title, organization_name),
-          submission_files(*)
+          submission_workflow(status, notes, created_at)
         `)
         .order('submitted_at', { ascending: false });
 
@@ -159,7 +165,9 @@ export const useSubmissions = () => {
           .from('submissions')
           .select(`
             *,
-            profiles(username, first_name, last_name, avatar_url)
+            profiles(username, first_name, last_name, avatar_url, email),
+            submission_workflow(status, notes, created_at),
+            submission_reviews(rating, overall_score, review_notes)
           `)
           .eq('open_call_id', openCallId)
           .in('payment_status', ['paid', 'free'])
@@ -177,6 +185,52 @@ export const useSubmissions = () => {
     });
   };
 
+  const getOpenCallStats = (openCallId: string) => {
+    return useQuery({
+      queryKey: ['open-call-stats', openCallId],
+      queryFn: async () => {
+        console.log('Fetching open call stats for:', openCallId);
+        
+        const { data, error } = await supabase.rpc('get_open_call_stats', {
+          p_open_call_id: openCallId
+        });
+
+        if (error) {
+          console.error('Error fetching open call stats:', error);
+          throw error;
+        }
+        
+        console.log('Open call stats fetched:', data);
+        return data?.[0] || {};
+      },
+      enabled: !!openCallId,
+    });
+  };
+
+  const updateSubmissionStatus = useMutation({
+    mutationFn: async ({ submissionId, status, notes }: { 
+      submissionId: string; 
+      status: string; 
+      notes?: string;
+    }) => {
+      const { error } = await supabase.rpc('update_submission_status', {
+        p_submission_id: submissionId,
+        p_new_status: status,
+        p_notes: notes
+      });
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['submissions'] });
+      queryClient.invalidateQueries({ queryKey: ['open-call-stats'] });
+      toast({
+        title: "Status Updated",
+        description: "Submission status has been updated successfully.",
+      });
+    },
+  });
+
   const checkSubmissionCount = async (openCallId: string) => {
     console.log('Checking submission count for:', openCallId);
     
@@ -186,27 +240,26 @@ export const useSubmissions = () => {
       return 0;
     }
 
-    const { data, error } = await supabase
-      .from('submissions')
-      .select('id', { count: 'exact' })
-      .eq('artist_id', user.user.id)
-      .eq('open_call_id', openCallId)
-      .in('payment_status', ['paid', 'free']);
+    const { data, error } = await supabase.rpc('get_user_submission_count', {
+      p_user_id: user.user.id,
+      p_open_call_id: openCallId
+    });
 
     if (error) {
       console.error('Error checking submission count:', error);
       throw error;
     }
     
-    const count = data?.length || 0;
-    console.log('Submission count:', count);
-    return count;
+    console.log('Submission count:', data);
+    return data || 0;
   };
 
   return {
     createSubmission,
     getUserSubmissions,
     getSubmissionsByCall,
+    getOpenCallStats,
+    updateSubmissionStatus,
     checkSubmissionCount,
   };
 };
