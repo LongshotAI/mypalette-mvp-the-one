@@ -9,13 +9,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, Upload, DollarSign, Calendar, Info, CreditCard } from 'lucide-react';
+import { ArrowLeft, Upload, DollarSign, Calendar, Info, CreditCard, AlertCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useSubmissions } from '@/hooks/useSubmissions';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import SubmissionPricing from '@/components/open-calls/SubmissionPricing';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 // Use a placeholder key for development - users will need to set their actual Stripe publishable key
 const stripePromise = loadStripe('pk_test_placeholder');
@@ -40,40 +41,75 @@ const SubmissionFormContent = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [submissionId, setSubmissionId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Validate UUID format
+  const isValidUUID = (uuid: string) => {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(uuid);
+  };
 
   useEffect(() => {
     if (callId) {
+      // Validate UUID format before making database calls
+      if (!isValidUUID(callId)) {
+        setError('Invalid open call ID format. Please check the URL.');
+        setLoading(false);
+        return;
+      }
+      
       fetchOpenCall();
       checkUserSubmissions();
     }
   }, [callId]);
 
   const fetchOpenCall = async () => {
-    const { data, error } = await supabase
-      .from('open_calls')
-      .select('*')
-      .eq('id', callId)
-      .single();
+    try {
+      if (!callId || !isValidUUID(callId)) {
+        throw new Error('Invalid open call ID');
+      }
 
-    if (error) {
-      console.error('Error fetching open call:', error);
-      return;
+      const { data, error } = await supabase
+        .from('open_calls')
+        .select('*')
+        .eq('id', callId)
+        .single();
+
+      if (error) {
+        console.error('Error fetching open call:', error);
+        if (error.code === 'PGRST116') {
+          setError('Open call not found.');
+        } else {
+          setError('Failed to load open call details.');
+        }
+        return;
+      }
+
+      setOpenCall(data);
+    } catch (err) {
+      console.error('Error in fetchOpenCall:', err);
+      setError('Failed to load open call details.');
+    } finally {
+      setLoading(false);
     }
-
-    setOpenCall(data);
   };
 
   const checkUserSubmissions = async () => {
-    if (!user) return;
+    if (!user || !callId || !isValidUUID(callId)) return;
     
-    const { data, error } = await supabase
-      .from('submissions')
-      .select('*')
-      .eq('open_call_id', callId)
-      .eq('artist_id', user.id);
+    try {
+      const { data, error } = await supabase
+        .from('submissions')
+        .select('*')
+        .eq('open_call_id', callId)
+        .eq('artist_id', user.id);
 
-    if (!error) {
-      setSubmissionCount(data?.length || 0);
+      if (!error) {
+        setSubmissionCount(data?.length || 0);
+      }
+    } catch (err) {
+      console.error('Error checking user submissions:', err);
     }
   };
 
@@ -91,6 +127,15 @@ const SubmissionFormContent = () => {
       toast({
         title: "Authentication Required",
         description: "Please log in to submit your work.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!isValidUUID(callId)) {
+      toast({
+        title: "Invalid Open Call",
+        description: "This open call ID is not valid.",
         variant: "destructive",
       });
       return;
@@ -168,11 +213,63 @@ const SubmissionFormContent = () => {
   };
 
   const handleBack = () => {
-    navigate(`/open-calls/${callId}`);
+    if (callId && isValidUUID(callId)) {
+      navigate(`/open-calls/${callId}`);
+    } else {
+      navigate('/open-calls');
+    }
   };
 
+  if (loading) {
+    return (
+      <Layout>
+        <div className="container mx-auto px-4 py-8">
+          <div className="max-w-4xl mx-auto">
+            <div className="animate-pulse space-y-4">
+              <div className="h-8 bg-gray-200 rounded w-3/4"></div>
+              <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+              <div className="h-64 bg-gray-200 rounded"></div>
+            </div>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (error) {
+    return (
+      <Layout>
+        <div className="container mx-auto px-4 py-8">
+          <div className="max-w-4xl mx-auto">
+            <Alert variant="destructive" className="mb-6">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+            <Button variant="outline" onClick={() => navigate('/open-calls')}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Open Calls
+            </Button>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
   if (!openCall) {
-    return <Layout><div>Loading...</div></Layout>;
+    return (
+      <Layout>
+        <div className="container mx-auto px-4 py-8">
+          <div className="max-w-4xl mx-auto text-center">
+            <h1 className="text-2xl font-bold mb-4">Open Call Not Found</h1>
+            <p className="text-muted-foreground mb-6">The open call you're looking for doesn't exist or has been removed.</p>
+            <Button onClick={() => navigate('/open-calls')}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Open Calls
+            </Button>
+          </div>
+        </div>
+      </Layout>
+    );
   }
 
   return (

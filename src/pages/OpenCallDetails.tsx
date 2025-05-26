@@ -5,19 +5,32 @@ import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Calendar, DollarSign, Users, MapPin, Clock, Award, ExternalLink } from 'lucide-react';
+import { Calendar, DollarSign, Users, MapPin, Clock, Award, ExternalLink, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { motion } from 'framer-motion';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const OpenCallDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  const { data: openCall, isLoading } = useQuery({
+  // Validate UUID format
+  const isValidUUID = (uuid: string) => {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(uuid);
+  };
+
+  const { data: openCall, isLoading, error } = useQuery({
     queryKey: ['open-call', id],
     queryFn: async () => {
+      if (!id || !isValidUUID(id)) {
+        throw new Error('Invalid open call ID format');
+      }
+
+      console.log('Fetching open call details for ID:', id);
+      
       const { data, error } = await supabase
         .from('open_calls')
         .select(`
@@ -27,7 +40,15 @@ const OpenCallDetails = () => {
         .eq('id', id)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching open call:', error);
+        if (error.code === 'PGRST116') {
+          throw new Error('Open call not found');
+        }
+        throw error;
+      }
+
+      console.log('Open call fetched successfully:', data);
       return data;
     },
     enabled: !!id,
@@ -36,16 +57,26 @@ const OpenCallDetails = () => {
   const { data: submissionCount } = useQuery({
     queryKey: ['submission-count', id],
     queryFn: async () => {
+      if (!id || !isValidUUID(id)) return 0;
+
+      console.log('Fetching submission count for open call:', id);
+      
       const { data, error } = await supabase
         .from('submissions')
         .select('id', { count: 'exact' })
         .eq('open_call_id', id)
         .eq('payment_status', 'paid');
 
-      if (error) throw error;
-      return data?.length || 0;
+      if (error) {
+        console.error('Error fetching submission count:', error);
+        return 0;
+      }
+
+      const count = data?.length || 0;
+      console.log('Submission count:', count);
+      return count;
     },
-    enabled: !!id,
+    enabled: !!id && isValidUUID(id || ''),
   });
 
   const handleSubmit = () => {
@@ -53,8 +84,33 @@ const OpenCallDetails = () => {
       navigate('/auth/login');
       return;
     }
-    navigate(`/submit/${id}`);
+    
+    if (id && isValidUUID(id)) {
+      navigate(`/submit/${id}`);
+    } else {
+      console.error('Invalid open call ID for submission');
+    }
   };
+
+  if (!id || !isValidUUID(id)) {
+    return (
+      <Layout>
+        <div className="container mx-auto px-4 py-8">
+          <div className="max-w-4xl mx-auto">
+            <Alert variant="destructive" className="mb-6">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                Invalid open call ID format. Please check the URL.
+              </AlertDescription>
+            </Alert>
+            <Button onClick={() => navigate('/open-calls')}>
+              Back to Open Calls
+            </Button>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -66,6 +122,26 @@ const OpenCallDetails = () => {
               <div className="h-4 bg-gray-200 rounded w-1/2"></div>
               <div className="h-64 bg-gray-200 rounded"></div>
             </div>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (error) {
+    return (
+      <Layout>
+        <div className="container mx-auto px-4 py-8">
+          <div className="max-w-4xl mx-auto">
+            <Alert variant="destructive" className="mb-6">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                {error instanceof Error ? error.message : 'Failed to load open call details'}
+              </AlertDescription>
+            </Alert>
+            <Button onClick={() => navigate('/open-calls')}>
+              Back to Open Calls
+            </Button>
           </div>
         </div>
       </Layout>
@@ -142,7 +218,7 @@ const OpenCallDetails = () => {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                   <div className="flex items-center gap-2">
                     <Calendar className="h-5 w-5 text-muted-foreground" />
                     <div>

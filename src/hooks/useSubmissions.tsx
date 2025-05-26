@@ -19,24 +19,33 @@ export const useSubmissions = () => {
       openCallId: string; 
       submissionData: SubmissionData;
     }) => {
+      console.log('Creating submission for open call:', openCallId);
+      
       const { data, error } = await supabase.functions.invoke('create-submission-payment', {
         body: { openCallId, submissionData }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Submission creation error:', error);
+        throw error;
+      }
+      
+      console.log('Submission creation response:', data);
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['submissions'] });
+      queryClient.invalidateQueries({ queryKey: ['user-submissions'] });
       toast({
         title: "Submission Created",
         description: "Your submission has been created successfully.",
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
+      console.error('Submission mutation error:', error);
       toast({
         title: "Submission Failed",
-        description: error.message,
+        description: error.message || "Failed to create submission. Please try again.",
         variant: "destructive",
       });
     },
@@ -45,6 +54,8 @@ export const useSubmissions = () => {
   const getUserSubmissions = useQuery({
     queryKey: ['user-submissions'],
     queryFn: async () => {
+      console.log('Fetching user submissions...');
+      
       const { data, error } = await supabase
         .from('submissions')
         .select(`
@@ -54,7 +65,12 @@ export const useSubmissions = () => {
         `)
         .order('submitted_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching user submissions:', error);
+        throw error;
+      }
+      
+      console.log('User submissions fetched:', data);
       return data;
     },
   });
@@ -63,6 +79,8 @@ export const useSubmissions = () => {
     return useQuery({
       queryKey: ['submissions', openCallId],
       queryFn: async () => {
+        console.log('Fetching submissions for open call:', openCallId);
+        
         const { data, error } = await supabase
           .from('submissions')
           .select(`
@@ -73,15 +91,26 @@ export const useSubmissions = () => {
           .eq('payment_status', 'paid')
           .order('submitted_at', { ascending: false });
 
-        if (error) throw error;
+        if (error) {
+          console.error('Error fetching submissions by call:', error);
+          throw error;
+        }
+        
+        console.log('Submissions by call fetched:', data);
         return data;
       },
+      enabled: !!openCallId,
     });
   };
 
   const checkSubmissionCount = async (openCallId: string) => {
+    console.log('Checking submission count for:', openCallId);
+    
     const { data: user } = await supabase.auth.getUser();
-    if (!user.user) return 0;
+    if (!user.user) {
+      console.log('No authenticated user found');
+      return 0;
+    }
 
     const { data, error } = await supabase
       .from('submissions')
@@ -90,8 +119,14 @@ export const useSubmissions = () => {
       .eq('open_call_id', openCallId)
       .in('payment_status', ['paid', 'free']);
 
-    if (error) throw error;
-    return data?.length || 0;
+    if (error) {
+      console.error('Error checking submission count:', error);
+      throw error;
+    }
+    
+    const count = data?.length || 0;
+    console.log('Submission count:', count);
+    return count;
   };
 
   return {
