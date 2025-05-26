@@ -17,7 +17,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import SubmissionPricing from '@/components/open-calls/SubmissionPricing';
 
-const stripePromise = loadStripe('pk_test_your_stripe_publishable_key');
+// Use a placeholder key for development - users will need to set their actual Stripe publishable key
+const stripePromise = loadStripe('pk_test_placeholder');
 
 const SubmissionFormContent = () => {
   const { callId } = useParams();

@@ -80,14 +80,18 @@ export const useSubmissions = () => {
   };
 
   const checkSubmissionCount = async (openCallId: string) => {
+    const { data: user } = await supabase.auth.getUser();
+    if (!user.user) return 0;
+
     const { data, error } = await supabase
-      .rpc('get_user_submission_count', { 
-        user_id: (await supabase.auth.getUser()).data.user?.id,
-        call_id: openCallId 
-      });
+      .from('submissions')
+      .select('id', { count: 'exact' })
+      .eq('artist_id', user.user.id)
+      .eq('open_call_id', openCallId)
+      .in('payment_status', ['paid', 'free']);
 
     if (error) throw error;
-    return data || 0;
+    return data?.length || 0;
   };
 
   return {

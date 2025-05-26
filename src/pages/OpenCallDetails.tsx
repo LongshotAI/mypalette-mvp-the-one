@@ -22,7 +22,7 @@ const OpenCallDetails = () => {
         .from('open_calls')
         .select(`
           *,
-          profiles(username, first_name, last_name, organization_name)
+          profiles(username, first_name, last_name)
         `)
         .eq('id', id)
         .single();
@@ -172,16 +172,6 @@ const OpenCallDetails = () => {
                       </p>
                     </div>
                   </div>
-
-                  {openCall.prize_details && (
-                    <div className="flex items-center gap-2">
-                      <Award className="h-5 w-5 text-muted-foreground" />
-                      <div>
-                        <p className="font-medium">Prize</p>
-                        <p className="text-sm text-muted-foreground">{openCall.prize_details}</p>
-                      </div>
-                    </div>
-                  )}
                 </div>
                 
                 {!isExpired && openCall.status === 'live' && (
@@ -205,22 +195,6 @@ const OpenCallDetails = () => {
                 </div>
               </CardContent>
             </Card>
-
-            {/* Submission Guidelines */}
-            {openCall.submission_guidelines && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Submission Guidelines</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="prose max-w-none">
-                    <p className="text-muted-foreground whitespace-pre-wrap">
-                      {openCall.submission_guidelines}
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
 
             {/* Requirements */}
             {openCall.submission_requirements && (
