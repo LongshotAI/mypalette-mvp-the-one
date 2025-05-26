@@ -1,7 +1,9 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import type { User, Session } from '@supabase/supabase-js';
 
-interface User {
+interface AuthUser {
   id: string;
   email: string;
   firstName: string;
@@ -10,7 +12,8 @@ interface User {
 }
 
 interface AuthContextType {
-  user: User | null;
+  user: AuthUser | null;
+  session: Session | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
@@ -39,45 +42,62 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check for existing session
-    const checkAuth = async () => {
-      try {
-        // TODO: Implement actual auth check
-        const savedUser = localStorage.getItem('mypalette_user');
-        if (savedUser) {
-          setUser(JSON.parse(savedUser));
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setSession(session);
+        if (session?.user) {
+          // Convert Supabase user to our AuthUser format
+          const authUser: AuthUser = {
+            id: session.user.id,
+            email: session.user.email || '',
+            firstName: session.user.user_metadata?.first_name || '',
+            lastName: session.user.user_metadata?.last_name || '',
+            role: session.user.email === 'lshot.crypto@gmail.com' ? 'admin' : 'user'
+          };
+          setUser(authUser);
+        } else {
+          setUser(null);
         }
-      } catch (error) {
-        console.error('Auth check failed:', error);
-      } finally {
         setIsLoading(false);
       }
-    };
+    );
 
-    checkAuth();
+    // Check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (session?.user) {
+        const authUser: AuthUser = {
+          id: session.user.id,
+          email: session.user.email || '',
+          firstName: session.user.user_metadata?.first_name || '',
+          lastName: session.user.user_metadata?.last_name || '',
+          role: session.user.email === 'lshot.crypto@gmail.com' ? 'admin' : 'user'
+        };
+        setUser(authUser);
+      }
+      setIsLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     try {
-      // TODO: Implement actual login API call
-      console.log('Login attempt:', { email, password });
-      
-      // Mock user data
-      const mockUser: User = {
-        id: '1',
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
-        firstName: 'John',
-        lastName: 'Doe',
-        role: email === 'lshot.crypto@gmail.com' ? 'admin' : 'user'
-      };
+        password
+      });
       
-      setUser(mockUser);
-      localStorage.setItem('mypalette_user', JSON.stringify(mockUser));
+      if (error) throw error;
+      
+      // User state will be updated by the auth state listener
     } catch (error) {
       console.error('Login failed:', error);
       throw error;
@@ -89,20 +109,20 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const register = async (data: RegisterData) => {
     setIsLoading(true);
     try {
-      // TODO: Implement actual registration API call
-      console.log('Registration attempt:', data);
-      
-      // Mock user data
-      const mockUser: User = {
-        id: '1',
+      const { error } = await supabase.auth.signUp({
         email: data.email,
-        firstName: data.firstName,
-        lastName: data.lastName,
-        role: 'user'
-      };
+        password: data.password,
+        options: {
+          data: {
+            first_name: data.firstName,
+            last_name: data.lastName
+          }
+        }
+      });
       
-      setUser(mockUser);
-      localStorage.setItem('mypalette_user', JSON.stringify(mockUser));
+      if (error) throw error;
+      
+      // User state will be updated by the auth state listener
     } catch (error) {
       console.error('Registration failed:', error);
       throw error;
@@ -111,13 +131,18 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('mypalette_user');
+  const logout = async () => {
+    try {
+      await supabase.auth.signOut();
+      // User state will be updated by the auth state listener
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
   };
 
   const value = {
     user,
+    session,
     isLoading,
     login,
     logout,
