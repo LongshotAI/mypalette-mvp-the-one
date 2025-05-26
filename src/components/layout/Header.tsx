@@ -12,8 +12,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  NavigationMenu,
+  NavigationMenuContent,
+  NavigationMenuItem,
+  NavigationMenuList,
+  NavigationMenuTrigger,
+} from '@/components/ui/navigation-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Menu, X, User, Settings, LogOut, Palette, Search, Plus } from 'lucide-react';
+import { Menu, X, User, Settings, LogOut, Palette, Search, Plus, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Header = () => {
@@ -90,6 +97,39 @@ const Header = () => {
             >
               Education
             </Link>
+            
+            {/* AIFilm3 Dropdown */}
+            <NavigationMenu>
+              <NavigationMenuList>
+                <NavigationMenuItem>
+                  <NavigationMenuTrigger className="text-sm font-medium hover:text-primary transition-colors">
+                    AIFilm3
+                  </NavigationMenuTrigger>
+                  <NavigationMenuContent className="p-4 w-48">
+                    <div className="grid gap-3">
+                      <Link 
+                        to="/aifilm3/info" 
+                        className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
+                      >
+                        <div className="text-sm font-medium leading-none">Project Info</div>
+                        <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
+                          Overview, events, and team details
+                        </p>
+                      </Link>
+                      <Link 
+                        to="/aifilm3/announcements" 
+                        className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
+                      >
+                        <div className="text-sm font-medium leading-none">Announcements</div>
+                        <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
+                          Latest news and updates
+                        </p>
+                      </Link>
+                    </div>
+                  </NavigationMenuContent>
+                </NavigationMenuItem>
+              </NavigationMenuList>
+            </NavigationMenu>
           </nav>
 
           {/* Right side */}
@@ -224,6 +264,22 @@ const Header = () => {
                 >
                   Education
                 </Link>
+                <div className="border-t pt-4">
+                  <Link 
+                    to="/aifilm3/info"
+                    className="text-sm font-medium hover:text-primary transition-colors block pb-2"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    AIFilm3 Info
+                  </Link>
+                  <Link 
+                    to="/aifilm3/announcements"
+                    className="text-sm font-medium hover:text-primary transition-colors block"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    AIFilm3 Announcements
+                  </Link>
+                </div>
                 {user && (
                   <>
                     <div className="border-t pt-4 mt-4">

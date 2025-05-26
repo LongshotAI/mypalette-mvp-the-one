@@ -24,6 +24,10 @@ import Education from "@/pages/Education";
 import EducationCategory from "@/pages/EducationCategory";
 import EducationContent from "@/pages/EducationContent";
 
+// AIFilm3 pages
+import AIFilm3Info from "@/pages/aifilm3/AIFilm3Info";
+import AIFilm3Announcements from "@/pages/aifilm3/AIFilm3Announcements";
+
 // Protected pages
 import Dashboard from "@/pages/Dashboard";
 import MyPortfolios from "@/pages/MyPortfolios";
@@ -71,6 +75,10 @@ const App = () => (
                 <Route path="/education" element={<Education />} />
                 <Route path="/education/:category" element={<EducationCategory />} />
                 <Route path="/education/content/:slug" element={<EducationContent />} />
+
+                {/* AIFilm3 routes */}
+                <Route path="/aifilm3/info" element={<AIFilm3Info />} />
+                <Route path="/aifilm3/announcements" element={<AIFilm3Announcements />} />
 
                 {/* Protected routes */}
                 <Route path="/dashboard" element={
