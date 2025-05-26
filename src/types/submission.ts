@@ -16,6 +16,32 @@ export interface SubmissionFile {
   created_at: string;
 }
 
+export interface SubmissionWorkflow {
+  id: string;
+  submission_id: string;
+  status: string;
+  updated_by?: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SubmissionReview {
+  id: string;
+  submission_id: string;
+  reviewer_id: string;
+  rating?: number;
+  technical_quality_score?: number;
+  artistic_merit_score?: number;
+  theme_relevance_score?: number;
+  overall_score?: number;
+  review_notes?: string;
+  private_notes?: string;
+  review_status: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Submission {
   id: string;
   open_call_id: string;
@@ -27,6 +53,12 @@ export interface Submission {
   is_selected: boolean;
   curator_notes?: string;
   submitted_at: string;
+  // New fields that exist in database but missing from types
+  submission_title?: string;
+  submission_description?: string;
+  artist_statement?: string;
+  payment_amount?: number;
+  is_first_submission?: boolean;
   profiles?: {
     username?: string;
     first_name?: string;
@@ -36,5 +68,9 @@ export interface Submission {
   };
   open_calls?: {
     title: string;
+    organization_name?: string;
   };
+  // Relations that we're joining in queries
+  submission_workflow?: SubmissionWorkflow[];
+  submission_reviews?: SubmissionReview[];
 }

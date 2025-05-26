@@ -37,17 +37,10 @@ const SubmissionReview = ({ openCallId }: SubmissionReviewProps) => {
   const { data: submissions, isLoading } = useQuery({
     queryKey: ['submissions-review', openCallId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('submissions')
-        .select(`
-          *,
-          profiles(username, first_name, last_name, avatar_url, email),
-          submission_workflow(status, notes, created_at),
-          submission_reviews(rating, overall_score, review_notes, review_status)
-        `)
-        .eq('open_call_id', openCallId)
-        .in('payment_status', ['paid', 'free'])
-        .order('submitted_at', { ascending: false });
+      // Use SQL function to get submissions with reviews and workflow
+      const { data, error } = await supabase.rpc('get_submissions_for_review', {
+        p_open_call_id: openCallId
+      });
 
       if (error) throw error;
       return data as Submission[];
@@ -59,20 +52,17 @@ const SubmissionReview = ({ openCallId }: SubmissionReviewProps) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      const { error } = await supabase
-        .from('submission_reviews')
-        .upsert({
-          submission_id: submissionId,
-          reviewer_id: user.id,
-          rating: reviewData.rating,
-          technical_quality_score: reviewData.technicalQuality,
-          artistic_merit_score: reviewData.artisticMerit,
-          theme_relevance_score: reviewData.themeRelevance,
-          overall_score: reviewData.overallScore,
-          review_notes: reviewData.reviewNotes,
-          private_notes: reviewData.privateNotes,
-          review_status: 'completed'
-        });
+      const { error } = await supabase.rpc('create_submission_review', {
+        p_submission_id: submissionId,
+        p_reviewer_id: user.id,
+        p_rating: reviewData.rating,
+        p_technical_quality_score: reviewData.technicalQuality,
+        p_artistic_merit_score: reviewData.artisticMerit,
+        p_theme_relevance_score: reviewData.themeRelevance,
+        p_overall_score: reviewData.overallScore,
+        p_review_notes: reviewData.reviewNotes,
+        p_private_notes: reviewData.privateNotes
+      });
 
       if (error) throw error;
     },
@@ -84,15 +74,6 @@ const SubmissionReview = ({ openCallId }: SubmissionReviewProps) => {
       });
     },
   });
-
-  const handleSelectSubmission = async (submission: Submission, selected: boolean) => {
-    updateSubmissionStatus.mutate({
-      submissionId: submission.id,
-      status: selected ? 'selected' : 'rejected',
-      notes: curatorNotes
-    });
-    setCuratorNotes('');
-  };
 
   const getSubmissionData = (submission: Submission): SubmissionData => {
     return (submission.submission_data as SubmissionData) || {};
@@ -106,6 +87,21 @@ const SubmissionReview = ({ openCallId }: SubmissionReviewProps) => {
       case 'shortlisted': return 'bg-blue-500';
       default: return 'bg-gray-500';
     }
+  };
+
+  const getSubmissionTitle = (submission: Submission): string => {
+    const submissionData = getSubmissionData(submission);
+    return submission.submission_title || submissionData.title || 'Untitled Submission';
+  };
+
+  const getSubmissionDescription = (submission: Submission): string => {
+    const submissionData = getSubmissionData(submission);
+    return submission.submission_description || submissionData.description || 'No description provided';
+  };
+
+  const getArtistStatement = (submission: Submission): string => {
+    const submissionData = getSubmissionData(submission);
+    return submission.artist_statement || submissionData.artist_statement || 'No artist statement provided';
   };
 
   if (isLoading) {
@@ -149,7 +145,7 @@ const SubmissionReview = ({ openCallId }: SubmissionReviewProps) => {
                 <div className="flex justify-between items-start">
                   <div>
                     <CardTitle className="text-lg">
-                      {submission.submission_title || submissionData.title || 'Untitled Submission'}
+                      {getSubmissionTitle(submission)}
                     </CardTitle>
                     <p className="text-sm text-gray-600">
                       by {submission.profiles?.first_name || 'Unknown'} {submission.profiles?.last_name || ''}
@@ -181,14 +177,14 @@ const SubmissionReview = ({ openCallId }: SubmissionReviewProps) => {
               </CardHeader>
               <CardContent className="space-y-4">
                 <p className="text-sm text-gray-700 line-clamp-3">
-                  {submission.submission_description || submissionData.description || 'No description provided'}
+                  {getSubmissionDescription(submission)}
                 </p>
 
-                {(submission.artist_statement || submissionData.artist_statement) && (
+                {getArtistStatement(submission) !== 'No artist statement provided' && (
                   <div className="bg-gray-50 p-3 rounded text-sm">
                     <strong>Artist Statement:</strong>
                     <p className="mt-1 line-clamp-2">
-                      {submission.artist_statement || submissionData.artist_statement}
+                      {getArtistStatement(submission)}
                     </p>
                   </div>
                 )}
@@ -223,7 +219,7 @@ const SubmissionReview = ({ openCallId }: SubmissionReviewProps) => {
                     <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
                       <DialogHeader>
                         <DialogTitle>
-                          {submission.submission_title || submissionData.title || 'Submission Details'}
+                          {getSubmissionTitle(submission)}
                         </DialogTitle>
                       </DialogHeader>
                       <div className="space-y-6">
@@ -257,14 +253,14 @@ const SubmissionReview = ({ openCallId }: SubmissionReviewProps) => {
                         <div>
                           <h4 className="font-semibold">Description</h4>
                           <p className="text-sm text-gray-700">
-                            {submission.submission_description || submissionData.description || 'No description provided'}
+                            {getSubmissionDescription(submission)}
                           </p>
                         </div>
                         
                         <div>
                           <h4 className="font-semibold">Artist Statement</h4>
                           <p className="text-sm text-gray-700">
-                            {submission.artist_statement || submissionData.artist_statement || 'No artist statement provided'}
+                            {getArtistStatement(submission)}
                           </p>
                         </div>
                         
@@ -400,63 +396,24 @@ const SubmissionReview = ({ openCallId }: SubmissionReviewProps) => {
                     </DialogContent>
                   </Dialog>
 
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button size="sm" variant="outline">
-                        <MessageSquare className="h-4 w-4 mr-1" />
-                        Update Status
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Update Submission Status</DialogTitle>
-                      </DialogHeader>
-                      <div className="space-y-4">
-                        <div>
-                          <Label>New Status</Label>
-                          <Select onValueChange={(value) => setCuratorNotes('')}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select status" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="under_review">Under Review</SelectItem>
-                              <SelectItem value="shortlisted">Shortlisted</SelectItem>
-                              <SelectItem value="selected">Selected</SelectItem>
-                              <SelectItem value="rejected">Rejected</SelectItem>
-                              <SelectItem value="waitlisted">Waitlisted</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        
-                        <div>
-                          <Label>Notes</Label>
-                          <Textarea
-                            placeholder="Add notes about this status change"
-                            value={curatorNotes}
-                            onChange={(e) => setCuratorNotes(e.target.value)}
-                          />
-                        </div>
-
-                        <div className="flex gap-2">
-                          <Button
-                            onClick={() => {
-                              const statusValue = document.querySelector('[role="combobox"]')?.getAttribute('data-value');
-                              if (statusValue) {
-                                updateSubmissionStatus.mutate({
-                                  submissionId: submission.id,
-                                  status: statusValue,
-                                  notes: curatorNotes
-                                });
-                              }
-                            }}
-                            className="flex-1"
-                          >
-                            Update Status
-                          </Button>
-                        </div>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    onClick={() => {
+                      const newStatus = prompt('Enter new status (under_review, shortlisted, selected, rejected, waitlisted):');
+                      const notes = prompt('Enter notes (optional):');
+                      if (newStatus) {
+                        updateSubmissionStatus.mutate({
+                          submissionId: submission.id,
+                          status: newStatus,
+                          notes: notes || undefined
+                        });
+                      }
+                    }}
+                  >
+                    <MessageSquare className="h-4 w-4 mr-1" />
+                    Update Status
+                  </Button>
                 </div>
               </CardContent>
             </Card>

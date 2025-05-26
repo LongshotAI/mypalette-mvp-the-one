@@ -70,33 +70,30 @@ export const useHostApplications = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      const { data, error } = await supabase
-        .from('host_applications')
-        .insert({
-          applicant_id: user.id,
-          organization_name: applicationData.organizationName,
-          organization_type: applicationData.organizationType,
-          website_url: applicationData.websiteUrl,
-          contact_email: applicationData.contactEmail,
-          phone: applicationData.phone,
-          address: applicationData.address,
-          proposed_title: applicationData.proposedTitle,
-          proposed_description: applicationData.proposedDescription,
-          proposed_theme: applicationData.proposedTheme,
-          proposed_deadline: applicationData.proposedDeadline,
-          proposed_exhibition_dates: applicationData.proposedExhibitionDates,
-          proposed_venue: applicationData.proposedVenue,
-          proposed_budget: applicationData.proposedBudget,
-          proposed_prize_amount: applicationData.proposedPrizeAmount || 0,
-          target_submissions: applicationData.targetSubmissions || 100,
-          experience_description: applicationData.experienceDescription,
-          previous_exhibitions: applicationData.previousExhibitions,
-          curatorial_statement: applicationData.curatorialStatement,
-          technical_requirements: applicationData.technicalRequirements,
-          marketing_plan: applicationData.marketingPlan,
-        })
-        .select()
-        .single();
+      // Use SQL query instead of .from() to avoid type issues
+      const { data, error } = await supabase.rpc('create_host_application', {
+        p_applicant_id: user.id,
+        p_organization_name: applicationData.organizationName,
+        p_organization_type: applicationData.organizationType,
+        p_website_url: applicationData.websiteUrl,
+        p_contact_email: applicationData.contactEmail,
+        p_phone: applicationData.phone,
+        p_address: applicationData.address,
+        p_proposed_title: applicationData.proposedTitle,
+        p_proposed_description: applicationData.proposedDescription,
+        p_proposed_theme: applicationData.proposedTheme,
+        p_proposed_deadline: applicationData.proposedDeadline,
+        p_proposed_exhibition_dates: applicationData.proposedExhibitionDates,
+        p_proposed_venue: applicationData.proposedVenue,
+        p_proposed_budget: applicationData.proposedBudget,
+        p_proposed_prize_amount: applicationData.proposedPrizeAmount || 0,
+        p_target_submissions: applicationData.targetSubmissions || 100,
+        p_experience_description: applicationData.experienceDescription,
+        p_previous_exhibitions: applicationData.previousExhibitions,
+        p_curatorial_statement: applicationData.curatorialStatement,
+        p_technical_requirements: applicationData.technicalRequirements,
+        p_marketing_plan: applicationData.marketingPlan
+      });
 
       if (error) throw error;
       return data;
@@ -123,11 +120,10 @@ export const useHostApplications = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      const { data, error } = await supabase
-        .from('host_applications')
-        .select('*')
-        .eq('applicant_id', user.id)
-        .order('created_at', { ascending: false });
+      // Use SQL query to avoid type issues
+      const { data, error } = await supabase.rpc('get_user_host_applications', {
+        p_user_id: user.id
+      });
 
       if (error) throw error;
       return data as HostApplication[];
@@ -137,13 +133,8 @@ export const useHostApplications = () => {
   const getAllHostApplications = useQuery({
     queryKey: ['admin-host-applications'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('host_applications')
-        .select(`
-          *,
-          profiles(username, first_name, last_name)
-        `)
-        .order('created_at', { ascending: false });
+      // Use SQL query to avoid type issues
+      const { data, error } = await supabase.rpc('get_all_host_applications');
 
       if (error) throw error;
       return data as HostApplication[];
@@ -163,15 +154,12 @@ export const useHostApplications = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      const { error } = await supabase
-        .from('host_applications')
-        .update({
-          application_status: status,
-          admin_notes: notes,
-          reviewed_by: user.id,
-          reviewed_at: new Date().toISOString()
-        })
-        .eq('id', applicationId);
+      const { error } = await supabase.rpc('update_host_application_status', {
+        p_application_id: applicationId,
+        p_status: status,
+        p_notes: notes,
+        p_reviewer_id: user.id
+      });
 
       if (error) throw error;
     },
