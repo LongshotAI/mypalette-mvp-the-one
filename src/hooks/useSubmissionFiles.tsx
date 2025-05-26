@@ -49,12 +49,22 @@ export const useSubmissionFiles = () => {
 
         existingFiles.push(newFile);
 
+        // Convert SubmissionFile objects to plain JSON objects
+        const filesAsJson = existingFiles.map(f => ({
+          id: f.id,
+          file_name: f.file_name,
+          file_url: f.file_url,
+          file_type: f.file_type,
+          file_size: f.file_size,
+          created_at: f.created_at
+        }));
+
         await supabase
           .from('submissions')
           .update({
             submission_data: {
               ...existingData,
-              files: existingFiles
+              files: filesAsJson
             }
           })
           .eq('id', submissionId);

@@ -2,6 +2,7 @@
 import { ReactNode } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAdminCheck } from '@/hooks/useAdminCheck';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 
 interface AdminRouteProps {
@@ -9,9 +10,10 @@ interface AdminRouteProps {
 }
 
 const AdminRoute = ({ children }: AdminRouteProps) => {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
+  const { data: userRole, isLoading: roleLoading } = useAdminCheck();
 
-  if (isLoading) {
+  if (authLoading || roleLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <LoadingSpinner size="lg" />
@@ -23,7 +25,7 @@ const AdminRoute = ({ children }: AdminRouteProps) => {
     return <Navigate to="/auth/login" replace />;
   }
 
-  if (user.role !== 'admin') {
+  if (userRole !== 'admin') {
     return <Navigate to="/dashboard" replace />;
   }
 
