@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -8,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { usePortfolios } from '@/hooks/usePortfolios';
 import Layout from '@/components/layout/Layout';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import OpenCallsPreview from '@/components/landing/OpenCallsPreview';
 import { Eye, Heart, Palette, Users, Briefcase, BookOpen, ArrowRight, Star } from 'lucide-react';
 
 const Landing = () => {
@@ -57,21 +57,21 @@ const Landing = () => {
             >
               <Badge variant="outline" className="mb-4 px-4 py-2">
                 <Star className="h-4 w-4 mr-2" />
-                Join the Creative Community
+                Portfolio + Opportunities Platform
               </Badge>
               <h1 className="text-4xl sm:text-6xl font-bold mb-6 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
                 Your Art, Your Platform, Your Success
               </h1>
               <p className="text-xl text-muted-foreground mb-8 max-w-3xl mx-auto">
-                MyPalette empowers artists to showcase their work, connect with opportunities, 
-                and build their creative careers with professional portfolio tools and a thriving community.
+                Create stunning portfolios, discover opportunities, and connect with the global art community. 
+                Submit to open calls with your first submission always free!
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Button size="lg" onClick={() => navigate('/auth/register')} className="px-8">
-                  Start Creating Today
+                  Create Your Portfolio
                 </Button>
-                <Button variant="outline" size="lg" onClick={() => navigate('/discover')}>
-                  Explore Portfolios
+                <Button variant="outline" size="lg" onClick={() => navigate('/open-calls')}>
+                  Explore Opportunities
                 </Button>
               </div>
             </motion.div>
@@ -97,6 +97,9 @@ const Landing = () => {
             </div>
           </div>
         </section>
+
+        {/* Open Calls Preview Section - NEW */}
+        <OpenCallsPreview />
 
         {/* Featured Portfolios Section */}
         <section className="py-20 px-4 sm:px-6 lg:px-8">
@@ -262,14 +265,14 @@ const Landing = () => {
             >
               <h2 className="text-3xl font-bold mb-4">Ready to Showcase Your Art?</h2>
               <p className="text-xl text-muted-foreground mb-8">
-                Join thousands of artists who are already building their careers on MyPalette
+                Join thousands of artists building their careers and discovering opportunities on MyPalette
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Button size="lg" onClick={() => navigate('/auth/register')} className="px-8">
                   Create Your Portfolio
                 </Button>
                 <Button variant="outline" size="lg" onClick={() => navigate('/open-calls')}>
-                  Explore Opportunities
+                  Browse Open Calls
                 </Button>
               </div>
             </motion.div>
