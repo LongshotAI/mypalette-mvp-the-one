@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/integrations/supabase/client';
 import Layout from '@/components/layout/Layout';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { Eye, Heart, Palette, Users, Briefcase, BookOpen, ArrowRight, Star } from 'lucide-react';
@@ -34,38 +34,59 @@ const Landing = () => {
   useEffect(() => {
     const fetchFeaturedPortfolios = async () => {
       try {
-        const { data, error } = await supabase
-          .from('portfolios')
-          .select(`
-            id,
-            title,
-            description,
-            slug,
-            cover_image,
-            view_count,
-            user_id,
-            profiles!inner (
-              username,
-              first_name,
-              last_name,
-              avatar_url,
-              artistic_medium
-            )
-          `)
-          .eq('is_public', true)
-          .eq('is_featured', true)
-          .order('view_count', { ascending: false })
-          .limit(6);
-
-        if (error) throw error;
+        // For now, we'll use mock data since the database tables don't exist yet
+        const mockPortfolios: FeaturedPortfolio[] = [
+          {
+            id: '1',
+            title: 'Digital Dreams',
+            description: 'A collection of surreal digital artwork',
+            slug: 'digital-dreams',
+            cover_image: '',
+            view_count: 1250,
+            user_id: '1',
+            profiles: {
+              username: 'artist1',
+              first_name: 'Sarah',
+              last_name: 'Johnson',
+              avatar_url: '',
+              artistic_medium: 'Digital Art'
+            }
+          },
+          {
+            id: '2',
+            title: 'Abstract Expressions',
+            description: 'Bold and vibrant abstract compositions',
+            slug: 'abstract-expressions',
+            cover_image: '',
+            view_count: 980,
+            user_id: '2',
+            profiles: {
+              username: 'artist2',
+              first_name: 'Mike',
+              last_name: 'Chen',
+              avatar_url: '',
+              artistic_medium: 'Mixed Media'
+            }
+          },
+          {
+            id: '3',
+            title: 'Urban Photography',
+            description: 'Street photography capturing city life',
+            slug: 'urban-photography',
+            cover_image: '',
+            view_count: 2100,
+            user_id: '3',
+            profiles: {
+              username: 'artist3',
+              first_name: 'Emma',
+              last_name: 'Rodriguez',
+              avatar_url: '',
+              artistic_medium: 'Photography'
+            }
+          }
+        ];
         
-        // Transform the data to match our interface
-        const transformedData: FeaturedPortfolio[] = (data || []).map(item => ({
-          ...item,
-          profiles: Array.isArray(item.profiles) ? item.profiles[0] : item.profiles
-        }));
-        
-        setFeaturedPortfolios(transformedData);
+        setFeaturedPortfolios(mockPortfolios);
       } catch (error) {
         console.error('Error fetching featured portfolios:', error);
       } finally {
