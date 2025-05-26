@@ -6,7 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CheckCircle, XCircle, Clock, Search, Filter } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
@@ -23,7 +22,7 @@ const AdminOpenCallManagement = () => {
         .from('open_calls')
         .select(`
           *,
-          profiles(username, first_name, last_name, email)
+          profiles(username, first_name, last_name)
         `)
         .order('created_at', { ascending: false });
 
@@ -127,8 +126,8 @@ const AdminOpenCallManagement = () => {
                 <div>
                   <CardTitle className="text-lg">{call.title}</CardTitle>
                   <p className="text-sm text-gray-600">
-                    by {call.profiles?.first_name} {call.profiles?.last_name} 
-                    ({call.profiles?.username})
+                    by {call.profiles?.first_name || 'Unknown'} {call.profiles?.last_name || ''} 
+                    ({call.profiles?.username || 'No username'})
                   </p>
                   {call.organization_name && (
                     <p className="text-sm text-gray-500">{call.organization_name}</p>

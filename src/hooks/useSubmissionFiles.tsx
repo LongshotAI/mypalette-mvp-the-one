@@ -2,16 +2,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-
-export interface SubmissionFile {
-  id: string;
-  submission_id: string;
-  file_name: string;
-  file_url: string;
-  file_type: string;
-  file_size: number;
-  created_at: string;
-}
+import { SubmissionData, SubmissionFile } from '@/types/submission';
 
 export const useSubmissionFiles = () => {
   const queryClient = useQueryClient();
@@ -44,37 +35,31 @@ export const useSubmissionFiles = () => {
           .eq('id', submissionId)
           .single();
 
-        const existingData = submission?.submission_data || {};
-        const files = existingData.files || [];
+        const existingData = (submission?.submission_data as SubmissionData) || {};
+        const existingFiles = existingData.files || [];
         
-        files.push({
+        const newFile: SubmissionFile = {
           id: Math.random().toString(),
-          file_name: file.name,
-          file_url: publicUrl,
-          file_type: file.type,
-          file_size: file.size,
-          created_at: new Date().toISOString()
-        });
-
-        await supabase
-          .from('submissions')
-          .update({
-            submission_data: {
-              ...existingData,
-              files
-            }
-          })
-          .eq('id', submissionId);
-
-        return {
-          id: Math.random().toString(),
-          submission_id: submissionId,
           file_name: file.name,
           file_url: publicUrl,
           file_type: file.type,
           file_size: file.size,
           created_at: new Date().toISOString()
         };
+
+        existingFiles.push(newFile);
+
+        await supabase
+          .from('submissions')
+          .update({
+            submission_data: {
+              ...existingData,
+              files: existingFiles
+            }
+          })
+          .eq('id', submissionId);
+
+        return newFile;
       });
 
       const results = await Promise.all(uploadPromises);
@@ -114,7 +99,8 @@ export const useSubmissionFiles = () => {
           throw error;
         }
         
-        const files = data?.submission_data?.files || [];
+        const submissionData = data?.submission_data as SubmissionData;
+        const files = submissionData?.files || [];
         console.log('Submission files fetched:', files);
         return files as SubmissionFile[];
       },

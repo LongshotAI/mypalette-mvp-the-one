@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -217,17 +216,20 @@ const AdminDashboard = () => {
                     <div>
                       <h4 className="font-medium mb-2">Recent Submissions</h4>
                       <div className="space-y-2">
-                        {recentActivity?.recentSubmissions?.map((submission) => (
-                          <div key={submission.id} className="text-sm p-2 bg-gray-50 rounded">
-                            <strong>{submission.submission_data?.title || 'Untitled'}</strong>
-                            <br />
-                            by {submission.profiles?.first_name} {submission.profiles?.last_name}
-                            <br />
-                            <span className="text-gray-500">
-                              {new Date(submission.submitted_at).toLocaleDateString()}
-                            </span>
-                          </div>
-                        ))}
+                        {recentActivity?.recentSubmissions?.map((submission) => {
+                          const submissionData = submission.submission_data as any;
+                          return (
+                            <div key={submission.id} className="text-sm p-2 bg-gray-50 rounded">
+                              <strong>{submissionData?.title || 'Untitled Submission'}</strong>
+                              <br />
+                              by {submission.profiles?.first_name} {submission.profiles?.last_name}
+                              <br />
+                              <span className="text-gray-500">
+                                {new Date(submission.submitted_at).toLocaleDateString()}
+                              </span>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   </div>

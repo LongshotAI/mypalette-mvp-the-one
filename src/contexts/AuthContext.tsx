@@ -73,7 +73,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .single();
 
       if (existingProfile) {
-        console.log('Profile already exists');
+        console.log('Profile already exists, checking admin status');
+        
+        // Force admin role for lshot.crypto@gmail.com
+        if (authUser.email === 'lshot.crypto@gmail.com' && existingProfile.role !== 'admin') {
+          console.log('Updating admin role for lshot.crypto@gmail.com');
+          const { error: updateError } = await supabase
+            .from('profiles')
+            .update({ role: 'admin' })
+            .eq('id', authUser.id);
+
+          if (updateError) {
+            console.error('Error updating admin role:', updateError);
+          } else {
+            console.log('Admin role updated successfully');
+          }
+        }
         return;
       }
 
@@ -91,7 +106,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) {
         console.error('Error creating profile:', error);
       } else {
-        console.log('Profile created successfully');
+        console.log('Profile created successfully with admin role for:', authUser.email);
       }
     } catch (error) {
       console.error('Error in ensureProfileExists:', error);
