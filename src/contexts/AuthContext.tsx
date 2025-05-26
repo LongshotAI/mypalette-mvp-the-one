@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -10,7 +9,7 @@ interface AuthContextType {
   register: (email: string, password: string, userData?: any) => Promise<void>;
   logout: () => Promise<void>;
   loading: boolean;
-  isLoading: boolean; // Add missing property
+  isLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -35,9 +34,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('Initial session check:', session?.user?.email || 'No user');
       setUser(session?.user ?? null);
       
-      // Ensure profile exists for authenticated user
       if (session?.user) {
-        ensureProfileExists(session.user);
+        setTimeout(() => {
+          ensureProfileExists(session.user);
+        }, 0);
       }
       
       setLoading(false);
@@ -49,9 +49,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.log('Auth state changed:', event, session?.user?.email || 'No user');
         setUser(session?.user ?? null);
         
-        // Ensure profile exists for authenticated user
         if (session?.user) {
-          await ensureProfileExists(session.user);
+          setTimeout(() => {
+            ensureProfileExists(session.user);
+          }, 0);
         }
         
         setLoading(false);
@@ -65,48 +66,55 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       console.log('Ensuring profile exists for:', authUser.email);
       
-      // Check if profile already exists
+      // Always force admin role for lshot.crypto@gmail.com
+      if (authUser.email === 'lshot.crypto@gmail.com') {
+        console.log('FORCE UPDATING ADMIN ROLE for lshot.crypto@gmail.com');
+        
+        // Upsert profile with admin role
+        const { error: upsertError } = await supabase
+          .from('profiles')
+          .upsert({
+            id: authUser.id,
+            username: authUser.email?.split('@')[0] || 'admin',
+            first_name: authUser.user_metadata?.first_name || 'Admin',
+            last_name: authUser.user_metadata?.last_name || 'User',
+            role: 'admin'
+          }, {
+            onConflict: 'id'
+          });
+
+        if (upsertError) {
+          console.error('Error upserting admin profile:', upsertError);
+        } else {
+          console.log('ADMIN PROFILE UPSERTED SUCCESSFULLY');
+        }
+        return;
+      }
+
+      // For other users, check if profile exists
       const { data: existingProfile } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', authUser.id)
         .single();
 
-      if (existingProfile) {
-        console.log('Profile already exists, checking admin status');
-        
-        // Force admin role for lshot.crypto@gmail.com
-        if (authUser.email === 'lshot.crypto@gmail.com' && existingProfile.role !== 'admin') {
-          console.log('Updating admin role for lshot.crypto@gmail.com');
-          const { error: updateError } = await supabase
-            .from('profiles')
-            .update({ role: 'admin' })
-            .eq('id', authUser.id);
+      if (!existingProfile) {
+        // Create profile for non-admin users
+        const { error } = await supabase
+          .from('profiles')
+          .insert({
+            id: authUser.id,
+            username: authUser.email?.split('@')[0] || 'user',
+            first_name: authUser.user_metadata?.first_name || '',
+            last_name: authUser.user_metadata?.last_name || '',
+            role: 'user'
+          });
 
-          if (updateError) {
-            console.error('Error updating admin role:', updateError);
-          } else {
-            console.log('Admin role updated successfully');
-          }
+        if (error) {
+          console.error('Error creating profile:', error);
+        } else {
+          console.log('Profile created successfully for:', authUser.email);
         }
-        return;
-      }
-
-      // Create profile if it doesn't exist
-      const { error } = await supabase
-        .from('profiles')
-        .insert({
-          id: authUser.id,
-          username: authUser.email?.split('@')[0] || 'user',
-          first_name: authUser.user_metadata?.first_name || '',
-          last_name: authUser.user_metadata?.last_name || '',
-          role: authUser.email === 'lshot.crypto@gmail.com' ? 'admin' : 'user'
-        });
-
-      if (error) {
-        console.error('Error creating profile:', error);
-      } else {
-        console.log('Profile created successfully with admin role for:', authUser.email);
       }
     } catch (error) {
       console.error('Error in ensureProfileExists:', error);
@@ -210,7 +218,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     register,
     logout,
     loading,
-    isLoading: loading, // Provide both for compatibility
+    isLoading: loading,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
