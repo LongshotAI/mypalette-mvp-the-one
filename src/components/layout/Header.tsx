@@ -1,9 +1,10 @@
 
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useProfile } from '@/hooks/useProfile';
 import { Button } from '@/components/ui/button';
-import { 
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -11,43 +12,43 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { 
-  Palette,
-  Menu,
-  X,
-  User,
-  LogOut,
-  Settings,
-  Briefcase,
-  Users,
-  Home,
-  PlusCircle,
-  Search,
-  BookOpen,
-  Shield
-} from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Menu, X, User, Settings, LogOut, Palette, Search, Plus } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const Header = () => {
+  const { user, logout } = useAuth();
+  const { profile } = useProfile();
   const navigate = useNavigate();
-  const { user, signOut } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const navigation = [
-    { name: 'Home', href: '/', icon: Home },
-    { name: 'Discover', href: '/discover', icon: Search },
-    { name: 'Open Calls', href: '/open-calls', icon: Briefcase },
-    { name: 'Education', href: '/education', icon: BookOpen },
-  ];
-
-  const userNavigation = user ? [
-    { name: 'My Portfolios', href: '/my-portfolios', icon: Palette },
-    { name: 'My Submissions', href: '/submissions', icon: Briefcase },
-    { name: 'Profile', href: '/profile', icon: User },
-  ] : [];
-
   const handleSignOut = async () => {
-    await signOut();
-    navigate('/');
+    try {
+      logout();
+      navigate('/');
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
+
+  const getInitials = (firstName?: string | null, lastName?: string | null) => {
+    if (firstName && lastName) {
+      return `${firstName[0]}${lastName[0]}`.toUpperCase();
+    }
+    if (firstName) {
+      return firstName[0].toUpperCase();
+    }
+    if (user?.email) {
+      return user.email[0].toUpperCase();
+    }
+    return 'U';
+  };
+
+  const getDisplayName = () => {
+    if (profile?.first_name && profile?.last_name) {
+      return `${profile.first_name} ${profile.last_name}`;
+    }
+    return profile?.username || 'User';
   };
 
   return (
@@ -56,193 +57,197 @@ const Header = () => {
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <Palette className="h-5 w-5 text-white" />
+            <img 
+              src="/lovable-uploads/17ab5ff7-92d6-4e07-ba7a-67585c399503.png" 
+              alt="MyPalette Logo" 
+              className="h-8 w-auto"
+            />
+            <div className="hidden sm:block">
+              <h1 className="text-xl font-bold bg-gradient-to-r from-red-500 via-green-500 to-blue-500 bg-clip-text text-transparent">
+                MyPalette
+              </h1>
+              <p className="text-xs text-muted-foreground">Showcase Your Art, Discover Opportunities</p>
             </div>
-            <span className="font-bold text-xl">MyPalette</span>
           </Link>
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-6">
-            {navigation.map((item) => (
-              <Link
-                key={item.name}
-                to={item.href}
-                className="text-sm font-medium transition-colors hover:text-primary"
-              >
-                {item.name}
-              </Link>
-            ))}
+            <Link 
+              to="/discover" 
+              className="text-sm font-medium hover:text-primary transition-colors"
+            >
+              Discover
+            </Link>
+            <Link 
+              to="/open-calls" 
+              className="text-sm font-medium hover:text-primary transition-colors"
+            >
+              Open Calls
+            </Link>
+            <Link 
+              to="/education" 
+              className="text-sm font-medium hover:text-primary transition-colors"
+            >
+              Education
+            </Link>
           </nav>
 
-          {/* Desktop Actions */}
-          <div className="hidden md:flex items-center space-x-4">
+          {/* Right side */}
+          <div className="flex items-center space-x-4">
+            {/* Search */}
+            <Button variant="ghost" size="sm" className="hidden sm:flex">
+              <Search className="h-4 w-4" />
+            </Button>
+
             {user ? (
-              <>
-                <Button variant="ghost" size="sm" onClick={() => navigate('/create-portfolio')}>
-                  <PlusCircle className="h-4 w-4 mr-2" />
-                  Create
+              <div className="flex items-center space-x-2">
+                {/* Create button */}
+                <Button
+                  onClick={() => navigate('/my-portfolios')}
+                  size="sm"
+                  className="hidden sm:flex items-center space-x-1"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>Create</span>
                 </Button>
-                
+
+                {/* User menu */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm" className="relative">
-                      <User className="h-4 w-4" />
+                    <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={profile?.avatar_url || ""} alt="Profile" />
+                        <AvatarFallback>
+                          {getInitials(profile?.first_name, profile?.last_name)}
+                        </AvatarFallback>
+                      </Avatar>
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56">
-                    <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                  <DropdownMenuContent className="w-56" align="end" forceMount>
+                    <DropdownMenuLabel className="font-normal">
+                      <div className="flex flex-col space-y-1">
+                        <p className="text-sm font-medium leading-none">
+                          {getDisplayName()}
+                        </p>
+                        <p className="text-xs leading-none text-muted-foreground">
+                          {user?.email}
+                        </p>
+                      </div>
+                    </DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    
-                    {userNavigation.map((item) => (
-                      <DropdownMenuItem key={item.name} onClick={() => navigate(item.href)}>
-                        <item.icon className="mr-2 h-4 w-4" />
-                        {item.name}
-                      </DropdownMenuItem>
-                    ))}
-                    
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => navigate('/host-application')}>
-                      <Briefcase className="mr-2 h-4 w-4" />
-                      Host Open Call
+                    <DropdownMenuItem onClick={() => navigate('/dashboard')}>
+                      <User className="mr-2 h-4 w-4" />
+                      <span>Dashboard</span>
                     </DropdownMenuItem>
-                    
-                    {/* Admin link - only show for admin users */}
-                    <DropdownMenuItem onClick={() => navigate('/admin')}>
-                      <Shield className="mr-2 h-4 w-4" />
-                      Admin Dashboard
+                    <DropdownMenuItem onClick={() => navigate('/my-portfolios')}>
+                      <Palette className="mr-2 h-4 w-4" />
+                      <span>My Portfolios</span>
                     </DropdownMenuItem>
-                    
+                    <DropdownMenuItem onClick={() => navigate('/profile/settings')}>
+                      <Settings className="mr-2 h-4 w-4" />
+                      <span>Settings</span>
+                    </DropdownMenuItem>
+                    {profile?.role === 'admin' && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => navigate('/admin')}>
+                          <span>Admin Dashboard</span>
+                        </DropdownMenuItem>
+                      </>
+                    )}
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={handleSignOut}>
                       <LogOut className="mr-2 h-4 w-4" />
-                      Sign Out
+                      <span>Sign out</span>
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-              </>
+              </div>
             ) : (
               <div className="flex items-center space-x-2">
-                <Button variant="ghost" size="sm" onClick={() => navigate('/auth/login')}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate('/auth/login')}
+                >
                   Sign In
                 </Button>
-                <Button size="sm" onClick={() => navigate('/auth/register')}>
-                  Get Started
+                <Button
+                  size="sm"
+                  onClick={() => navigate('/auth/register')}
+                >
+                  Sign Up
                 </Button>
               </div>
             )}
-          </div>
 
-          {/* Mobile menu button */}
-          <div className="md:hidden">
+            {/* Mobile menu button */}
             <Button
               variant="ghost"
               size="sm"
+              className="md:hidden"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
-              {mobileMenuOpen ? (
-                <X className="h-5 w-5" />
-              ) : (
-                <Menu className="h-5 w-5" />
-              )}
+              {mobileMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
             </Button>
           </div>
         </div>
 
         {/* Mobile Navigation */}
-        {mobileMenuOpen && (
-          <div className="md:hidden border-t bg-background/95 backdrop-blur">
-            <div className="space-y-1 px-2 pb-3 pt-2">
-              {navigation.map((item) => (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  className="block px-3 py-2 text-base font-medium transition-colors hover:bg-muted rounded-md"
+        <AnimatePresence>
+          {mobileMenuOpen && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="md:hidden border-t"
+            >
+              <nav className="flex flex-col space-y-4 py-4">
+                <Link 
+                  to="/discover"
+                  className="text-sm font-medium hover:text-primary transition-colors"
                   onClick={() => setMobileMenuOpen(false)}
                 >
-                  <div className="flex items-center">
-                    <item.icon className="mr-3 h-4 w-4" />
-                    {item.name}
-                  </div>
+                  Discover
                 </Link>
-              ))}
-              
-              {user && (
-                <>
-                  <div className="border-t border-gray-200 my-2"></div>
-                  {userNavigation.map((item) => (
-                    <Link
-                      key={item.name}
-                      to={item.href}
-                      className="block px-3 py-2 text-base font-medium transition-colors hover:bg-muted rounded-md"
+                <Link 
+                  to="/open-calls"
+                  className="text-sm font-medium hover:text-primary transition-colors"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Open Calls
+                </Link>
+                <Link 
+                  to="/education"
+                  className="text-sm font-medium hover:text-primary transition-colors"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Education
+                </Link>
+                {user && (
+                  <>
+                    <div className="border-t pt-4 mt-4">
+                      <Link 
+                        to="/dashboard"
+                        className="text-sm font-medium hover:text-primary transition-colors"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        Dashboard
+                      </Link>
+                    </div>
+                    <Link 
+                      to="/my-portfolios"
+                      className="text-sm font-medium hover:text-primary transition-colors"
                       onClick={() => setMobileMenuOpen(false)}
                     >
-                      <div className="flex items-center">
-                        <item.icon className="mr-3 h-4 w-4" />
-                        {item.name}
-                      </div>
+                      My Portfolios
                     </Link>
-                  ))}
-                  
-                  <Link
-                    to="/host-application"
-                    className="block px-3 py-2 text-base font-medium transition-colors hover:bg-muted rounded-md"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    <div className="flex items-center">
-                      <Briefcase className="mr-3 h-4 w-4" />
-                      Host Open Call
-                    </div>
-                  </Link>
-                  
-                  <Link
-                    to="/admin"
-                    className="block px-3 py-2 text-base font-medium transition-colors hover:bg-muted rounded-md"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    <div className="flex items-center">
-                      <Shield className="mr-3 h-4 w-4" />
-                      Admin Dashboard
-                    </div>
-                  </Link>
-                  
-                  <button
-                    onClick={() => {
-                      handleSignOut();
-                      setMobileMenuOpen(false);
-                    }}
-                    className="block w-full text-left px-3 py-2 text-base font-medium transition-colors hover:bg-muted rounded-md"
-                  >
-                    <div className="flex items-center">
-                      <LogOut className="mr-3 h-4 w-4" />
-                      Sign Out
-                    </div>
-                  </button>
-                </>
-              )}
-              
-              {!user && (
-                <>
-                  <div className="border-t border-gray-200 my-2"></div>
-                  <Link
-                    to="/auth/login"
-                    className="block px-3 py-2 text-base font-medium transition-colors hover:bg-muted rounded-md"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    Sign In
-                  </Link>
-                  <Link
-                    to="/auth/register"
-                    className="block px-3 py-2 text-base font-medium transition-colors hover:bg-muted rounded-md"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    Get Started
-                  </Link>
-                </>
-              )}
-            </div>
-          </div>
-        )}
+                  </>
+                )}
+              </nav>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </header>
   );

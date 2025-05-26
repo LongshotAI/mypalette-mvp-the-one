@@ -1,29 +1,67 @@
 
 import React, { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CheckCircle, XCircle, Clock, Search, Filter } from 'lucide-react';
-import { useOpenCalls } from '@/hooks/useOpenCalls';
+import { toast } from '@/hooks/use-toast';
 
 const AdminOpenCallManagement = () => {
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
+  const queryClient = useQueryClient();
 
-  const { getAllOpenCalls, updateOpenCallStatus } = useOpenCalls();
-  const { data: openCalls, isLoading } = getAllOpenCalls;
+  const { data: openCalls, isLoading } = useQuery({
+    queryKey: ['admin-open-calls', filter],
+    queryFn: async () => {
+      let query = supabase
+        .from('open_calls')
+        .select(`
+          *,
+          profiles(username, first_name, last_name)
+        `)
+        .order('created_at', { ascending: false });
 
-  const filteredCalls = openCalls?.filter(call => {
-    const matchesSearch = 
-      call.title.toLowerCase().includes(search.toLowerCase()) ||
-      call.organization_name?.toLowerCase().includes(search.toLowerCase());
-    
-    const matchesFilter = filter === 'all' || call.status === filter;
-    
-    return matchesSearch && matchesFilter;
-  }) || [];
+      if (filter !== 'all') {
+        query = query.eq('status', filter);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const updateOpenCallStatus = useMutation({
+    mutationFn: async ({ id, status, notes }: { id: string; status: string; notes?: string }) => {
+      const { error } = await supabase
+        .from('open_calls')
+        .update({ 
+          status,
+          admin_notes: notes,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-open-calls'] });
+      toast({
+        title: "Status Updated",
+        description: "Open call status has been updated successfully.",
+      });
+    },
+  });
+
+  const filteredCalls = openCalls?.filter(call =>
+    call.title.toLowerCase().includes(search.toLowerCase()) ||
+    call.organization_name?.toLowerCase().includes(search.toLowerCase())
+  ) || [];
 
   const getStatusColor = (status: string) => {
     switch (status) {
