@@ -1,368 +1,202 @@
 
-import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { useAuth } from '@/contexts/AuthContext';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { supabase } from '@/lib/supabase';
+import { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
-import LoadingSpinner from '@/components/ui/LoadingSpinner';
-import { 
-  Palette, 
-  Plus, 
-  Eye, 
-  Heart, 
-  Users, 
-  Briefcase, 
-  BookOpen,
-  Settings,
-  Star,
-  TrendingUp,
-  Calendar,
-  Target
-} from 'lucide-react';
-
-interface DashboardStats {
-  portfolioCount: number;
-  totalViews: number;
-  totalLikes: number;
-  followerCount: number;
-  openCallsSubmitted: number;
-  featuredPortfolios: number;
-}
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Plus, Palette, Eye, Heart, Briefcase, BookOpen, TrendingUp } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 
 const Dashboard = () => {
-  const { user, profile } = useAuth();
   const navigate = useNavigate();
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [recentActivity, setRecentActivity] = useState<any[]>([]);
+  const [stats] = useState({
+    portfolios: 3,
+    totalViews: 1247,
+    likes: 89,
+    followers: 156
+  });
 
-  useEffect(() => {
-    if (!user) return;
-
-    const fetchDashboardData = async () => {
-      try {
-        // Fetch portfolio stats
-        const { data: portfolios } = await supabase
-          .from('portfolios')
-          .select('id, view_count, is_featured')
-          .eq('user_id', user.id);
-
-        // Fetch likes count
-        const { data: likes } = await supabase
-          .from('portfolio_likes')
-          .select('id')
-          .in('portfolio_id', portfolios?.map(p => p.id) || []);
-
-        // Fetch followers count
-        const { data: followers } = await supabase
-          .from('follows')
-          .select('id')
-          .eq('following_id', user.id);
-
-        // Fetch submissions count
-        const { data: submissions } = await supabase
-          .from('submissions')
-          .select('id')
-          .eq('artist_id', user.id);
-
-        const dashboardStats: DashboardStats = {
-          portfolioCount: portfolios?.length || 0,
-          totalViews: portfolios?.reduce((sum, p) => sum + p.view_count, 0) || 0,
-          totalLikes: likes?.length || 0,
-          followerCount: followers?.length || 0,
-          openCallsSubmitted: submissions?.length || 0,
-          featuredPortfolios: portfolios?.filter(p => p.is_featured).length || 0,
-        };
-
-        setStats(dashboardStats);
-
-        // Mock recent activity for now
-        setRecentActivity([
-          {
-            id: 1,
-            type: 'view',
-            message: 'Your portfolio "Digital Dreams" received 15 new views',
-            time: '2 hours ago',
-            icon: Eye,
-          },
-          {
-            id: 2,
-            type: 'like',
-            message: 'Someone liked your portfolio "Abstract Visions"',
-            time: '5 hours ago',
-            icon: Heart,
-          },
-          {
-            id: 3,
-            type: 'follow',
-            message: 'You gained 3 new followers',
-            time: '1 day ago',
-            icon: Users,
-          },
-        ]);
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchDashboardData();
-  }, [user]);
-
-  const statCards = [
-    {
-      title: 'Portfolios',
-      value: stats?.portfolioCount || 0,
-      icon: Palette,
-      color: 'text-blue-500',
-      bgColor: 'bg-blue-500/10',
-      description: 'Total portfolios created',
-    },
-    {
-      title: 'Total Views',
-      value: stats?.totalViews || 0,
-      icon: Eye,
-      color: 'text-green-500',
-      bgColor: 'bg-green-500/10',
-      description: 'Across all portfolios',
-    },
-    {
-      title: 'Likes',
-      value: stats?.totalLikes || 0,
-      icon: Heart,
-      color: 'text-red-500',
-      bgColor: 'bg-red-500/10',
-      description: 'Portfolio likes received',
-    },
-    {
-      title: 'Followers',
-      value: stats?.followerCount || 0,
-      icon: Users,
-      color: 'text-purple-500',
-      bgColor: 'bg-purple-500/10',
-      description: 'People following you',
-    },
+  const recentActivity = [
+    { type: 'view', message: 'Someone viewed your portfolio "Digital Dreams"', time: '2 hours ago' },
+    { type: 'like', message: 'Sarah Johnson liked your artwork "Neon Nights"', time: '4 hours ago' },
+    { type: 'follow', message: 'Alex Chen started following you', time: '1 day ago' },
   ];
 
   const quickActions = [
-    {
-      title: 'Create Portfolio',
-      description: 'Start a new portfolio',
+    { 
+      title: 'Create Portfolio', 
+      description: 'Start a new portfolio to showcase your work',
       icon: Plus,
       action: () => navigate('/my-portfolios'),
-      color: 'bg-gradient-to-r from-blue-500 to-blue-600',
+      color: 'bg-blue-500'
     },
-    {
-      title: 'Browse Open Calls',
-      description: 'Find opportunities',
+    { 
+      title: 'Browse Open Calls', 
+      description: 'Find opportunities to submit your work',
       icon: Briefcase,
       action: () => navigate('/open-calls'),
-      color: 'bg-gradient-to-r from-green-500 to-green-600',
+      color: 'bg-green-500'
     },
-    {
-      title: 'Learn & Grow',
-      description: 'Explore education hub',
+    { 
+      title: 'Learn & Grow', 
+      description: 'Explore our education hub',
       icon: BookOpen,
       action: () => navigate('/education'),
-      color: 'bg-gradient-to-r from-purple-500 to-purple-600',
-    },
-    {
-      title: 'Profile Settings',
-      description: 'Update your profile',
-      icon: Settings,
-      action: () => navigate('/profile/settings'),
-      color: 'bg-gradient-to-r from-gray-500 to-gray-600',
-    },
+      color: 'bg-purple-500'
+    }
   ];
-
-  if (loading) {
-    return (
-      <Layout>
-        <div className="container mx-auto px-4 py-8">
-          <div className="flex items-center justify-center min-h-[400px]">
-            <LoadingSpinner size="lg" />
-          </div>
-        </div>
-      </Layout>
-    );
-  }
 
   return (
     <Layout>
       <div className="container mx-auto px-4 py-8">
-        {/* Welcome Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
-        >
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h1 className="text-3xl font-bold mb-2">
-                Welcome back, {profile?.first_name || 'Artist'}! 👋
-              </h1>
-              <p className="text-muted-foreground">
-                Here's what's happening with your art portfolio today.
-              </p>
-            </div>
-            <div className="mt-4 sm:mt-0">
-              <Button onClick={() => navigate('/my-portfolios')}>
-                <Plus className="h-4 w-4 mr-2" />
-                Create Portfolio
-              </Button>
-            </div>
-          </div>
-        </motion.div>
+        <div className="max-w-6xl mx-auto">
+          {/* Header */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-8"
+          >
+            <h1 className="text-3xl font-bold mb-2">Welcome back!</h1>
+            <p className="text-muted-foreground">Here's what's happening with your art.</p>
+          </motion.div>
 
-        {/* Stats Grid */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
-        >
-          {statCards.map((stat, index) => (
-            <Card key={index} className="hover:shadow-lg transition-shadow">
+          {/* Stats Cards */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
+          >
+            <Card>
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground mb-1">{stat.title}</p>
-                    <p className="text-2xl font-bold">{stat.value.toLocaleString()}</p>
-                    <p className="text-xs text-muted-foreground mt-1">{stat.description}</p>
+                    <p className="text-sm text-muted-foreground">Portfolios</p>
+                    <p className="text-2xl font-bold">{stats.portfolios}</p>
                   </div>
-                  <div className={`w-12 h-12 rounded-lg ${stat.bgColor} flex items-center justify-center`}>
-                    <stat.icon className={`h-6 w-6 ${stat.color}`} />
-                  </div>
+                  <Palette className="h-8 w-8 text-blue-500" />
                 </div>
               </CardContent>
             </Card>
-          ))}
-        </motion.div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Quick Actions */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.2 }}
-            className="lg:col-span-2"
-          >
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Target className="h-5 w-5" />
-                  <span>Quick Actions</span>
-                </CardTitle>
-                <CardDescription>
-                  Jump into your most common tasks
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Views</p>
+                    <p className="text-2xl font-bold">{stats.totalViews.toLocaleString()}</p>
+                  </div>
+                  <Eye className="h-8 w-8 text-green-500" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Likes</p>
+                    <p className="text-2xl font-bold">{stats.likes}</p>
+                  </div>
+                  <Heart className="h-8 w-8 text-red-500" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Followers</p>
+                    <p className="text-2xl font-bold">{stats.followers}</p>
+                  </div>
+                  <TrendingUp className="h-8 w-8 text-purple-500" />
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Quick Actions */}
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.2 }}
+            >
+              <Card>
+                <CardHeader>
+                  <CardTitle>Quick Actions</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
                   {quickActions.map((action, index) => (
-                    <motion.div
+                    <div
                       key={index}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
+                      className="flex items-center space-x-4 p-4 rounded-lg border hover:bg-muted/50 cursor-pointer transition-colors"
+                      onClick={action.action}
                     >
-                      <Button
-                        variant="outline"
-                        className="w-full h-auto p-4 justify-start space-x-3 hover:shadow-md transition-all"
-                        onClick={action.action}
-                      >
-                        <div className={`w-10 h-10 rounded-lg ${action.color} flex items-center justify-center`}>
-                          <action.icon className="h-5 w-5 text-white" />
-                        </div>
-                        <div className="text-left">
-                          <p className="font-medium">{action.title}</p>
-                          <p className="text-xs text-muted-foreground">{action.description}</p>
-                        </div>
-                      </Button>
-                    </motion.div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          {/* Recent Activity */}
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.3 }}
-          >
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <TrendingUp className="h-5 w-5" />
-                  <span>Recent Activity</span>
-                </CardTitle>
-                <CardDescription>
-                  Your latest portfolio updates
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {recentActivity.map((activity) => (
-                    <div key={activity.id} className="flex items-start space-x-3">
-                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                        <activity.icon className="h-4 w-4 text-primary" />
+                      <div className={`w-10 h-10 rounded-lg ${action.color} flex items-center justify-center`}>
+                        <action.icon className="h-5 w-5 text-white" />
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-foreground">{activity.message}</p>
-                        <p className="text-xs text-muted-foreground">{activity.time}</p>
+                      <div className="flex-1">
+                        <h3 className="font-medium">{action.title}</h3>
+                        <p className="text-sm text-muted-foreground">{action.description}</p>
                       </div>
                     </div>
                   ))}
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            {/* Recent Activity */}
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.3 }}
+            >
+              <Card>
+                <CardHeader>
+                  <CardTitle>Recent Activity</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {recentActivity.map((activity, index) => (
+                      <div key={index} className="flex items-start space-x-3">
+                        <div className="w-2 h-2 rounded-full bg-primary mt-2"></div>
+                        <div className="flex-1">
+                          <p className="text-sm">{activity.message}</p>
+                          <p className="text-xs text-muted-foreground">{activity.time}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                   
-                  {recentActivity.length === 0 && (
-                    <div className="text-center py-8">
-                      <Calendar className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
-                      <p className="text-muted-foreground">No recent activity</p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Create a portfolio to see your activity here
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        </div>
+                  <Button variant="outline" className="w-full mt-4">
+                    View All Activity
+                  </Button>
+                </CardContent>
+              </Card>
+            </motion.div>
+          </div>
 
-        {/* Featured Achievement */}
-        {stats && stats.featuredPortfolios > 0 && (
+          {/* Coming Soon Section */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
             className="mt-8"
           >
-            <Card className="bg-gradient-to-r from-yellow-500/10 via-yellow-500/5 to-yellow-500/10 border-yellow-500/20">
-              <CardContent className="p-6">
-                <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-yellow-500/20 rounded-full flex items-center justify-center">
-                    <Star className="h-6 w-6 text-yellow-500" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-yellow-700 dark:text-yellow-300">
-                      🎉 Congratulations!
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      You have {stats.featuredPortfolios} featured portfolio{stats.featuredPortfolios > 1 ? 's' : ''}! 
-                      Featured portfolios get more visibility and opportunities.
-                    </p>
-                  </div>
-                </div>
+            <Card>
+              <CardContent className="p-8 text-center">
+                <h3 className="text-xl font-semibold mb-2">More Features Coming Soon</h3>
+                <p className="text-muted-foreground mb-4">
+                  We're working on analytics, portfolio templates, and collaboration tools.
+                </p>
+                <Badge variant="secondary">Dashboard v1.0</Badge>
               </CardContent>
             </Card>
           </motion.div>
-        )}
+        </div>
       </div>
     </Layout>
   );

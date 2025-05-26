@@ -1,67 +1,105 @@
 
+import { useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { BookOpen, Plus, Search, Filter, MoreHorizontal, Eye, Edit } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Search, Plus, MoreVertical, BookOpen, Eye, Calendar, User } from 'lucide-react';
+import { motion } from 'framer-motion';
+
+interface EducationContent {
+  id: string;
+  title: string;
+  category: string;
+  author: string;
+  status: 'published' | 'draft' | 'pending';
+  views: number;
+  publishedDate: string;
+  lastModified: string;
+}
 
 const AdminEducation = () => {
-  const mockContent = [
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<'all' | string>('all');
+
+  const mockContent: EducationContent[] = [
     {
-      id: 1,
-      title: "Getting Started with Digital Art",
-      category: "Beginner Tutorials",
-      status: "published",
-      views: 1234,
-      author: "Art Expert",
-      lastUpdated: "2024-02-15"
+      id: '1',
+      title: 'Getting Started with Digital Art',
+      category: 'Digital Art',
+      author: 'Sarah Johnson',
+      status: 'published',
+      views: 1247,
+      publishedDate: '2024-01-15',
+      lastModified: '2024-01-20'
     },
     {
-      id: 2,
-      title: "Advanced Portfolio Techniques",
-      category: "Portfolio Building",
-      status: "draft",
+      id: '2',
+      title: 'Color Theory for Artists',
+      category: 'Art Theory',
+      author: 'Mike Chen',
+      status: 'published',
+      views: 892,
+      publishedDate: '2024-02-01',
+      lastModified: '2024-02-05'
+    },
+    {
+      id: '3',
+      title: 'Building Your Portfolio',
+      category: 'Portfolio',
+      author: 'Elena Rodriguez',
+      status: 'draft',
       views: 0,
-      author: "Portfolio Specialist",
-      lastUpdated: "2024-03-01"
+      publishedDate: '',
+      lastModified: '2024-02-20'
     },
     {
-      id: 3,
-      title: "NFT Marketplace Guide",
-      category: "NFT & Blockchain",
-      status: "published",
-      views: 856,
-      author: "Crypto Expert",
-      lastUpdated: "2024-02-28"
-    },
-    {
-      id: 4,
-      title: "Color Theory for Digital Artists",
-      category: "Art Theory",
-      status: "review",
+      id: '4',
+      title: 'Marketing Your Art Online',
+      category: 'Business',
+      author: 'Alex Thompson',
+      status: 'pending',
       views: 0,
-      author: "Art Professor",
-      lastUpdated: "2024-03-05"
+      publishedDate: '',
+      lastModified: '2024-02-18'
     }
   ];
 
-  const categories = [
-    "Beginner Tutorials",
-    "Portfolio Building", 
-    "NFT & Blockchain",
-    "Art Theory",
-    "Career Development",
-    "Technical Skills"
-  ];
+  const categories = ['all', 'Digital Art', 'Art Theory', 'Portfolio', 'Business'];
 
-  const getStatusColor = (status: string) => {
+  const filteredContent = mockContent.filter(content => {
+    const matchesSearch = content.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         content.author.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = selectedCategory === 'all' || content.category === selectedCategory;
+    return matchesSearch && matchesCategory;
+  });
+
+  const getStatusVariant = (status: string) => {
     switch (status) {
       case 'published': return 'default';
       case 'draft': return 'secondary';
-      case 'review': return 'secondary';
+      case 'pending': return 'outline';
       default: return 'secondary';
     }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'published': return 'bg-green-500';
+      case 'draft': return 'bg-gray-500';
+      case 'pending': return 'bg-yellow-500';
+      default: return 'bg-gray-500';
+    }
+  };
+
+  const handlePublish = (id: string) => {
+    console.log('Publishing content:', id);
+  };
+
+  const handleUnpublish = (id: string) => {
+    console.log('Unpublishing content:', id);
   };
 
   return (
@@ -69,183 +107,217 @@ const AdminEducation = () => {
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
-          <div className="flex justify-between items-center mb-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex justify-between items-center mb-8"
+          >
             <div>
               <h1 className="text-3xl font-bold mb-2">Education Content Management</h1>
-              <p className="text-muted-foreground">Create and manage educational resources</p>
+              <p className="text-muted-foreground">Create and manage educational content</p>
             </div>
-            <div className="flex gap-2">
-              <Badge variant="secondary">Admin Access</Badge>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Create Content
-              </Button>
-            </div>
-          </div>
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              Create Content
+            </Button>
+          </motion.div>
 
-          {/* Search and Filters */}
-          <Card className="mb-6">
-            <CardContent className="pt-6">
-              <div className="flex flex-col md:flex-row gap-4">
-                <div className="flex-1 relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                  <Input 
-                    placeholder="Search content..." 
-                    className="pl-10"
-                  />
-                </div>
-                <Button variant="outline">
-                  <Filter className="h-4 w-4 mr-2" />
-                  Filters
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-            {/* Categories Sidebar */}
-            <div>
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Categories</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    {categories.map((category, index) => (
-                      <div key={index} className="flex items-center justify-between p-2 hover:bg-accent rounded cursor-pointer">
-                        <span className="text-sm">{category}</span>
-                        <Badge variant="outline" className="text-xs">
-                          {Math.floor(Math.random() * 10) + 1}
-                        </Badge>
-                      </div>
+          {/* Filters */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="mb-6"
+          >
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search content by title or author..."
+                      className="pl-10"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex gap-2 flex-wrap">
+                    {categories.map((category) => (
+                      <Button
+                        key={category}
+                        variant={selectedCategory === category ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setSelectedCategory(category)}
+                      >
+                        {category === 'all' ? 'All Categories' : category}
+                      </Button>
                     ))}
                   </div>
-                  
-                  <Button variant="outline" size="sm" className="w-full mt-4">
-                    <Plus className="h-3 w-3 mr-1" />
-                    Add Category
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
 
-            {/* Content List */}
-            <div className="lg:col-span-3">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Content ({mockContent.length})</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {mockContent.map((content) => (
-                      <div key={content.id} className="border rounded-lg p-4 hover:bg-accent/50 transition-colors">
-                        <div className="flex justify-between items-start mb-3">
+          {/* Content Table */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+          >
+            <Card>
+              <CardHeader>
+                <CardTitle>Content ({filteredContent.length})</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Title & Category</TableHead>
+                      <TableHead>Author</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Views</TableHead>
+                      <TableHead>Published</TableHead>
+                      <TableHead>Last Modified</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredContent.map((content) => (
+                      <TableRow key={content.id}>
+                        <TableCell>
                           <div>
-                            <div className="flex items-center gap-2 mb-1">
-                              <h3 className="font-semibold">{content.title}</h3>
-                              <Badge variant={getStatusColor(content.status)}>
-                                {content.status}
-                              </Badge>
-                            </div>
-                            <p className="text-sm text-muted-foreground">{content.category}</p>
+                            <p className="font-medium">{content.title}</p>
+                            <Badge variant="secondary" className="mt-1">
+                              {content.category}
+                            </Badge>
                           </div>
-                          
-                          <Button variant="ghost" size="sm">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </div>
-                        
-                        <div className="flex items-center justify-between text-sm text-muted-foreground mb-3">
-                          <div className="flex items-center gap-4">
-                            <span>By {content.author}</span>
-                            <span>Updated {content.lastUpdated}</span>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center text-sm">
+                            <User className="h-3 w-3 mr-1" />
+                            {content.author}
                           </div>
-                          
-                          <div className="flex items-center gap-1">
-                            <Eye className="h-3 w-3" />
-                            <span>{content.views} views</span>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center space-x-2">
+                            <div className={`w-2 h-2 rounded-full ${getStatusColor(content.status)}`}></div>
+                            <Badge variant={getStatusVariant(content.status)}>
+                              {content.status}
+                            </Badge>
                           </div>
-                        </div>
-                        
-                        <div className="flex gap-2">
-                          <Button variant="outline" size="sm">
-                            <Edit className="h-3 w-3 mr-1" />
-                            Edit
-                          </Button>
-                          <Button variant="outline" size="sm">
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center text-sm">
                             <Eye className="h-3 w-3 mr-1" />
-                            Preview
-                          </Button>
-                          {content.status === 'draft' && (
-                            <Button variant="default" size="sm">
-                              Publish
+                            {content.views.toLocaleString()}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {content.publishedDate ? (
+                            <div className="flex items-center text-sm text-muted-foreground">
+                              <Calendar className="h-3 w-3 mr-1" />
+                              {content.publishedDate}
+                            </div>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">Not published</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {content.lastModified}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center space-x-2">
+                            {content.status === 'published' ? (
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => handleUnpublish(content.id)}
+                              >
+                                Unpublish
+                              </Button>
+                            ) : (
+                              <Button 
+                                size="sm" 
+                                variant="default"
+                                onClick={() => handlePublish(content.id)}
+                              >
+                                Publish
+                              </Button>
+                            )}
+                            <Button variant="ghost" size="sm">
+                              <MoreVertical className="h-4 w-4" />
                             </Button>
-                          )}
-                          {content.status === 'review' && (
-                            <>
-                              <Button variant="default" size="sm">
-                                Approve
-                              </Button>
-                              <Button variant="outline" size="sm">
-                                Request Changes
-                              </Button>
-                            </>
-                          )}
-                        </div>
-                      </div>
+                          </div>
+                        </TableCell>
+                      </TableRow>
                     ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Stats Cards */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-8"
+          >
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Content</p>
+                    <p className="text-2xl font-bold">{mockContent.length}</p>
                   </div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
+                  <BookOpen className="h-8 w-8 text-blue-500" />
+                </div>
+              </CardContent>
+            </Card>
 
-          {/* Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-8">
             <Card>
-              <CardContent className="pt-6">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-blue-500">89</div>
-                  <div className="text-sm text-muted-foreground">Total Content</div>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Published</p>
+                    <p className="text-2xl font-bold">
+                      {mockContent.filter(c => c.status === 'published').length}
+                    </p>
+                  </div>
+                  <div className="w-2 h-2 rounded-full bg-green-500"></div>
                 </div>
               </CardContent>
             </Card>
-            
-            <Card>
-              <CardContent className="pt-6">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-green-500">67</div>
-                  <div className="text-sm text-muted-foreground">Published</div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardContent className="pt-6">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-orange-500">15</div>
-                  <div className="text-sm text-muted-foreground">In Review</div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardContent className="pt-6">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-purple-500">45,234</div>
-                  <div className="text-sm text-muted-foreground">Total Views</div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
 
-          {/* Coming Soon */}
-          <div className="text-center py-8 border-t mt-8">
-            <h3 className="text-lg font-semibold mb-2">Advanced Content Management Coming Soon</h3>
-            <p className="text-muted-foreground">
-              Rich text editor, media management, and automated publishing workflows are in development.
-            </p>
-          </div>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Pending Review</p>
+                    <p className="text-2xl font-bold">
+                      {mockContent.filter(c => c.status === 'pending').length}
+                    </p>
+                  </div>
+                  <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Views</p>
+                    <p className="text-2xl font-bold">
+                      {mockContent.reduce((sum, content) => sum + content.views, 0).toLocaleString()}
+                    </p>
+                  </div>
+                  <Eye className="h-8 w-8 text-purple-500" />
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
         </div>
       </div>
     </Layout>

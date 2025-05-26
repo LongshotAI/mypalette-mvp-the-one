@@ -1,201 +1,221 @@
 
-import { useParams } from 'react-router-dom';
+import { useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Upload, CreditCard } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Label } from '@/components/ui/label';
+import { ArrowLeft, Upload, DollarSign, Calendar, Info } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 const SubmissionForm = () => {
   const { callId } = useParams();
   const navigate = useNavigate();
+  
+  const [submission, setSubmission] = useState({
+    artworkTitle: '',
+    artworkDescription: '',
+    artistStatement: '',
+    submissionNotes: ''
+  });
+
+  // Mock open call data
+  const openCall = {
+    title: 'Digital Futures Exhibition',
+    organization: 'Modern Art Gallery',
+    submissionFee: 25,
+    deadline: '2024-03-15',
+    requirements: [
+      'Digital artwork only',
+      'High resolution images (300 DPI minimum)',
+      'Maximum file size: 50MB',
+      'Artist statement required'
+    ]
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    // TODO: Implement submission logic
+    console.log('Submitting to call:', callId, submission);
+    navigate('/open-calls');
+  };
+
+  const handleBack = () => {
+    navigate(`/open-calls/${callId}`);
+  };
 
   return (
     <Layout>
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
           {/* Header */}
-          <div className="flex items-center gap-4 mb-8">
-            <Button 
-              variant="ghost"
-              onClick={() => navigate('/open-calls')}
-            >
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center gap-4 mb-8"
+          >
+            <Button variant="outline" size="sm" onClick={handleBack}>
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Open Calls
+              Back
             </Button>
             <div>
-              <h1 className="text-2xl font-bold">Submit Your Artwork</h1>
-              <p className="text-muted-foreground">Open Call ID: {callId}</p>
+              <h1 className="text-3xl font-bold">Submit Your Work</h1>
+              <p className="text-muted-foreground">Submit to: {openCall.title}</p>
             </div>
-          </div>
-
-          {/* Open Call Info */}
-          <Card className="mb-8">
-            <CardHeader>
-              <div className="flex justify-between items-start">
-                <div>
-                  <CardTitle>Digital Art Exhibition 2024</CardTitle>
-                  <p className="text-muted-foreground">Organized by Modern Art Gallery</p>
-                </div>
-                <Badge>Live</Badge>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                <div>
-                  <span className="font-medium">Deadline:</span>
-                  <p className="text-muted-foreground">March 15, 2024</p>
-                </div>
-                <div>
-                  <span className="font-medium">Fee:</span>
-                  <p className="text-muted-foreground">$25</p>
-                </div>
-                <div>
-                  <span className="font-medium">Max Submissions:</span>
-                  <p className="text-muted-foreground">3 artworks</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          </motion.div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Submission Form */}
+            {/* Main Form */}
             <div className="lg:col-span-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Submission Details</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  {/* Artist Info */}
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold">Artist Information</h3>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-sm font-medium mb-2 block">First Name</label>
-                        <Input placeholder="Your first name" />
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium mb-2 block">Last Name</label>
-                        <Input placeholder="Your last name" />
-                      </div>
-                    </div>
-                    
+              <motion.form
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+                onSubmit={handleSubmit}
+                className="space-y-6"
+              >
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Artwork Information</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
                     <div>
-                      <label className="text-sm font-medium mb-2 block">Artist Statement</label>
-                      <Textarea 
-                        placeholder="Tell us about your artistic practice..."
-                        rows={4}
+                      <Label htmlFor="artworkTitle">Artwork Title *</Label>
+                      <Input
+                        id="artworkTitle"
+                        value={submission.artworkTitle}
+                        onChange={(e) => setSubmission(prev => ({ ...prev, artworkTitle: e.target.value }))}
+                        placeholder="Enter artwork title"
+                        required
                       />
                     </div>
-                  </div>
 
-                  {/* Artwork Upload */}
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold">Artwork Submission</h3>
-                    
-                    <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center">
-                      <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                      <h4 className="text-lg font-semibold mb-2">Upload Your Artwork</h4>
-                      <p className="text-muted-foreground mb-4">
-                        Upload up to 3 high-resolution images (JPG, PNG, max 10MB each)
-                      </p>
-                      <Button variant="outline">Choose Files</Button>
+                    <div>
+                      <Label htmlFor="artworkDescription">Artwork Description *</Label>
+                      <Textarea
+                        id="artworkDescription"
+                        value={submission.artworkDescription}
+                        onChange={(e) => setSubmission(prev => ({ ...prev, artworkDescription: e.target.value }))}
+                        placeholder="Describe your artwork"
+                        rows={4}
+                        required
+                      />
                     </div>
-                  </div>
 
-                  {/* Artwork Details */}
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold">Artwork Details</h3>
-                    
                     <div>
-                      <label className="text-sm font-medium mb-2 block">Title</label>
-                      <Input placeholder="Artwork title" />
+                      <Label htmlFor="files">Upload Artwork *</Label>
+                      <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center">
+                        <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                        <p className="text-sm text-muted-foreground mb-2">
+                          Drag and drop your files here, or click to browse
+                        </p>
+                        <Button variant="outline" size="sm">
+                          Select Files
+                        </Button>
+                      </div>
                     </div>
-                    
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Artist Statement</CardTitle>
+                  </CardHeader>
+                  <CardContent>
                     <div>
-                      <label className="text-sm font-medium mb-2 block">Description</label>
-                      <Textarea 
-                        placeholder="Describe your artwork..."
+                      <Label htmlFor="artistStatement">Artist Statement *</Label>
+                      <Textarea
+                        id="artistStatement"
+                        value={submission.artistStatement}
+                        onChange={(e) => setSubmission(prev => ({ ...prev, artistStatement: e.target.value }))}
+                        placeholder="Provide context about your work and artistic practice"
+                        rows={6}
+                        required
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Additional Notes</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div>
+                      <Label htmlFor="submissionNotes">Submission Notes (Optional)</Label>
+                      <Textarea
+                        id="submissionNotes"
+                        value={submission.submissionNotes}
+                        onChange={(e) => setSubmission(prev => ({ ...prev, submissionNotes: e.target.value }))}
+                        placeholder="Any additional information you'd like to include"
                         rows={3}
                       />
                     </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-sm font-medium mb-2 block">Medium</label>
-                        <Input placeholder="e.g., Digital painting" />
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium mb-2 block">Year</label>
-                        <Input placeholder="2024" />
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+                  </CardContent>
+                </Card>
 
-            {/* Payment & Summary */}
-            <div>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Submission Summary</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span>Submission fee</span>
-                      <span>$25.00</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Processing fee</span>
-                      <span>$2.50</span>
-                    </div>
-                    <hr />
-                    <div className="flex justify-between font-semibold">
-                      <span>Total</span>
-                      <span>$27.50</span>
-                    </div>
-                  </div>
-                  
-                  <Button className="w-full" size="lg">
-                    <CreditCard className="h-4 w-4 mr-2" />
-                    Pay & Submit
+                <div className="flex gap-4">
+                  <Button type="submit" size="lg" className="flex-1">
+                    Submit Artwork
                   </Button>
-                  
-                  <p className="text-xs text-muted-foreground text-center">
-                    Payment will be processed securely through Stripe
-                  </p>
-                </CardContent>
-              </Card>
-
-              {/* Requirements */}
-              <Card className="mt-6">
-                <CardHeader>
-                  <CardTitle className="text-sm">Submission Requirements</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ul className="text-xs text-muted-foreground space-y-1">
-                    <li>• High-resolution images (300 DPI minimum)</li>
-                    <li>• Original artwork only</li>
-                    <li>• Maximum 3 submissions per artist</li>
-                    <li>• Completed by deadline</li>
-                  </ul>
-                </CardContent>
-              </Card>
+                  <Button type="button" variant="outline" size="lg" onClick={handleBack}>
+                    Save Draft
+                  </Button>
+                </div>
+              </motion.form>
             </div>
-          </div>
 
-          {/* Coming Soon */}
-          <div className="text-center py-8 border-t mt-8">
-            <h3 className="text-lg font-semibold mb-2">Full Submission System Coming Soon</h3>
-            <p className="text-muted-foreground">
-              Payment processing, file uploads, and submission tracking are in development.
-            </p>
+            {/* Sidebar */}
+            <div className="space-y-6">
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.2 }}
+              >
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Info className="h-5 w-5" />
+                      Submission Details
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center gap-2">
+                      <DollarSign className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm">Fee: ${openCall.submissionFee}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm">Deadline: {openCall.deadline}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.3 }}
+              >
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Requirements</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ul className="space-y-2">
+                      {openCall.requirements.map((req, index) => (
+                        <li key={index} className="text-sm flex items-start gap-2">
+                          <span className="w-1 h-1 rounded-full bg-primary mt-2 flex-shrink-0"></span>
+                          {req}
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            </div>
           </div>
         </div>
       </div>
