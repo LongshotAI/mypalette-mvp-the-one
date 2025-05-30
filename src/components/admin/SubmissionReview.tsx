@@ -73,7 +73,18 @@ const SubmissionReview = ({ openCallId }: SubmissionReviewProps) => {
   });
 
   const getSubmissionData = (submission: Submission): SubmissionData => {
-    return (submission.submission_data as SubmissionData) || {};
+    const data = submission.submission_data as SubmissionData;
+    return data || {
+      title: '',
+      description: '',
+      medium: '',
+      year: '',
+      dimensions: '',
+      artist_statement: '',
+      image_urls: [],
+      external_links: [],
+      files: []
+    };
   };
 
   const getStatusColor = (status: string) => {
@@ -429,7 +440,18 @@ const SubmissionReview = ({ openCallId }: SubmissionReviewProps) => {
 
 // Helper functions
 const getSubmissionData = (submission: Submission): SubmissionData => {
-  return (submission.submission_data as SubmissionData) || {};
+  const data = submission.submission_data as SubmissionData;
+  return data || {
+    title: '',
+    description: '',
+    medium: '',
+    year: '',
+    dimensions: '',
+    artist_statement: '',
+    image_urls: [],
+    external_links: [],
+    files: []
+  };
 };
 
 const getStatusColor = (status: string) => {
