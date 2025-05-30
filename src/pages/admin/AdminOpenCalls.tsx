@@ -1,5 +1,6 @@
 
 import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,65 +9,90 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Search, Plus, MoreVertical, Calendar, DollarSign, Users, Eye } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
+import LoadingSpinner from '@/components/ui/LoadingSpinner';
 
 interface OpenCallData {
   id: string;
   title: string;
-  organization: string;
+  organization_name: string;
   status: 'pending' | 'approved' | 'rejected' | 'live' | 'closed';
-  submissionFee: number;
-  deadline: string;
-  submissions: number;
-  views: number;
-  createdDate: string;
+  submission_fee: number;
+  submission_deadline: string;
+  created_at: string;
+  host_user_id: string;
+  profiles?: {
+    first_name: string;
+    last_name: string;
+    username: string;
+  };
 }
 
 const AdminOpenCalls = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<'all' | OpenCallData['status']>('all');
+  const queryClient = useQueryClient();
 
-  const mockOpenCalls: OpenCallData[] = [
-    {
-      id: '1',
-      title: 'Digital Futures Exhibition',
-      organization: 'Modern Art Gallery',
-      status: 'live',
-      submissionFee: 25,
-      deadline: '2024-03-15',
-      submissions: 47,
-      views: 1234,
-      createdDate: '2024-01-10'
-    },
-    {
-      id: '2',
-      title: 'Emerging Artists Showcase',
-      organization: 'Creative Collective',
-      status: 'pending',
-      submissionFee: 0,
-      deadline: '2024-04-20',
-      submissions: 0,
-      views: 156,
-      createdDate: '2024-02-01'
-    },
-    {
-      id: '3',
-      title: 'AI Art Competition',
-      organization: 'Tech Museum',
-      status: 'approved',
-      submissionFee: 15,
-      deadline: '2024-05-30',
-      submissions: 23,
-      views: 892,
-      createdDate: '2024-01-25'
-    }
-  ];
+  const { data: openCalls, isLoading } = useQuery({
+    queryKey: ['admin-open-calls'],
+    queryFn: async () => {
+      console.log('Fetching open calls for admin...');
+      
+      const { data, error } = await supabase
+        .from('open_calls')
+        .select(`
+          *,
+          profiles(first_name, last_name, username)
+        `)
+        .order('created_at', { ascending: false });
 
-  const filteredOpenCalls = mockOpenCalls.filter(call => {
+      if (error) {
+        console.error('Error fetching open calls:', error);
+        throw error;
+      }
+
+      console.log('Admin open calls fetched:', data);
+      return data as OpenCallData[];
+    },
+  });
+
+  const updateOpenCallStatus = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      console.log('Updating open call status:', id, status);
+      
+      const { error } = await supabase
+        .from('open_calls')
+        .update({ status })
+        .eq('id', id);
+
+      if (error) {
+        console.error('Error updating open call status:', error);
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-open-calls'] });
+      toast({
+        title: "Status Updated",
+        description: "Open call status has been updated successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Update Failed",
+        description: error.message || "Failed to update status.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const filteredOpenCalls = openCalls?.filter(call => {
     const matchesSearch = call.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         call.organization.toLowerCase().includes(searchTerm.toLowerCase());
+                         call.organization_name?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = selectedStatus === 'all' || call.status === selectedStatus;
     return matchesSearch && matchesStatus;
-  });
+  }) || [];
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -91,12 +117,22 @@ const AdminOpenCalls = () => {
   };
 
   const handleApprove = (id: string) => {
-    console.log('Approve open call:', id);
+    updateOpenCallStatus.mutate({ id, status: 'live' });
   };
 
   const handleReject = (id: string) => {
-    console.log('Reject open call:', id);
+    updateOpenCallStatus.mutate({ id, status: 'rejected' });
   };
+
+  if (isLoading) {
+    return (
+      <Layout>
+        <div className="min-h-screen flex items-center justify-center">
+          <LoadingSpinner size="lg" />
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -112,10 +148,6 @@ const AdminOpenCalls = () => {
               <h1 className="text-3xl font-bold mb-2">Open Calls Management</h1>
               <p className="text-muted-foreground">Review and manage open call submissions</p>
             </div>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Create Open Call
-            </Button>
           </motion.div>
 
           {/* Filters */}
@@ -169,11 +201,10 @@ const AdminOpenCalls = () => {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Title & Organization</TableHead>
+                      <TableHead>Host</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Fee</TableHead>
                       <TableHead>Deadline</TableHead>
-                      <TableHead>Submissions</TableHead>
-                      <TableHead>Views</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -183,9 +214,15 @@ const AdminOpenCalls = () => {
                         <TableCell>
                           <div>
                             <p className="font-medium">{call.title}</p>
-                            <p className="text-sm text-muted-foreground">{call.organization}</p>
-                            <p className="text-xs text-muted-foreground">Created: {call.createdDate}</p>
+                            <p className="text-sm text-muted-foreground">{call.organization_name}</p>
+                            <p className="text-xs text-muted-foreground">Created: {new Date(call.created_at).toLocaleDateString()}</p>
                           </div>
+                        </TableCell>
+                        <TableCell>
+                          <p className="text-sm">
+                            {call.profiles?.first_name} {call.profiles?.last_name}
+                          </p>
+                          <p className="text-xs text-muted-foreground">@{call.profiles?.username}</p>
                         </TableCell>
                         <TableCell>
                           <Badge variant={getStatusVariant(call.status)}>
@@ -195,25 +232,13 @@ const AdminOpenCalls = () => {
                         <TableCell>
                           <div className="flex items-center text-sm">
                             <DollarSign className="h-3 w-3 mr-1" />
-                            {call.submissionFee === 0 ? 'Free' : `$${call.submissionFee}`}
+                            {call.submission_fee === 0 ? 'Free' : `$${call.submission_fee}`}
                           </div>
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center text-sm text-muted-foreground">
                             <Calendar className="h-3 w-3 mr-1" />
-                            {call.deadline}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center text-sm">
-                            <Users className="h-3 w-3 mr-1" />
-                            {call.submissions}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center text-sm text-muted-foreground">
-                            <Eye className="h-3 w-3 mr-1" />
-                            {call.views}
+                            {new Date(call.submission_deadline).toLocaleDateString()}
                           </div>
                         </TableCell>
                         <TableCell>
@@ -224,6 +249,7 @@ const AdminOpenCalls = () => {
                                   size="sm" 
                                   variant="outline"
                                   onClick={() => handleApprove(call.id)}
+                                  disabled={updateOpenCallStatus.isPending}
                                 >
                                   Approve
                                 </Button>
@@ -231,14 +257,12 @@ const AdminOpenCalls = () => {
                                   size="sm" 
                                   variant="destructive"
                                   onClick={() => handleReject(call.id)}
+                                  disabled={updateOpenCallStatus.isPending}
                                 >
                                   Reject
                                 </Button>
                               </>
                             )}
-                            <Button variant="ghost" size="sm">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -261,7 +285,7 @@ const AdminOpenCalls = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground">Total Open Calls</p>
-                    <p className="text-2xl font-bold">{mockOpenCalls.length}</p>
+                    <p className="text-2xl font-bold">{openCalls?.length || 0}</p>
                   </div>
                   <div className="w-2 h-2 rounded-full bg-blue-500"></div>
                 </div>
@@ -274,7 +298,7 @@ const AdminOpenCalls = () => {
                   <div>
                     <p className="text-sm text-muted-foreground">Pending Review</p>
                     <p className="text-2xl font-bold">
-                      {mockOpenCalls.filter(c => c.status === 'pending').length}
+                      {openCalls?.filter(c => c.status === 'pending').length || 0}
                     </p>
                   </div>
                   <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
@@ -288,7 +312,7 @@ const AdminOpenCalls = () => {
                   <div>
                     <p className="text-sm text-muted-foreground">Live Now</p>
                     <p className="text-2xl font-bold">
-                      {mockOpenCalls.filter(c => c.status === 'live').length}
+                      {openCalls?.filter(c => c.status === 'live').length || 0}
                     </p>
                   </div>
                   <div className="w-2 h-2 rounded-full bg-green-500"></div>
@@ -300,12 +324,12 @@ const AdminOpenCalls = () => {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">Total Submissions</p>
+                    <p className="text-sm text-muted-foreground">Approved</p>
                     <p className="text-2xl font-bold">
-                      {mockOpenCalls.reduce((sum, call) => sum + call.submissions, 0)}
+                      {openCalls?.filter(c => c.status === 'approved').length || 0}
                     </p>
                   </div>
-                  <Users className="h-8 w-8 text-purple-500" />
+                  <div className="w-2 h-2 rounded-full bg-blue-500"></div>
                 </div>
               </CardContent>
             </Card>

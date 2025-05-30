@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -27,7 +28,7 @@ interface UserProfile {
   username: string | null;
   first_name: string | null;
   last_name: string | null;
-  role: 'user' | 'admin' | 'curator';
+  role: 'user' | 'admin';
   created_at: string;
   updated_at: string;
   avatar_url: string | null;
@@ -62,7 +63,7 @@ const UserManagementTable = () => {
   });
 
   const updateUserRole = useMutation({
-    mutationFn: async ({ userId, newRole }: { userId: string; newRole: 'user' | 'admin' | 'curator' }) => {
+    mutationFn: async ({ userId, newRole }: { userId: string; newRole: 'user' | 'admin' }) => {
       console.log('Updating user role:', userId, newRole);
       
       const { error } = await supabase
@@ -102,8 +103,6 @@ const UserManagementTable = () => {
     switch (role) {
       case 'admin':
         return 'destructive';
-      case 'curator':
-        return 'secondary';
       default:
         return 'outline';
     }
@@ -113,8 +112,6 @@ const UserManagementTable = () => {
     switch (role) {
       case 'admin':
         return <Shield className="h-3 w-3" />;
-      case 'curator':
-        return <Mail className="h-3 w-3" />;
       default:
         return <User className="h-3 w-3" />;
     }
@@ -241,15 +238,6 @@ const UserManagementTable = () => {
                         >
                           {user.role === 'admin' ? 'Remove Admin' : 'Make Admin'}
                         </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => updateUserRole.mutate({
-                            userId: user.id,
-                            newRole: user.role === 'curator' ? 'user' : 'curator'
-                          })}
-                          disabled={updateUserRole.isPending}
-                        >
-                          {user.role === 'curator' ? 'Remove Curator' : 'Make Curator'}
-                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -264,7 +252,6 @@ const UserManagementTable = () => {
       <div className="flex gap-4 text-sm text-muted-foreground">
         <span>Total Users: {users?.length || 0}</span>
         <span>Admins: {users?.filter(u => u.role === 'admin').length || 0}</span>
-        <span>Curators: {users?.filter(u => u.role === 'curator').length || 0}</span>
         <span>Users: {users?.filter(u => u.role === 'user').length || 0}</span>
       </div>
     </div>

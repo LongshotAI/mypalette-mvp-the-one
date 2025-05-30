@@ -23,7 +23,6 @@ import {
   Info
 } from 'lucide-react';
 import { SubmissionData } from '@/types/submission';
-import FileUploadZone from './FileUploadZone';
 
 interface AdvancedSubmissionFormProps {
   submissionData: SubmissionData;
@@ -35,8 +34,7 @@ interface AdvancedSubmissionFormProps {
 const AdvancedSubmissionForm = ({ 
   submissionData, 
   onDataChange, 
-  requirements,
-  submissionId 
+  requirements 
 }: AdvancedSubmissionFormProps) => {
   const [currentSection, setCurrentSection] = useState(1);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
@@ -271,12 +269,8 @@ const AdvancedSubmissionForm = ({
             </div>
 
             <div className="space-y-6">
-              {submissionId && (
-                <FileUploadZone submissionId={submissionId} />
-              )}
-
               <div>
-                <Label>Image URLs</Label>
+                <Label>Image URLs *</Label>
                 <div className="space-y-2">
                   {submissionData.image_urls?.map((url, index) => (
                     <div key={index} className="flex gap-2">
