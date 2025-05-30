@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -28,7 +27,7 @@ interface UserProfile {
   username: string | null;
   first_name: string | null;
   last_name: string | null;
-  role: string;
+  role: 'user' | 'admin' | 'curator';
   created_at: string;
   updated_at: string;
   avatar_url: string | null;
@@ -63,7 +62,7 @@ const UserManagementTable = () => {
   });
 
   const updateUserRole = useMutation({
-    mutationFn: async ({ userId, newRole }: { userId: string; newRole: string }) => {
+    mutationFn: async ({ userId, newRole }: { userId: string; newRole: 'user' | 'admin' | 'curator' }) => {
       console.log('Updating user role:', userId, newRole);
       
       const { error } = await supabase

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
@@ -114,7 +113,6 @@ const OpenCalls = () => {
       navigate('/auth/login');
       return;
     }
-    // TODO: Navigate to submission form
     navigate(`/submit/${callId}`);
   };
 
@@ -123,8 +121,7 @@ const OpenCalls = () => {
       navigate('/auth/login');
       return;
     }
-    // TODO: Navigate to host application form
-    console.log('Navigate to host application');
+    navigate('/host-application');
   };
 
   return (
@@ -313,7 +310,6 @@ const OpenCalls = () => {
               <p className="text-muted-foreground mb-6">
                 Open calls closing within the next 7 days
               </p>
-              {/* Filter and show calls closing soon */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {sortedCalls.slice(0, 2).map((call, index) => (
                   <Card key={call.id} className="p-6 border-orange-200 bg-orange-50/50">

@@ -1,99 +1,110 @@
 
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AuthProvider } from "@/contexts/AuthContext";
-import { ThemeProvider } from "@/contexts/ThemeContext";
-import ErrorBoundary from "@/components/ErrorBoundary";
-import ProtectedRoute from "@/components/auth/ProtectedRoute";
-import AdminRoute from "@/components/auth/AdminRoute";
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ThemeProvider } from '@/contexts/ThemeContext';
+import { AuthProvider } from '@/contexts/AuthContext';
+import { Toaster } from '@/components/ui/toaster';
+import ErrorBoundary from '@/components/ErrorBoundary';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import AdminRoute from '@/components/auth/AdminRoute';
 
-// Public pages
-import Landing from "@/pages/Landing";
-import Login from "@/pages/auth/Login";
-import Register from "@/pages/auth/Register";
-import ForgotPassword from "@/pages/auth/ForgotPassword";
-import Discover from "@/pages/Discover";
-import ArtistProfile from "@/pages/ArtistProfile";
-import PortfolioView from "@/pages/PortfolioView";
-import OpenCalls from "@/pages/OpenCalls";
-import OpenCallDetails from "@/pages/OpenCallDetails";
-import Education from "@/pages/Education";
-import EducationCategory from "@/pages/EducationCategory";
-import EducationContent from "@/pages/EducationContent";
+// Pages
+import Index from '@/pages/Index';
+import Landing from '@/pages/Landing';
+import Dashboard from '@/pages/Dashboard';
+import PortfolioView from '@/pages/PortfolioView';
+import PortfolioEditor from '@/pages/PortfolioEditor';
+import MyPortfolios from '@/pages/MyPortfolios';
+import ArtistProfile from '@/pages/ArtistProfile';
+import ProfileSettings from '@/pages/ProfileSettings';
+import Discover from '@/pages/Discover';
+import OpenCalls from '@/pages/OpenCalls';
+import OpenCallDetails from '@/pages/OpenCallDetails';
+import SubmissionForm from '@/pages/SubmissionForm';
+import HostApplication from '@/pages/HostApplication';
+import Education from '@/pages/Education';
+import EducationCategory from '@/pages/EducationCategory';
+import EducationContent from '@/pages/EducationContent';
+import NotFound from '@/pages/NotFound';
 
-// AIFilm3 pages
-import AIFilm3Info from "@/pages/aifilm3/AIFilm3Info";
-import AIFilm3Announcements from "@/pages/aifilm3/AIFilm3Announcements";
+// Auth Pages
+import Login from '@/pages/auth/Login';
+import Register from '@/pages/auth/Register';
+import ForgotPassword from '@/pages/auth/ForgotPassword';
 
-// Protected pages
-import Dashboard from "@/pages/Dashboard";
-import MyPortfolios from "@/pages/MyPortfolios";
-import PortfolioEditor from "@/pages/PortfolioEditor";
-import SubmissionForm from "@/pages/SubmissionForm";
-import ProfileSettings from "@/pages/ProfileSettings";
+// Admin Pages
+import AdminDashboard from '@/pages/admin/AdminDashboard';
+import AdminUsers from '@/pages/admin/AdminUsers';
+import AdminOpenCalls from '@/pages/admin/AdminOpenCalls';
+import AdminEducation from '@/pages/admin/AdminEducation';
 
-// Admin pages
-import AdminDashboard from "@/pages/admin/AdminDashboard";
-import AdminUsers from "@/pages/admin/AdminUsers";
-import AdminOpenCalls from "@/pages/admin/AdminOpenCalls";
-import AdminEducation from "@/pages/admin/AdminEducation";
-
-import NotFound from "@/pages/NotFound";
+// AIFilm3 Pages
+import AIFilm3Info from '@/pages/aifilm3/AIFilm3Info';
+import AIFilm3Announcements from '@/pages/aifilm3/AIFilm3Announcements';
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutes
       retry: 1,
-      staleTime: 5 * 60 * 1000, // 5 minutes
     },
   },
 });
 
-const App = () => (
-  <ErrorBoundary>
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <AuthProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <BrowserRouter>
+function App() {
+  return (
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider>
+          <AuthProvider>
+            <Router>
               <Routes>
-                {/* Public routes */}
-                <Route path="/" element={<Landing />} />
+                {/* Public Routes */}
+                <Route path="/" element={<Index />} />
+                <Route path="/landing" element={<Landing />} />
+                
+                {/* Auth Routes */}
                 <Route path="/auth/login" element={<Login />} />
                 <Route path="/auth/register" element={<Register />} />
                 <Route path="/auth/forgot-password" element={<ForgotPassword />} />
-                <Route path="/discover" element={<Discover />} />
-                <Route path="/artists/:username" element={<ArtistProfile />} />
+                
+                {/* Public Portfolio & Profile Routes */}
                 <Route path="/portfolio/:slug" element={<PortfolioView />} />
+                <Route path="/artist/:username" element={<ArtistProfile />} />
+                <Route path="/discover" element={<Discover />} />
+                
+                {/* Open Calls - Public */}
                 <Route path="/open-calls" element={<OpenCalls />} />
-                <Route path="/open-calls/:id" element={<OpenCallDetails />} />
+                <Route path="/open-calls/:callId" element={<OpenCallDetails />} />
+                
+                {/* Education - Public */}
                 <Route path="/education" element={<Education />} />
                 <Route path="/education/:category" element={<EducationCategory />} />
-                <Route path="/education/content/:slug" element={<EducationContent />} />
-
-                {/* AIFilm3 routes */}
+                <Route path="/education/:category/:slug" element={<EducationContent />} />
+                
+                {/* AIFilm3 Routes */}
                 <Route path="/aifilm3/info" element={<AIFilm3Info />} />
                 <Route path="/aifilm3/announcements" element={<AIFilm3Announcements />} />
-
-                {/* Protected routes */}
+                
+                {/* Protected Routes */}
                 <Route path="/dashboard" element={
                   <ProtectedRoute>
                     <Dashboard />
                   </ProtectedRoute>
                 } />
-                <Route path="/my-portfolios" element={
+                <Route path="/portfolios" element={
                   <ProtectedRoute>
                     <MyPortfolios />
                   </ProtectedRoute>
                 } />
-                <Route path="/portfolio/:id/edit" element={
+                <Route path="/portfolio/:slug/edit" element={
                   <ProtectedRoute>
                     <PortfolioEditor />
+                  </ProtectedRoute>
+                } />
+                <Route path="/settings" element={
+                  <ProtectedRoute>
+                    <ProfileSettings />
                   </ProtectedRoute>
                 } />
                 <Route path="/submit/:callId" element={
@@ -101,13 +112,13 @@ const App = () => (
                     <SubmissionForm />
                   </ProtectedRoute>
                 } />
-                <Route path="/profile/settings" element={
+                <Route path="/host-application" element={
                   <ProtectedRoute>
-                    <ProfileSettings />
+                    <HostApplication />
                   </ProtectedRoute>
                 } />
-
-                {/* Admin routes */}
+                
+                {/* Admin Routes */}
                 <Route path="/admin" element={
                   <AdminRoute>
                     <AdminDashboard />
@@ -128,16 +139,17 @@ const App = () => (
                     <AdminEducation />
                   </AdminRoute>
                 } />
-
-                {/* Catch-all route */}
+                
+                {/* 404 Route */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
-            </BrowserRouter>
-          </TooltipProvider>
-        </AuthProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
-  </ErrorBoundary>
-);
+              <Toaster />
+            </Router>
+          </AuthProvider>
+        </ThemeProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
+  );
+}
 
 export default App;
