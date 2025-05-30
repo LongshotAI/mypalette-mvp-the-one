@@ -84,15 +84,74 @@ export const useOpenCalls = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['open-calls'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-open-calls'] });
       toast({
         title: "Open Call Submitted",
         description: "Your open call has been submitted for review.",
       });
     },
     onError: (error: any) => {
+      console.error('Open call creation error:', error);
       toast({
         title: "Submission Failed",
         description: error.message || "Failed to submit open call.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const getAllOpenCalls = useQuery({
+    queryKey: ['admin-open-calls'],
+    queryFn: async () => {
+      console.log('Fetching all open calls for admin...');
+      
+      const { data, error } = await supabase
+        .from('open_calls')
+        .select(`
+          *,
+          profiles(first_name, last_name, username)
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching admin open calls:', error);
+        throw error;
+      }
+
+      console.log('Admin open calls fetched:', data);
+      return data;
+    },
+  });
+
+  const updateOpenCallStatus = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      console.log('Updating open call status:', id, status);
+      
+      const { error } = await supabase
+        .from('open_calls')
+        .update({ status })
+        .eq('id', id);
+
+      if (error) {
+        console.error('Error updating open call status:', error);
+        throw error;
+      }
+
+      console.log('Open call status updated successfully');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['open-calls'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-open-calls'] });
+      toast({
+        title: "Status Updated",
+        description: "Open call status has been updated successfully.",
+      });
+    },
+    onError: (error: any) => {
+      console.error('Error updating open call status:', error);
+      toast({
+        title: "Update Failed",
+        description: error.message || "Failed to update status.",
         variant: "destructive",
       });
     },
@@ -102,5 +161,7 @@ export const useOpenCalls = () => {
     getOpenCalls,
     getOpenCallById,
     createOpenCall,
+    getAllOpenCalls,
+    updateOpenCallStatus,
   };
 };

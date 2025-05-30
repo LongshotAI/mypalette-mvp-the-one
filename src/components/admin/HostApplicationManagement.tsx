@@ -1,50 +1,46 @@
 
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 import { 
+  Search, 
+  Eye, 
   CheckCircle, 
   XCircle, 
   Clock, 
-  Search, 
-  Filter,
   Building,
   Calendar,
   DollarSign,
   Users,
-  Globe,
-  Award,
-  FileText,
-  Eye
+  Award
 } from 'lucide-react';
-import { useHostApplications, HostApplication } from '@/hooks/useHostApplications';
+import { useHostApplications } from '@/hooks/useHostApplications';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 
 const HostApplicationManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [selectedApplication, setSelectedApplication] = useState<HostApplication | null>(null);
+  const [selectedStatus, setSelectedStatus] = useState<'all' | string>('all');
   const [reviewNotes, setReviewNotes] = useState('');
+  const [selectedApplication, setSelectedApplication] = useState<any>(null);
 
   const { getAllHostApplications, updateHostApplicationStatus } = useHostApplications();
-  
   const { data: applications, isLoading } = getAllHostApplications;
 
   const filteredApplications = applications?.filter(app => {
     const matchesSearch = 
-      app.organization_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      app.proposed_title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      app.contact_email.toLowerCase().includes(searchTerm.toLowerCase());
+      app.organization_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      app.proposed_title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      app.profiles?.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      app.profiles?.last_name?.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesStatus = statusFilter === 'all' || app.application_status === statusFilter;
+    const matchesStatus = selectedStatus === 'all' || app.application_status === selectedStatus;
     
     return matchesSearch && matchesStatus;
   }) || [];
@@ -53,50 +49,39 @@ const HostApplicationManagement = () => {
     switch (status) {
       case 'approved': return 'bg-green-500';
       case 'rejected': return 'bg-red-500';
-      case 'under_review': return 'bg-yellow-500';
+      case 'pending': return 'bg-yellow-500';
+      case 'under_review': return 'bg-blue-500';
       default: return 'bg-gray-500';
     }
   };
 
-  const getStatusIcon = (status: string) => {
+  const getStatusVariant = (status: string) => {
     switch (status) {
-      case 'approved': return CheckCircle;
-      case 'rejected': return XCircle;
-      case 'under_review': return Clock;
-      default: return Clock;
+      case 'approved': return 'default';
+      case 'rejected': return 'destructive';
+      case 'pending': return 'outline';
+      case 'under_review': return 'secondary';
+      default: return 'secondary';
     }
   };
 
-  const handleStatusUpdate = async (applicationId: string, newStatus: string, notes?: string) => {
+  const handleStatusUpdate = async (applicationId: string, status: string) => {
     try {
       await updateHostApplicationStatus.mutateAsync({
         applicationId,
-        status: newStatus,
-        notes
+        status,
+        notes: reviewNotes
       });
-      setSelectedApplication(null);
       setReviewNotes('');
+      setSelectedApplication(null);
     } catch (error) {
       console.error('Failed to update application status:', error);
     }
   };
 
-  const getApplicationStats = () => {
-    if (!applications) return { total: 0, pending: 0, approved: 0, rejected: 0 };
-    
-    return {
-      total: applications.length,
-      pending: applications.filter(app => app.application_status === 'pending').length,
-      approved: applications.filter(app => app.application_status === 'approved').length,
-      rejected: applications.filter(app => app.application_status === 'rejected').length,
-    };
-  };
-
-  const stats = getApplicationStats();
-
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-12">
+      <div className="flex items-center justify-center py-8">
         <LoadingSpinner size="lg" />
       </div>
     );
@@ -104,375 +89,382 @@ const HostApplicationManagement = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header & Stats */}
-      <div>
-        <h2 className="text-2xl font-bold mb-4">Host Applications</h2>
-        
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <Card>
-            <CardContent className="p-4">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-primary">{stats.total}</div>
-                <div className="text-sm text-muted-foreground">Total Applications</div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
-                <div className="text-sm text-muted-foreground">Pending Review</div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-green-600">{stats.approved}</div>
-                <div className="text-sm text-muted-foreground">Approved</div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-red-600">{stats.rejected}</div>
-                <div className="text-sm text-muted-foreground">Rejected</div>
-              </div>
-            </CardContent>
-          </Card>
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-2xl font-bold">Host Applications</h2>
+          <p className="text-muted-foreground">Review and manage open call hosting applications</p>
         </div>
       </div>
 
       {/* Filters */}
       <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search applications..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
+        <CardContent className="p-6">
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search applications by organization, title, or applicant..."
+                className="pl-10"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
             </div>
-            <div className="flex gap-2">
-              <Button
-                variant={statusFilter === 'all' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setStatusFilter('all')}
-              >
-                All
-              </Button>
-              <Button
-                variant={statusFilter === 'pending' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setStatusFilter('pending')}
-              >
-                Pending
-              </Button>
-              <Button
-                variant={statusFilter === 'approved' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setStatusFilter('approved')}
-              >
-                Approved
-              </Button>
-              <Button
-                variant={statusFilter === 'rejected' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setStatusFilter('rejected')}
-              >
-                Rejected
-              </Button>
+            <div className="flex gap-2 flex-wrap">
+              {['all', 'pending', 'under_review', 'approved', 'rejected'].map((status) => (
+                <Button
+                  key={status}
+                  variant={selectedStatus === status ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setSelectedStatus(status)}
+                >
+                  {status.charAt(0).toUpperCase() + status.slice(1).replace('_', ' ')}
+                </Button>
+              ))}
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Applications List */}
-      <div className="grid gap-6">
-        {filteredApplications.map((application, index) => {
-          const StatusIcon = getStatusIcon(application.application_status);
-          
-          return (
-            <motion.div
-              key={application.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-            >
-              <Card className="hover:shadow-lg transition-shadow">
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        <Building className="h-5 w-5" />
-                        {application.organization_name}
-                      </CardTitle>
-                      <p className="text-muted-foreground">{application.organization_type}</p>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Applied: {new Date(application.created_at).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge className={getStatusColor(application.application_status)}>
-                        <StatusIcon className="h-3 w-3 mr-1" />
-                        {application.application_status}
-                      </Badge>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <h4 className="font-semibold text-lg">{application.proposed_title}</h4>
-                    <p className="text-muted-foreground line-clamp-2">
-                      {application.proposed_description}
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-muted-foreground" />
-                      <span>Deadline: {new Date(application.proposed_deadline).toLocaleDateString()}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <DollarSign className="h-4 w-4 text-muted-foreground" />
-                      <span>
-                        Prize: {application.proposed_prize_amount 
-                          ? `$${application.proposed_prize_amount.toLocaleString()}`
-                          : 'Not specified'
-                        }
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Users className="h-4 w-4 text-muted-foreground" />
-                      <span>Target: {application.target_submissions} submissions</span>
-                    </div>
-                    {application.website_url && (
-                      <div className="flex items-center gap-2">
-                        <Globe className="h-4 w-4 text-muted-foreground" />
-                        <a 
-                          href={application.website_url} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-primary hover:underline"
-                        >
-                          Website
-                        </a>
+      {/* Applications Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Applications ({filteredApplications.length})</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {filteredApplications.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              No applications found matching your criteria.
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Organization & Title</TableHead>
+                  <TableHead>Applicant</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Submitted</TableHead>
+                  <TableHead>Prize Amount</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredApplications.map((application) => (
+                  <TableRow key={application.id}>
+                    <TableCell>
+                      <div>
+                        <p className="font-medium">{application.organization_name}</p>
+                        <p className="text-sm text-muted-foreground">{application.proposed_title}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Deadline: {new Date(application.proposed_deadline).toLocaleDateString()}
+                        </p>
                       </div>
-                    )}
-                  </div>
+                    </TableCell>
+                    <TableCell>
+                      <div>
+                        <p className="text-sm font-medium">
+                          {application.profiles?.first_name} {application.profiles?.last_name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">@{application.profiles?.username}</p>
+                        <p className="text-xs text-muted-foreground">{application.contact_email}</p>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={getStatusVariant(application.application_status)}>
+                        {application.application_status.replace('_', ' ')}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm text-muted-foreground">
+                        {new Date(application.created_at).toLocaleDateString()}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center text-sm">
+                        <DollarSign className="h-3 w-3 mr-1" />
+                        {application.proposed_prize_amount ? 
+                          `$${application.proposed_prize_amount.toLocaleString()}` : 
+                          'Not specified'
+                        }
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center space-x-2">
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => setSelectedApplication(application)}
+                            >
+                              <Eye className="h-4 w-4 mr-1" />
+                              Review
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                            <DialogHeader>
+                              <DialogTitle>Review Host Application</DialogTitle>
+                            </DialogHeader>
+                            {selectedApplication && (
+                              <div className="space-y-6">
+                                {/* Organization Info */}
+                                <Card>
+                                  <CardHeader>
+                                    <CardTitle className="flex items-center gap-2">
+                                      <Building className="h-5 w-5" />
+                                      Organization Information
+                                    </CardTitle>
+                                  </CardHeader>
+                                  <CardContent className="space-y-3">
+                                    <div className="grid grid-cols-2 gap-4">
+                                      <div>
+                                        <Label className="text-sm font-medium">Organization Name</Label>
+                                        <p className="text-sm">{selectedApplication.organization_name}</p>
+                                      </div>
+                                      <div>
+                                        <Label className="text-sm font-medium">Type</Label>
+                                        <p className="text-sm">{selectedApplication.organization_type}</p>
+                                      </div>
+                                      <div>
+                                        <Label className="text-sm font-medium">Contact Email</Label>
+                                        <p className="text-sm">{selectedApplication.contact_email}</p>
+                                      </div>
+                                      <div>
+                                        <Label className="text-sm font-medium">Phone</Label>
+                                        <p className="text-sm">{selectedApplication.phone || 'Not provided'}</p>
+                                      </div>
+                                    </div>
+                                    {selectedApplication.website_url && (
+                                      <div>
+                                        <Label className="text-sm font-medium">Website</Label>
+                                        <p className="text-sm">{selectedApplication.website_url}</p>
+                                      </div>
+                                    )}
+                                    {selectedApplication.address && (
+                                      <div>
+                                        <Label className="text-sm font-medium">Address</Label>
+                                        <p className="text-sm">{selectedApplication.address}</p>
+                                      </div>
+                                    )}
+                                  </CardContent>
+                                </Card>
 
-                  <div className="flex gap-2 pt-4 border-t">
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setSelectedApplication(application)}
-                        >
-                          <Eye className="h-4 w-4 mr-2" />
-                          View Details
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-                        <DialogHeader>
-                          <DialogTitle>{application.organization_name} - Host Application</DialogTitle>
-                        </DialogHeader>
-                        
-                        {selectedApplication && (
-                          <Tabs defaultValue="details" className="w-full">
-                            <TabsList className="grid w-full grid-cols-4">
-                              <TabsTrigger value="details">Details</TabsTrigger>
-                              <TabsTrigger value="experience">Experience</TabsTrigger>
-                              <TabsTrigger value="requirements">Requirements</TabsTrigger>
-                              <TabsTrigger value="review">Review</TabsTrigger>
-                            </TabsList>
-                            
-                            <TabsContent value="details" className="space-y-4">
-                              <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                  <h4 className="font-semibold">Organization Info</h4>
-                                  <p><strong>Name:</strong> {selectedApplication.organization_name}</p>
-                                  <p><strong>Type:</strong> {selectedApplication.organization_type}</p>
-                                  <p><strong>Contact:</strong> {selectedApplication.contact_email}</p>
-                                  {selectedApplication.phone && <p><strong>Phone:</strong> {selectedApplication.phone}</p>}
-                                  {selectedApplication.website_url && (
-                                    <p><strong>Website:</strong> 
-                                      <a href={selectedApplication.website_url} target="_blank" rel="noopener noreferrer" className="text-primary ml-1">
-                                        {selectedApplication.website_url}
-                                      </a>
-                                    </p>
-                                  )}
-                                </div>
-                                <div>
-                                  <h4 className="font-semibold">Open Call Details</h4>
-                                  <p><strong>Title:</strong> {selectedApplication.proposed_title}</p>
-                                  <p><strong>Deadline:</strong> {new Date(selectedApplication.proposed_deadline).toLocaleDateString()}</p>
-                                  {selectedApplication.proposed_exhibition_dates && (
-                                    <p><strong>Exhibition:</strong> {selectedApplication.proposed_exhibition_dates}</p>
-                                  )}
-                                  {selectedApplication.proposed_venue && (
-                                    <p><strong>Venue:</strong> {selectedApplication.proposed_venue}</p>
-                                  )}
-                                </div>
-                              </div>
-                              
-                              <div>
-                                <h4 className="font-semibold">Description</h4>
-                                <p className="text-sm text-muted-foreground">{selectedApplication.proposed_description}</p>
-                              </div>
-                              
-                              {selectedApplication.proposed_theme && (
-                                <div>
-                                  <h4 className="font-semibold">Theme</h4>
-                                  <p className="text-sm text-muted-foreground">{selectedApplication.proposed_theme}</p>
-                                </div>
-                              )}
-                            </TabsContent>
-                            
-                            <TabsContent value="experience" className="space-y-4">
-                              <div>
-                                <h4 className="font-semibold">Experience Description</h4>
-                                <p className="text-sm text-muted-foreground whitespace-pre-wrap">{selectedApplication.experience_description}</p>
-                              </div>
-                              
-                              {selectedApplication.previous_exhibitions && (
-                                <div>
-                                  <h4 className="font-semibold">Previous Exhibitions</h4>
-                                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">{selectedApplication.previous_exhibitions}</p>
-                                </div>
-                              )}
-                              
-                              <div>
-                                <h4 className="font-semibold">Curatorial Statement</h4>
-                                <p className="text-sm text-muted-foreground whitespace-pre-wrap">{selectedApplication.curatorial_statement}</p>
-                              </div>
-                            </TabsContent>
-                            
-                            <TabsContent value="requirements" className="space-y-4">
-                              {selectedApplication.technical_requirements && (
-                                <div>
-                                  <h4 className="font-semibold">Technical Requirements</h4>
-                                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">{selectedApplication.technical_requirements}</p>
-                                </div>
-                              )}
-                              
-                              {selectedApplication.marketing_plan && (
-                                <div>
-                                  <h4 className="font-semibold">Marketing Plan</h4>
-                                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">{selectedApplication.marketing_plan}</p>
-                                </div>
-                              )}
-                              
-                              <div className="grid grid-cols-2 gap-4">
-                                {selectedApplication.proposed_budget && (
-                                  <div>
-                                    <h4 className="font-semibold">Budget</h4>
-                                    <p>${selectedApplication.proposed_budget.toLocaleString()}</p>
-                                  </div>
-                                )}
-                                
-                                {selectedApplication.proposed_prize_amount && (
-                                  <div>
-                                    <h4 className="font-semibold">Prize Amount</h4>
-                                    <p>${selectedApplication.proposed_prize_amount.toLocaleString()}</p>
-                                  </div>
-                                )}
-                              </div>
-                            </TabsContent>
-                            
-                            <TabsContent value="review" className="space-y-4">
-                              <div>
-                                <Label htmlFor="reviewNotes">Review Notes</Label>
-                                <Textarea
-                                  id="reviewNotes"
-                                  value={reviewNotes}
-                                  onChange={(e) => setReviewNotes(e.target.value)}
-                                  placeholder="Add notes about this application..."
-                                  rows={4}
-                                />
-                              </div>
-                              
-                              <div className="flex gap-2">
-                                <Button
-                                  onClick={() => handleStatusUpdate(selectedApplication.id, 'approved', reviewNotes)}
-                                  className="bg-green-600 hover:bg-green-700"
-                                >
-                                  <CheckCircle className="h-4 w-4 mr-2" />
-                                  Approve
-                                </Button>
-                                <Button
-                                  onClick={() => handleStatusUpdate(selectedApplication.id, 'rejected', reviewNotes)}
-                                  variant="destructive"
-                                >
-                                  <XCircle className="h-4 w-4 mr-2" />
-                                  Reject
-                                </Button>
-                                <Button
-                                  onClick={() => handleStatusUpdate(selectedApplication.id, 'under_review', reviewNotes)}
-                                  variant="outline"
-                                >
-                                  <Clock className="h-4 w-4 mr-2" />
-                                  Mark Under Review
-                                </Button>
-                              </div>
-                              
-                              {selectedApplication.admin_notes && (
-                                <div className="mt-4 p-4 bg-muted rounded">
-                                  <h4 className="font-semibold">Previous Notes</h4>
-                                  <p className="text-sm text-muted-foreground">{selectedApplication.admin_notes}</p>
-                                </div>
-                              )}
-                            </TabsContent>
-                          </Tabs>
-                        )}
-                      </DialogContent>
-                    </Dialog>
+                                {/* Proposed Open Call */}
+                                <Card>
+                                  <CardHeader>
+                                    <CardTitle className="flex items-center gap-2">
+                                      <Award className="h-5 w-5" />
+                                      Proposed Open Call
+                                    </CardTitle>
+                                  </CardHeader>
+                                  <CardContent className="space-y-3">
+                                    <div>
+                                      <Label className="text-sm font-medium">Title</Label>
+                                      <p className="text-sm">{selectedApplication.proposed_title}</p>
+                                    </div>
+                                    <div>
+                                      <Label className="text-sm font-medium">Description</Label>
+                                      <p className="text-sm">{selectedApplication.proposed_description}</p>
+                                    </div>
+                                    {selectedApplication.proposed_theme && (
+                                      <div>
+                                        <Label className="text-sm font-medium">Theme</Label>
+                                        <p className="text-sm">{selectedApplication.proposed_theme}</p>
+                                      </div>
+                                    )}
+                                    <div className="grid grid-cols-2 gap-4">
+                                      <div>
+                                        <Label className="text-sm font-medium">Deadline</Label>
+                                        <p className="text-sm">{new Date(selectedApplication.proposed_deadline).toLocaleDateString()}</p>
+                                      </div>
+                                      <div>
+                                        <Label className="text-sm font-medium">Target Submissions</Label>
+                                        <p className="text-sm">{selectedApplication.target_submissions || 100}</p>
+                                      </div>
+                                    </div>
+                                    {selectedApplication.proposed_exhibition_dates && (
+                                      <div>
+                                        <Label className="text-sm font-medium">Exhibition Dates</Label>
+                                        <p className="text-sm">{selectedApplication.proposed_exhibition_dates}</p>
+                                      </div>
+                                    )}
+                                    {selectedApplication.proposed_venue && (
+                                      <div>
+                                        <Label className="text-sm font-medium">Venue</Label>
+                                        <p className="text-sm">{selectedApplication.proposed_venue}</p>
+                                      </div>
+                                    )}
+                                    <div className="grid grid-cols-2 gap-4">
+                                      {selectedApplication.proposed_budget && (
+                                        <div>
+                                          <Label className="text-sm font-medium">Budget</Label>
+                                          <p className="text-sm">${selectedApplication.proposed_budget.toLocaleString()}</p>
+                                        </div>
+                                      )}
+                                      {selectedApplication.proposed_prize_amount && (
+                                        <div>
+                                          <Label className="text-sm font-medium">Prize Amount</Label>
+                                          <p className="text-sm">${selectedApplication.proposed_prize_amount.toLocaleString()}</p>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </CardContent>
+                                </Card>
 
-                    {application.application_status === 'pending' && (
-                      <>
-                        <Button
-                          size="sm"
-                          onClick={() => handleStatusUpdate(application.id, 'approved')}
-                          className="bg-green-600 hover:bg-green-700"
-                        >
-                          <CheckCircle className="h-4 w-4 mr-1" />
-                          Approve
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => handleStatusUpdate(application.id, 'rejected')}
-                        >
-                          <XCircle className="h-4 w-4 mr-1" />
-                          Reject
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          );
-        })}
+                                {/* Experience & Qualifications */}
+                                <Card>
+                                  <CardHeader>
+                                    <CardTitle className="flex items-center gap-2">
+                                      <Users className="h-5 w-5" />
+                                      Experience & Qualifications
+                                    </CardTitle>
+                                  </CardHeader>
+                                  <CardContent className="space-y-3">
+                                    <div>
+                                      <Label className="text-sm font-medium">Experience Description</Label>
+                                      <p className="text-sm">{selectedApplication.experience_description}</p>
+                                    </div>
+                                    {selectedApplication.previous_exhibitions && (
+                                      <div>
+                                        <Label className="text-sm font-medium">Previous Exhibitions</Label>
+                                        <p className="text-sm">{selectedApplication.previous_exhibitions}</p>
+                                      </div>
+                                    )}
+                                    <div>
+                                      <Label className="text-sm font-medium">Curatorial Statement</Label>
+                                      <p className="text-sm">{selectedApplication.curatorial_statement}</p>
+                                    </div>
+                                    {selectedApplication.technical_requirements && (
+                                      <div>
+                                        <Label className="text-sm font-medium">Technical Requirements</Label>
+                                        <p className="text-sm">{selectedApplication.technical_requirements}</p>
+                                      </div>
+                                    )}
+                                    {selectedApplication.marketing_plan && (
+                                      <div>
+                                        <Label className="text-sm font-medium">Marketing Plan</Label>
+                                        <p className="text-sm">{selectedApplication.marketing_plan}</p>
+                                      </div>
+                                    )}
+                                  </CardContent>
+                                </Card>
 
-        {filteredApplications.length === 0 && (
-          <div className="text-center py-12">
-            <Building className="h-16 w-16 text-muted-foreground/40 mx-auto mb-4" />
-            <h3 className="text-lg font-medium mb-2">No Applications Found</h3>
-            <p className="text-muted-foreground">
-              {searchTerm || statusFilter !== 'all' 
-                ? 'Try adjusting your search or filter criteria.'
-                : 'No host applications have been submitted yet.'
-              }
-            </p>
-          </div>
-        )}
+                                {/* Admin Review */}
+                                <Card>
+                                  <CardHeader>
+                                    <CardTitle>Admin Review</CardTitle>
+                                  </CardHeader>
+                                  <CardContent className="space-y-4">
+                                    <div>
+                                      <Label htmlFor="reviewNotes">Review Notes</Label>
+                                      <Textarea
+                                        id="reviewNotes"
+                                        value={reviewNotes}
+                                        onChange={(e) => setReviewNotes(e.target.value)}
+                                        placeholder="Add notes about this application..."
+                                        rows={3}
+                                      />
+                                    </div>
+                                    
+                                    {selectedApplication.application_status === 'pending' && (
+                                      <div className="flex gap-2">
+                                        <Button
+                                          onClick={() => handleStatusUpdate(selectedApplication.id, 'approved')}
+                                          disabled={updateHostApplicationStatus.isPending}
+                                          className="flex-1"
+                                        >
+                                          <CheckCircle className="h-4 w-4 mr-2" />
+                                          Approve
+                                        </Button>
+                                        <Button
+                                          variant="destructive"
+                                          onClick={() => handleStatusUpdate(selectedApplication.id, 'rejected')}
+                                          disabled={updateHostApplicationStatus.isPending}
+                                          className="flex-1"
+                                        >
+                                          <XCircle className="h-4 w-4 mr-2" />
+                                          Reject
+                                        </Button>
+                                      </div>
+                                    )}
+
+                                    {selectedApplication.admin_notes && (
+                                      <div>
+                                        <Label className="text-sm font-medium">Previous Notes</Label>
+                                        <p className="text-sm bg-muted p-2 rounded">{selectedApplication.admin_notes}</p>
+                                      </div>
+                                    )}
+                                  </CardContent>
+                                </Card>
+                              </div>
+                            )}
+                          </DialogContent>
+                        </Dialog>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Total Applications</p>
+                <p className="text-2xl font-bold">{applications?.length || 0}</p>
+              </div>
+              <Clock className="h-8 w-8 text-muted-foreground" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Pending Review</p>
+                <p className="text-2xl font-bold">
+                  {applications?.filter(app => app.application_status === 'pending').length || 0}
+                </p>
+              </div>
+              <Clock className="h-8 w-8 text-yellow-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Approved</p>
+                <p className="text-2xl font-bold">
+                  {applications?.filter(app => app.application_status === 'approved').length || 0}
+                </p>
+              </div>
+              <CheckCircle className="h-8 w-8 text-green-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Rejected</p>
+                <p className="text-2xl font-bold">
+                  {applications?.filter(app => app.application_status === 'rejected').length || 0}
+                </p>
+              </div>
+              <XCircle className="h-8 w-8 text-red-500" />
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

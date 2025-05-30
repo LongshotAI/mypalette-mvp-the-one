@@ -1,7 +1,6 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery, useMutation } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,12 +9,12 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { AlertCircle, Calendar, DollarSign, Send, ArrowLeft } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { toast } from '@/hooks/use-toast';
-import SubmissionFormFields from '@/components/submissions/SubmissionFormFields';
+import AdvancedSubmissionForm from '@/components/submissions/AdvancedSubmissionForm';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { SubmissionData } from '@/types/submission';
+import { useOpenCalls } from '@/hooks/useOpenCalls';
+import { useSubmissions } from '@/hooks/useSubmissions';
 
 const SubmissionForm = () => {
   const { callId } = useParams();
@@ -33,108 +32,49 @@ const SubmissionForm = () => {
     external_links: []
   });
 
-  // Fetch open call details
-  const { data: openCall, isLoading } = useQuery({
-    queryKey: ['open-call', callId],
-    queryFn: async () => {
-      if (!callId) throw new Error('No call ID provided');
-      
-      const { data, error } = await supabase
-        .from('open_calls')
-        .select(`
-          *,
-          profiles (
-            first_name,
-            last_name,
-            username
-          )
-        `)
-        .eq('id', callId)
-        .single();
+  const { getOpenCallById } = useOpenCalls();
+  const { createSubmission } = useSubmissions();
+  
+  const { data: openCall, isLoading } = getOpenCallById(callId || '');
 
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!callId,
-  });
+  // Check existing submissions for this user and open call
+  const { data: existingSubmissions } = useSubmissions().getUserSubmissions;
+  
+  const hasExistingSubmission = existingSubmissions?.some(
+    sub => sub.open_call_id === callId
+  );
 
-  // Check existing submissions
-  const { data: existingSubmissions } = useQuery({
-    queryKey: ['user-submissions', callId, user?.id],
-    queryFn: async () => {
-      if (!callId || !user?.id) return [];
-      
-      const { data, error } = await supabase
-        .from('submissions')
-        .select('*')
-        .eq('open_call_id', callId)
-        .eq('artist_id', user.id);
+  const handleSubmit = async () => {
+    if (!callId || !user?.id) {
+      console.error('Missing required data for submission');
+      return;
+    }
 
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!callId && !!user?.id,
-  });
-
-  // Submit submission
-  const submitMutation = useMutation({
-    mutationFn: async () => {
-      if (!callId || !user?.id) throw new Error('Missing required data');
-
-      // Validate form
-      if (!submissionData.title.trim()) {
-        throw new Error('Artwork title is required');
-      }
-      if (!submissionData.description.trim()) {
-        throw new Error('Artwork description is required');
-      }
-      if (!submissionData.medium) {
-        throw new Error('Medium is required');
-      }
-      if (submissionData.image_urls.length === 0) {
-        throw new Error('At least one image is required');
-      }
-
-      // Convert to proper format for database
-      const submissionPayload = {
-        open_call_id: callId,
-        artist_id: user.id,
-        submission_data: submissionData as any, // Cast to any to satisfy Json type
-        payment_status: openCall?.submission_fee > 0 ? 'pending' : 'free'
-      };
-
-      const { data, error } = await supabase
-        .from('submissions')
-        .insert(submissionPayload)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      toast({
-        title: "Submission Successful!",
-        description: "Your artwork has been submitted successfully.",
+    try {
+      await createSubmission.mutateAsync({
+        openCallId: callId,
+        submissionData
       });
       navigate('/dashboard');
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Submission Failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const handleSubmit = () => {
-    submitMutation.mutate();
+    } catch (error) {
+      console.error('Submission failed:', error);
+    }
   };
 
   const isDeadlinePassed = openCall && new Date(openCall.submission_deadline) < new Date();
-  const hasExistingSubmission = existingSubmissions && existingSubmissions.length > 0;
   const canSubmit = !isDeadlinePassed && !hasExistingSubmission && openCall?.status === 'live';
+
+  // Validation for submit button
+  const isFormValid = () => {
+    return !!(
+      submissionData.title?.trim() &&
+      submissionData.description?.trim() &&
+      submissionData.medium &&
+      submissionData.year?.trim() &&
+      submissionData.artist_statement?.trim() &&
+      submissionData.image_urls?.length > 0
+    );
+  };
 
   if (isLoading) {
     return (
@@ -218,7 +158,7 @@ const SubmissionForm = () => {
               transition={{ delay: 0.1 }}
               className="lg:col-span-2"
             >
-              <SubmissionFormFields
+              <AdvancedSubmissionForm
                 submissionData={submissionData}
                 onDataChange={setSubmissionData}
                 requirements={openCall.submission_requirements}
@@ -242,11 +182,11 @@ const SubmissionForm = () => {
                         </div>
                         <Button 
                           onClick={handleSubmit}
-                          disabled={submitMutation.isPending}
+                          disabled={createSubmission.isPending || !isFormValid()}
                           size="lg"
                         >
                           <Send className="h-4 w-4 mr-2" />
-                          {submitMutation.isPending ? 'Submitting...' : 'Submit Artwork'}
+                          {createSubmission.isPending ? 'Submitting...' : 'Submit Artwork'}
                         </Button>
                       </div>
                     </CardContent>

@@ -1,275 +1,254 @@
 
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { motion } from 'framer-motion';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Users, FileText, Calendar, DollarSign, TrendingUp, Eye, Film } from 'lucide-react';
-import AdminOpenCallManagement from '@/components/admin/AdminOpenCallManagement';
-import SubmissionReview from '@/components/admin/SubmissionReview';
-import AdminDebugInfo from '@/components/admin/AdminDebugInfo';
-import AIFilm3AdminPanel from '@/components/admin/AIFilm3AdminPanel';
+import { Badge } from '@/components/ui/badge';
+import { 
+  Users, 
+  FileText, 
+  Calendar, 
+  TrendingUp,
+  Building,
+  Send,
+  CheckCircle,
+  Clock
+} from 'lucide-react';
+import UserManagementTable from '@/components/admin/UserManagementTable';
+import HostApplicationManagement from '@/components/admin/HostApplicationManagement';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import LoadingSpinner from '@/components/ui/LoadingSpinner';
 
 const AdminDashboard = () => {
-  const [selectedOpenCall, setSelectedOpenCall] = useState<string | null>(null);
-
-  // Fetch dashboard statistics
-  const { data: stats } = useQuery({
-    queryKey: ['admin-stats'],
+  // Fetch dashboard stats
+  const { data: stats, isLoading } = useQuery({
+    queryKey: ['admin-dashboard-stats'],
     queryFn: async () => {
-      const [
-        { count: totalUsers },
-        { count: totalOpenCalls },
-        { count: totalSubmissions },
-        { count: pendingCalls }
-      ] = await Promise.all([
-        supabase.from('profiles').select('*', { count: 'exact', head: true }),
-        supabase.from('open_calls').select('*', { count: 'exact', head: true }),
-        supabase.from('submissions').select('*', { count: 'exact', head: true }),
-        supabase.from('open_calls').select('*', { count: 'exact', head: true }).eq('status', 'pending')
-      ]);
+      console.log('Fetching admin dashboard stats...');
+      
+      // Get user count
+      const { data: users, error: usersError } = await supabase
+        .from('profiles')
+        .select('id, role');
+      
+      if (usersError) {
+        console.error('Error fetching users:', usersError);
+        throw usersError;
+      }
 
-      const { data: revenueData } = await supabase
-        .from('submissions')
-        .select('submission_data')
-        .in('payment_status', ['paid']);
+      // Get host applications count
+      const { data: hostApps, error: hostAppsError } = await supabase
+        .from('host_applications')
+        .select('id, application_status');
+      
+      if (hostAppsError) {
+        console.error('Error fetching host applications:', hostAppsError);
+        throw hostAppsError;
+      }
 
-      const totalRevenue = revenueData?.length * 2 || 0;
-
-      return {
-        totalUsers: totalUsers || 0,
-        totalOpenCalls: totalOpenCalls || 0,
-        totalSubmissions: totalSubmissions || 0,
-        pendingCalls: pendingCalls || 0,
-        totalRevenue
-      };
-    },
-  });
-
-  const { data: recentActivity } = useQuery({
-    queryKey: ['admin-recent-activity'],
-    queryFn: async () => {
-      const { data: recentSubmissions } = await supabase
-        .from('submissions')
-        .select(`
-          *,
-          profiles(username, first_name, last_name),
-          open_calls(title)
-        `)
-        .order('submitted_at', { ascending: false })
-        .limit(5);
-
-      const { data: recentCalls } = await supabase
+      // Get open calls count
+      const { data: openCalls, error: openCallsError } = await supabase
         .from('open_calls')
-        .select(`
-          *,
-          profiles(username, first_name, last_name)
-        `)
-        .order('created_at', { ascending: false })
-        .limit(5);
+        .select('id, status');
+      
+      if (openCallsError) {
+        console.error('Error fetching open calls:', openCallsError);
+        throw openCallsError;
+      }
 
+      // Get submissions count
+      const { data: submissions, error: submissionsError } = await supabase
+        .from('submissions')
+        .select('id, payment_status');
+      
+      if (submissionsError) {
+        console.error('Error fetching submissions:', submissionsError);
+        throw submissionsError;
+      }
+
+      console.log('Dashboard stats fetched successfully');
+      
       return {
-        recentSubmissions: recentSubmissions || [],
-        recentCalls: recentCalls || []
+        totalUsers: users?.length || 0,
+        adminUsers: users?.filter(u => u.role === 'admin').length || 0,
+        totalHostApplications: hostApps?.length || 0,
+        pendingHostApplications: hostApps?.filter(h => h.application_status === 'pending').length || 0,
+        totalOpenCalls: openCalls?.length || 0,
+        liveOpenCalls: openCalls?.filter(o => o.status === 'live').length || 0,
+        totalSubmissions: submissions?.length || 0,
+        paidSubmissions: submissions?.filter(s => s.payment_status === 'paid' || s.payment_status === 'free').length || 0
       };
     },
   });
+
+  if (isLoading) {
+    return (
+      <Layout>
+        <div className="min-h-screen flex items-center justify-center">
+          <LoadingSpinner size="lg" />
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
       <div className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-          <p className="text-gray-600 mt-2">Monitor and manage the MyPalette platform</p>
-        </div>
+        <div className="max-w-7xl mx-auto">
+          {/* Header */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-8"
+          >
+            <h1 className="text-3xl font-bold mb-2">Admin Dashboard</h1>
+            <p className="text-muted-foreground">Manage users, applications, and platform content</p>
+          </motion.div>
 
-        <AdminDebugInfo />
-
-        {/* Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats?.totalUsers || 0}</div>
-              <p className="text-xs text-muted-foreground">Registered artists</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Open Calls</CardTitle>
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats?.totalOpenCalls || 0}</div>
-              <p className="text-xs text-muted-foreground">Total created</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Submissions</CardTitle>
-              <FileText className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats?.totalSubmissions || 0}</div>
-              <p className="text-xs text-muted-foreground">All time</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pending</CardTitle>
-              <Eye className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats?.pendingCalls || 0}</div>
-              <p className="text-xs text-muted-foreground">Need review</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Revenue</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">${stats?.totalRevenue || 0}</div>
-              <p className="text-xs text-muted-foreground">From submissions</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Main Content Tabs */}
-        <Tabs defaultValue="open-calls" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="open-calls">Open Calls</TabsTrigger>
-            <TabsTrigger value="submissions">Submissions</TabsTrigger>
-            <TabsTrigger value="users">Users</TabsTrigger>
-            <TabsTrigger value="aifilm3">AIFilm3</TabsTrigger>
-            <TabsTrigger value="analytics">Analytics</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="open-calls" className="space-y-6">
-            <AdminOpenCallManagement />
-          </TabsContent>
-
-          <TabsContent value="submissions" className="space-y-6">
-            <div className="space-y-4">
-              <h2 className="text-2xl font-bold">Submission Management</h2>
-              
-              {selectedOpenCall ? (
-                <div>
-                  <button 
-                    onClick={() => setSelectedOpenCall(null)}
-                    className="text-blue-600 hover:underline mb-4"
-                  >
-                    ← Back to all submissions
-                  </button>
-                  <SubmissionReview openCallId={selectedOpenCall} />
-                </div>
-              ) : (
-                <div className="grid gap-4">
-                  {recentActivity?.recentCalls?.map((call) => (
-                    <Card key={call.id} className="cursor-pointer hover:shadow-md transition-shadow"
-                          onClick={() => setSelectedOpenCall(call.id)}>
-                      <CardHeader>
-                        <CardTitle className="text-lg">{call.title}</CardTitle>
-                        <p className="text-sm text-gray-600">
-                          by {call.profiles?.first_name} {call.profiles?.last_name}
-                        </p>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm text-gray-500">
-                            Deadline: {new Date(call.submission_deadline).toLocaleDateString()}
-                          </span>
-                          <span className="text-sm font-medium text-blue-600">
-                            View submissions →
-                          </span>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="users" className="space-y-6">
+          {/* Stats Cards */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
+          >
             <Card>
-              <CardHeader>
-                <CardTitle>User Management</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600">User management interface coming soon...</p>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Users</p>
+                    <p className="text-2xl font-bold">{stats?.totalUsers || 0}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {stats?.adminUsers || 0} admins
+                    </p>
+                  </div>
+                  <Users className="h-8 w-8 text-primary" />
+                </div>
               </CardContent>
             </Card>
-          </TabsContent>
 
-          <TabsContent value="aifilm3" className="space-y-6">
-            <AIFilm3AdminPanel />
-          </TabsContent>
-
-          <TabsContent value="analytics" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Recent Activity</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div>
-                      <h4 className="font-medium mb-2">Recent Submissions</h4>
-                      <div className="space-y-2">
-                        {recentActivity?.recentSubmissions?.map((submission) => {
-                          const submissionData = submission.submission_data as any;
-                          return (
-                            <div key={submission.id} className="text-sm p-2 bg-gray-50 rounded">
-                              <strong>{submissionData?.title || 'Untitled Submission'}</strong>
-                              <br />
-                              by {submission.profiles?.first_name} {submission.profiles?.last_name}
-                              <br />
-                              <span className="text-gray-500">
-                                {new Date(submission.submitted_at).toLocaleDateString()}
-                              </span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Host Applications</p>
+                    <p className="text-2xl font-bold">{stats?.totalHostApplications || 0}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {stats?.pendingHostApplications || 0} pending review
+                    </p>
                   </div>
-                </CardContent>
-              </Card>
+                  <Building className="h-8 w-8 text-blue-500" />
+                </div>
+              </CardContent>
+            </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>Platform Growth</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm">User Growth</span>
-                      <span className="text-sm text-green-600">+12% this month</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm">Open Call Activity</span>
-                      <span className="text-sm text-green-600">+8% this month</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm">Revenue Growth</span>
-                      <span className="text-sm text-green-600">+15% this month</span>
-                    </div>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Open Calls</p>
+                    <p className="text-2xl font-bold">{stats?.totalOpenCalls || 0}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {stats?.liveOpenCalls || 0} currently live
+                    </p>
                   </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-        </Tabs>
+                  <Calendar className="h-8 w-8 text-green-500" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Submissions</p>
+                    <p className="text-2xl font-bold">{stats?.totalSubmissions || 0}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {stats?.paidSubmissions || 0} completed
+                    </p>
+                  </div>
+                  <Send className="h-8 w-8 text-purple-500" />
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Management Tabs */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+          >
+            <Tabs defaultValue="users" className="space-y-6">
+              <TabsList className="grid w-full grid-cols-2 lg:grid-cols-4">
+                <TabsTrigger value="users" className="flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  Users
+                </TabsTrigger>
+                <TabsTrigger value="host-applications" className="flex items-center gap-2">
+                  <Building className="h-4 w-4" />
+                  Host Applications
+                  {stats?.pendingHostApplications && stats.pendingHostApplications > 0 && (
+                    <Badge variant="destructive" className="ml-1 px-1 py-0 text-xs">
+                      {stats.pendingHostApplications}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="open-calls" className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  Open Calls
+                </TabsTrigger>
+                <TabsTrigger value="analytics" className="flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4" />
+                  Analytics
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="users">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>User Management</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <UserManagementTable />
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="host-applications">
+                <HostApplicationManagement />
+              </TabsContent>
+
+              <TabsContent value="open-calls">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Open Calls Management</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-center py-8 text-muted-foreground">
+                      Open Calls management functionality coming soon...
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="analytics">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Platform Analytics</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-center py-8 text-muted-foreground">
+                      Analytics dashboard coming soon...
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          </motion.div>
+        </div>
       </div>
     </Layout>
   );

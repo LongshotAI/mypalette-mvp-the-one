@@ -67,45 +67,59 @@ export const useHostApplications = () => {
 
   const createHostApplication = useMutation({
     mutationFn: async (applicationData: HostApplicationData) => {
+      console.log('Creating host application with data:', applicationData);
+      
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      // Use raw SQL to call the function directly with proper type casting
-      const { data, error } = await supabase.rpc('create_host_application' as any, {
-        p_applicant_id: user.id,
-        p_organization_name: applicationData.organizationName,
-        p_organization_type: applicationData.organizationType,
-        p_website_url: applicationData.websiteUrl,
-        p_contact_email: applicationData.contactEmail,
-        p_phone: applicationData.phone,
-        p_address: applicationData.address,
-        p_proposed_title: applicationData.proposedTitle,
-        p_proposed_description: applicationData.proposedDescription,
-        p_proposed_theme: applicationData.proposedTheme,
-        p_proposed_deadline: applicationData.proposedDeadline,
-        p_proposed_exhibition_dates: applicationData.proposedExhibitionDates,
-        p_proposed_venue: applicationData.proposedVenue,
-        p_proposed_budget: applicationData.proposedBudget,
-        p_proposed_prize_amount: applicationData.proposedPrizeAmount || 0,
-        p_target_submissions: applicationData.targetSubmissions || 100,
-        p_experience_description: applicationData.experienceDescription,
-        p_previous_exhibitions: applicationData.previousExhibitions,
-        p_curatorial_statement: applicationData.curatorialStatement,
-        p_technical_requirements: applicationData.technicalRequirements,
-        p_marketing_plan: applicationData.marketingPlan
-      });
+      // Insert directly into host_applications table
+      const { data, error } = await supabase
+        .from('host_applications')
+        .insert({
+          applicant_id: user.id,
+          organization_name: applicationData.organizationName,
+          organization_type: applicationData.organizationType,
+          website_url: applicationData.websiteUrl,
+          contact_email: applicationData.contactEmail,
+          phone: applicationData.phone,
+          address: applicationData.address,
+          proposed_title: applicationData.proposedTitle,
+          proposed_description: applicationData.proposedDescription,
+          proposed_theme: applicationData.proposedTheme,
+          proposed_deadline: applicationData.proposedDeadline,
+          proposed_exhibition_dates: applicationData.proposedExhibitionDates,
+          proposed_venue: applicationData.proposedVenue,
+          proposed_budget: applicationData.proposedBudget,
+          proposed_prize_amount: applicationData.proposedPrizeAmount || 0,
+          target_submissions: applicationData.targetSubmissions || 100,
+          experience_description: applicationData.experienceDescription,
+          previous_exhibitions: applicationData.previousExhibitions,
+          curatorial_statement: applicationData.curatorialStatement,
+          technical_requirements: applicationData.technicalRequirements,
+          marketing_plan: applicationData.marketingPlan,
+          application_status: 'pending'
+        })
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error creating host application:', error);
+        throw error;
+      }
+
+      console.log('Host application created successfully:', data);
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['host-applications'] });
+      queryClient.invalidateQueries({ queryKey: ['user-host-applications'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-host-applications'] });
       toast({
         title: "Application Submitted",
         description: "Your host application has been submitted for review.",
       });
     },
     onError: (error: any) => {
+      console.error('Host application submission error:', error);
       toast({
         title: "Application Failed",
         description: error.message || "Failed to submit application.",
@@ -117,25 +131,50 @@ export const useHostApplications = () => {
   const getUserHostApplications = useQuery({
     queryKey: ['user-host-applications'],
     queryFn: async () => {
+      console.log('Fetching user host applications...');
+      
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      const { data, error } = await supabase.rpc('get_user_host_applications' as any, {
-        p_user_id: user.id
-      });
+      const { data, error } = await supabase
+        .from('host_applications')
+        .select(`
+          *,
+          profiles(username, first_name, last_name)
+        `)
+        .eq('applicant_id', user.id)
+        .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      return (data || []) as HostApplication[];
+      if (error) {
+        console.error('Error fetching user host applications:', error);
+        throw error;
+      }
+
+      console.log('User host applications fetched:', data);
+      return data as HostApplication[];
     },
   });
 
   const getAllHostApplications = useQuery({
     queryKey: ['admin-host-applications'],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_all_host_applications' as any, {});
+      console.log('Fetching all host applications for admin...');
+      
+      const { data, error } = await supabase
+        .from('host_applications')
+        .select(`
+          *,
+          profiles(username, first_name, last_name)
+        `)
+        .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      return (data || []) as HostApplication[];
+      if (error) {
+        console.error('Error fetching all host applications:', error);
+        throw error;
+      }
+
+      console.log('All host applications fetched:', data);
+      return data as HostApplication[];
     },
   });
 
@@ -149,23 +188,41 @@ export const useHostApplications = () => {
       status: string; 
       notes?: string;
     }) => {
+      console.log('Updating host application status:', { applicationId, status, notes });
+      
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      const { error } = await supabase.rpc('update_host_application_status' as any, {
-        p_application_id: applicationId,
-        p_status: status,
-        p_notes: notes,
-        p_reviewer_id: user.id
-      });
+      const { error } = await supabase
+        .from('host_applications')
+        .update({
+          application_status: status,
+          admin_notes: notes,
+          reviewed_by: user.id,
+          reviewed_at: new Date().toISOString()
+        })
+        .eq('id', applicationId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error updating host application status:', error);
+        throw error;
+      }
+
+      console.log('Host application status updated successfully');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-host-applications'] });
       toast({
         title: "Status Updated",
         description: "Application status has been updated.",
+      });
+    },
+    onError: (error: any) => {
+      console.error('Error updating host application status:', error);
+      toast({
+        title: "Update Failed",
+        description: error.message || "Failed to update status.",
+        variant: "destructive",
       });
     },
   });
