@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -110,6 +111,18 @@ const SubmissionReview = ({ openCallId }: SubmissionReviewProps) => {
   const getArtistStatement = (submission: Submission): string => {
     const submissionData = getSubmissionData(submission);
     return submission.artist_statement || submissionData.artist_statement || 'No artist statement provided';
+  };
+
+  const handleStatusUpdate = async (submissionId: string, isSelected: boolean, notes?: string) => {
+    try {
+      await updateSubmissionStatus.mutateAsync({
+        submissionId,
+        isSelected,
+        notes
+      });
+    } catch (error) {
+      console.error('Failed to update submission status:', error);
+    }
   };
 
   if (isLoading) {
@@ -272,30 +285,17 @@ const SubmissionReview = ({ openCallId }: SubmissionReviewProps) => {
                           </p>
                         </div>
                         
-                        {submissionData.files && submissionData.files.length > 0 && (
+                        {submissionData.image_urls && submissionData.image_urls.length > 0 && (
                           <div>
-                            <h4 className="font-semibold">Attached Files</h4>
+                            <h4 className="font-semibold">Images</h4>
                             <div className="grid grid-cols-2 gap-4 mt-2">
-                              {submissionData.files.map((file, index) => (
+                              {submissionData.image_urls.map((url, index) => (
                                 <div key={index} className="border rounded p-2">
-                                  {file.file_type?.startsWith('image/') ? (
-                                    <div className="relative">
-                                      <Image className="h-4 w-4 absolute top-2 right-2 text-white bg-black rounded" />
-                                      <img 
-                                        src={file.file_url} 
-                                        alt={file.file_name}
-                                        className="w-full h-32 object-cover rounded"
-                                      />
-                                    </div>
-                                  ) : (
-                                    <div className="w-full h-32 bg-gray-100 rounded flex items-center justify-center">
-                                      <div className="text-center">
-                                        <FileText className="h-8 w-8 mx-auto mb-2 text-gray-500" />
-                                        <span className="text-sm text-gray-600">{file.file_name}</span>
-                                      </div>
-                                    </div>
-                                  )}
-                                  <p className="text-xs text-gray-500 mt-1 truncate">{file.file_name}</p>
+                                  <img 
+                                    src={url} 
+                                    alt={`Artwork ${index + 1}`}
+                                    className="w-full h-32 object-cover rounded"
+                                  />
                                 </div>
                               ))}
                             </div>
@@ -340,87 +340,37 @@ const SubmissionReview = ({ openCallId }: SubmissionReviewProps) => {
                           </div>
                         </div>
                         
-                        <div className="grid grid-cols-3 gap-4">
-                          <div>
-                            <Label>Technical Quality (1-10)</Label>
-                            <Input
-                              type="number"
-                              min="1"
-                              max="10"
-                              value={reviewData.technicalQuality}
-                              onChange={(e) => setReviewData(prev => ({ ...prev, technicalQuality: Number(e.target.value) }))}
-                            />
-                          </div>
-                          <div>
-                            <Label>Artistic Merit (1-10)</Label>
-                            <Input
-                              type="number"
-                              min="1"
-                              max="10"
-                              value={reviewData.artisticMerit}
-                              onChange={(e) => setReviewData(prev => ({ ...prev, artisticMerit: Number(e.target.value) }))}
-                            />
-                          </div>
-                          <div>
-                            <Label>Theme Relevance (1-10)</Label>
-                            <Input
-                              type="number"
-                              min="1"
-                              max="10"
-                              value={reviewData.themeRelevance}
-                              onChange={(e) => setReviewData(prev => ({ ...prev, themeRelevance: Number(e.target.value) }))}
-                            />
-                          </div>
-                        </div>
-
                         <div>
-                          <Label>Review Notes (Public)</Label>
+                          <Label>Review Notes</Label>
                           <Textarea
-                            placeholder="Feedback visible to the artist"
                             value={reviewData.reviewNotes}
                             onChange={(e) => setReviewData(prev => ({ ...prev, reviewNotes: e.target.value }))}
+                            placeholder="Enter your review notes..."
+                            rows={4}
                           />
                         </div>
 
-                        <div>
-                          <Label>Private Notes</Label>
-                          <Textarea
-                            placeholder="Internal notes for admin/curator use only"
-                            value={reviewData.privateNotes}
-                            onChange={(e) => setReviewData(prev => ({ ...prev, privateNotes: e.target.value }))}
-                          />
+                        <div className="flex gap-2">
+                          <Button
+                            onClick={() => {
+                              createReview.mutate({ submissionId: submission.id, reviewData });
+                            }}
+                            disabled={createReview.isPending}
+                          >
+                            Submit Review
+                          </Button>
                         </div>
-
-                        <Button
-                          onClick={() => createReview.mutate({
-                            submissionId: submission.id,
-                            reviewData
-                          })}
-                          className="w-full"
-                        >
-                          Submit Review
-                        </Button>
                       </div>
                     </DialogContent>
                   </Dialog>
 
-                  <Button 
-                    size="sm" 
-                    variant="outline"
-                    onClick={() => {
-                      const newStatus = prompt('Enter new status (under_review, shortlisted, selected, rejected, waitlisted):');
-                      const notes = prompt('Enter notes (optional):');
-                      if (newStatus) {
-                        updateSubmissionStatus.mutate({
-                          submissionId: submission.id,
-                          status: newStatus,
-                          notes: notes || undefined
-                        });
-                      }
-                    }}
+                  <Button
+                    size="sm"
+                    variant={submission.is_selected ? "destructive" : "default"}
+                    onClick={() => handleStatusUpdate(submission.id, !submission.is_selected)}
+                    disabled={updateSubmissionStatus.isPending}
                   >
-                    <MessageSquare className="h-4 w-4 mr-1" />
-                    Update Status
+                    {submission.is_selected ? 'Deselect' : 'Select'}
                   </Button>
                 </div>
               </CardContent>
@@ -428,55 +378,8 @@ const SubmissionReview = ({ openCallId }: SubmissionReviewProps) => {
           );
         })}
       </div>
-
-      {submissions?.length === 0 && (
-        <div className="text-center py-12">
-          <p className="text-gray-500">No submissions yet.</p>
-        </div>
-      )}
     </div>
   );
-};
-
-// Helper functions
-const getSubmissionData = (submission: Submission): SubmissionData => {
-  const data = submission.submission_data as SubmissionData;
-  return data || {
-    title: '',
-    description: '',
-    medium: '',
-    year: '',
-    dimensions: '',
-    artist_statement: '',
-    image_urls: [],
-    external_links: [],
-    files: []
-  };
-};
-
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'selected': return 'bg-green-500';
-    case 'rejected': return 'bg-red-500';
-    case 'under_review': return 'bg-yellow-500';
-    case 'shortlisted': return 'bg-blue-500';
-    default: return 'bg-gray-500';
-  }
-};
-
-const getSubmissionTitle = (submission: Submission): string => {
-  const submissionData = getSubmissionData(submission);
-  return submission.submission_title || submissionData.title || 'Untitled Submission';
-};
-
-const getSubmissionDescription = (submission: Submission): string => {
-  const submissionData = getSubmissionData(submission);
-  return submission.submission_description || submissionData.description || 'No description provided';
-};
-
-const getArtistStatement = (submission: Submission): string => {
-  const submissionData = getSubmissionData(submission);
-  return submission.artist_statement || submissionData.artist_statement || 'No artist statement provided';
 };
 
 export default SubmissionReview;
