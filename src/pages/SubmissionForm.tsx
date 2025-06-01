@@ -1,85 +1,89 @@
 
-import { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { AlertCircle, Calendar, DollarSign, Send, ArrowLeft } from 'lucide-react';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { useAuth } from '@/contexts/AuthContext';
-import AdvancedSubmissionForm from '@/components/submissions/AdvancedSubmissionForm';
-import LoadingSpinner from '@/components/ui/LoadingSpinner';
-import { SubmissionData } from '@/types/submission';
-import { useOpenCalls } from '@/hooks/useOpenCalls';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { useSubmissions } from '@/hooks/useSubmissions';
+import { useOpenCalls } from '@/hooks/useOpenCalls';
+import Layout from '@/components/layout/Layout';
+import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import { toast } from '@/hooks/use-toast';
 
 const SubmissionForm = () => {
-  const { callId } = useParams();
+  const { callId } = useParams<{ callId: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { createSubmission } = useSubmissions();
+  const { getOpenCallById } = useOpenCalls();
   
-  const [submissionData, setSubmissionData] = useState<SubmissionData>({
+  const { data: openCall, isLoading: loadingCall } = getOpenCallById(callId || '');
+  
+  const [formData, setFormData] = useState({
     title: '',
     description: '',
     medium: '',
     year: '',
     dimensions: '',
     artist_statement: '',
-    image_urls: [],
-    external_links: []
+    image_urls: [''],
+    external_links: ['']
   });
-
-  const { getOpenCallById } = useOpenCalls();
-  const { createSubmission } = useSubmissions();
   
-  const { data: openCall, isLoading } = getOpenCallById(callId || '');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Check existing submissions for this user and open call
-  const { data: existingSubmissions } = useSubmissions().getUserSubmissions;
-  
-  const hasExistingSubmission = existingSubmissions?.some(
-    sub => sub.open_call_id === callId
-  );
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
 
-  const handleSubmit = async () => {
-    if (!callId || !user?.id) {
-      console.error('Missing required data for submission');
-      return;
-    }
+  const handleImageUrlChange = (index: number, value: string) => {
+    const newUrls = [...formData.image_urls];
+    newUrls[index] = value;
+    setFormData(prev => ({ ...prev, image_urls: newUrls }));
+  };
 
+  const addImageUrl = () => {
+    setFormData(prev => ({ ...prev, image_urls: [...prev.image_urls, ''] }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!callId) return;
+    
+    setIsSubmitting(true);
+    
     try {
       await createSubmission.mutateAsync({
         openCallId: callId,
-        submissionData
+        submissionData: {
+          ...formData,
+          image_urls: formData.image_urls.filter(url => url.trim() !== ''),
+          external_links: formData.external_links.filter(url => url.trim() !== '')
+        }
       });
+      
+      toast({
+        title: "Submission Successful!",
+        description: "Your artwork has been submitted successfully.",
+      });
+      
       navigate('/dashboard');
-    } catch (error) {
-      console.error('Submission failed:', error);
+    } catch (error: any) {
+      toast({
+        title: "Submission Failed",
+        description: error.message || "Failed to submit artwork.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const isDeadlinePassed = openCall && new Date(openCall.submission_deadline) < new Date();
-  const canSubmit = !isDeadlinePassed && !hasExistingSubmission && openCall?.status === 'live';
-
-  // Validation for submit button
-  const isFormValid = () => {
-    return !!(
-      submissionData.title?.trim() &&
-      submissionData.description?.trim() &&
-      submissionData.medium &&
-      submissionData.year?.trim() &&
-      submissionData.artist_statement?.trim() &&
-      submissionData.image_urls?.length > 0
-    );
-  };
-
-  if (isLoading) {
+  if (loadingCall) {
     return (
       <Layout>
-        <div className="min-h-screen flex items-center justify-center">
+        <div className="flex items-center justify-center min-h-[400px]">
           <LoadingSpinner size="lg" />
         </div>
       </Layout>
@@ -91,14 +95,10 @@ const SubmissionForm = () => {
       <Layout>
         <div className="container mx-auto px-4 py-8">
           <Card>
-            <CardContent className="p-8 text-center">
-              <h2 className="text-2xl font-bold mb-2">Open Call Not Found</h2>
-              <p className="text-muted-foreground mb-4">
-                The open call you're looking for doesn't exist or has been removed.
-              </p>
+            <CardContent className="text-center py-8">
+              <h2 className="text-2xl font-bold mb-4">Open Call Not Found</h2>
               <Button onClick={() => navigate('/open-calls')}>
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Open Calls
+                Browse Open Calls
               </Button>
             </CardContent>
           </Card>
@@ -110,161 +110,118 @@ const SubmissionForm = () => {
   return (
     <Layout>
       <div className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
-          {/* Header */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-8"
-          >
-            <Button
-              variant="ghost"
-              onClick={() => navigate(`/open-calls/${callId}`)}
-              className="mb-4"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Open Call
-            </Button>
-            
-            <h1 className="text-3xl font-bold mb-2">Submit to: {openCall.title}</h1>
-            <p className="text-muted-foreground">
-              Hosted by {openCall.profiles?.first_name} {openCall.profiles?.last_name}
-            </p>
-          </motion.div>
+        <div className="max-w-2xl mx-auto">
+          <Card>
+            <CardHeader>
+              <CardTitle>Submit to: {openCall.title}</CardTitle>
+              <p className="text-muted-foreground">
+                Organization: {openCall.organization_name}
+              </p>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div>
+                  <Label htmlFor="title">Artwork Title *</Label>
+                  <Input
+                    id="title"
+                    value={formData.title}
+                    onChange={(e) => handleInputChange('title', e.target.value)}
+                    required
+                  />
+                </div>
 
-          {/* Alerts */}
-          {!canSubmit && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mb-6"
-            >
-              <Alert>
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  {isDeadlinePassed && "This open call has passed its submission deadline."}
-                  {hasExistingSubmission && "You have already submitted to this open call."}
-                  {openCall.status !== 'live' && "This open call is not currently accepting submissions."}
-                </AlertDescription>
-              </Alert>
-            </motion.div>
-          )}
+                <div>
+                  <Label htmlFor="description">Description *</Label>
+                  <Textarea
+                    id="description"
+                    value={formData.description}
+                    onChange={(e) => handleInputChange('description', e.target.value)}
+                    rows={4}
+                    required
+                  />
+                </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Submission Form */}
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.1 }}
-              className="lg:col-span-2"
-            >
-              <AdvancedSubmissionForm
-                submissionData={submissionData}
-                onDataChange={setSubmissionData}
-                requirements={openCall.submission_requirements}
-              />
-
-              {canSubmit && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3 }}
-                  className="mt-8"
-                >
-                  <Card>
-                    <CardContent className="p-6">
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <h3 className="font-semibold">Ready to submit?</h3>
-                          <p className="text-sm text-muted-foreground">
-                            Review your submission and click submit when ready.
-                          </p>
-                        </div>
-                        <Button 
-                          onClick={handleSubmit}
-                          disabled={createSubmission.isPending || !isFormValid()}
-                          size="lg"
-                        >
-                          <Send className="h-4 w-4 mr-2" />
-                          {createSubmission.isPending ? 'Submitting...' : 'Submit Artwork'}
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              )}
-            </motion.div>
-
-            {/* Open Call Info Sidebar */}
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.2 }}
-              className="space-y-6"
-            >
-              <Card>
-                <CardHeader>
-                  <CardTitle>Open Call Details</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <h4 className="font-medium mb-2">{openCall.title}</h4>
-                    <p className="text-sm text-muted-foreground">{openCall.description}</p>
+                    <Label htmlFor="medium">Medium *</Label>
+                    <Input
+                      id="medium"
+                      value={formData.medium}
+                      onChange={(e) => handleInputChange('medium', e.target.value)}
+                      required
+                    />
                   </div>
-
-                  <Separator />
-
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4" />
-                      <div>
-                        <p className="text-sm font-medium">Deadline</p>
-                        <p className="text-sm text-muted-foreground">
-                          {new Date(openCall.submission_deadline).toLocaleDateString()}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <DollarSign className="h-4 w-4" />
-                      <div>
-                        <p className="text-sm font-medium">Submission Fee</p>
-                        <p className="text-sm text-muted-foreground">
-                          {openCall.submission_fee > 0 ? `$${openCall.submission_fee}` : 'Free'}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div>
-                      <p className="text-sm font-medium mb-1">Status</p>
-                      <Badge variant={openCall.status === 'live' ? 'default' : 'secondary'}>
-                        {openCall.status}
-                      </Badge>
-                    </div>
+                  <div>
+                    <Label htmlFor="year">Year</Label>
+                    <Input
+                      id="year"
+                      value={formData.year}
+                      onChange={(e) => handleInputChange('year', e.target.value)}
+                    />
                   </div>
-                </CardContent>
-              </Card>
+                </div>
 
-              {openCall.submission_requirements && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Requirements</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-sm space-y-2">
-                      {typeof openCall.submission_requirements === 'object' && 
-                        Object.entries(openCall.submission_requirements).map(([key, value]) => (
-                          <div key={key}>
-                            <span className="font-medium">{key}:</span> {String(value)}
-                          </div>
-                        ))
-                      }
+                <div>
+                  <Label htmlFor="dimensions">Dimensions</Label>
+                  <Input
+                    id="dimensions"
+                    value={formData.dimensions}
+                    onChange={(e) => handleInputChange('dimensions', e.target.value)}
+                    placeholder="e.g., 24 x 36 inches"
+                  />
+                </div>
+
+                <div>
+                  <Label>Image URLs *</Label>
+                  {formData.image_urls.map((url, index) => (
+                    <div key={index} className="mt-2">
+                      <Input
+                        value={url}
+                        onChange={(e) => handleImageUrlChange(index, e.target.value)}
+                        placeholder="Enter image URL"
+                        required={index === 0}
+                      />
                     </div>
-                  </CardContent>
-                </Card>
-              )}
-            </motion.div>
-          </div>
+                  ))}
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={addImageUrl}
+                    className="mt-2"
+                  >
+                    Add Another Image
+                  </Button>
+                </div>
+
+                <div>
+                  <Label htmlFor="artist_statement">Artist Statement *</Label>
+                  <Textarea
+                    id="artist_statement"
+                    value={formData.artist_statement}
+                    onChange={(e) => handleInputChange('artist_statement', e.target.value)}
+                    rows={6}
+                    required
+                  />
+                </div>
+
+                <div className="flex gap-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => navigate('/open-calls')}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? 'Submitting...' : 'Submit Artwork'}
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </Layout>

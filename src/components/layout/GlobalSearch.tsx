@@ -1,42 +1,57 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Search, Briefcase } from 'lucide-react';
-import SearchCommand from '@/components/discover/SearchCommand';
+import { Input } from '@/components/ui/input';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 
 const GlobalSearch = () => {
   const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    const down = (e: KeyboardEvent) => {
-      if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault();
-        setOpen((open) => !open);
-      }
-    };
-
-    document.addEventListener('keydown', down);
-    return () => document.removeEventListener('keydown', down);
-  }, []);
+  const [searchQuery, setSearchQuery] = useState('');
 
   return (
-    <>
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => setOpen(true)}
-        className="flex items-center space-x-2 text-muted-foreground hover:text-foreground w-full sm:w-auto justify-start sm:justify-center"
-      >
-        <Search className="h-4 w-4" />
-        <span className="hidden sm:inline">Search portfolios & calls</span>
-        <span className="sm:hidden">Search</span>
-        <kbd className="hidden sm:inline-flex pointer-events-none h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100 ml-auto">
-          <span className="text-xs">⌘</span>K
-        </kbd>
-      </Button>
-      
-      <SearchCommand open={open} onOpenChange={setOpen} />
-    </>
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className="w-[200px] justify-between"
+        >
+          <Search className="mr-2 h-4 w-4" />
+          Search...
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[400px] p-0">
+        <Command>
+          <CommandInput
+            placeholder="Search artists, portfolios, open calls..."
+            value={searchQuery}
+            onValueChange={setSearchQuery}
+          />
+          <CommandList>
+            <CommandEmpty>No results found.</CommandEmpty>
+            <CommandGroup heading="Artists">
+              <CommandItem>
+                <span>Search functionality coming soon...</span>
+              </CommandItem>
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
   );
 };
 
