@@ -20,7 +20,7 @@ import GlobalSearch from './GlobalSearch';
 
 const Header = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const { user, logout } = useAuth();
+  const { user, signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
@@ -34,7 +34,7 @@ const Header = () => {
 
   const handleLogout = async () => {
     try {
-      await logout();
+      await signOut();
       navigate('/');
     } catch (error) {
       console.error('Logout error:', error);

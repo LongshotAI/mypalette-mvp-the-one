@@ -6,9 +6,13 @@ import { supabase } from '@/integrations/supabase/client';
 interface AuthContextType {
   user: User | null;
   loading: boolean;
+  isLoading: boolean; // Added for component compatibility
   signUp: (email: string, password: string, metadata?: any) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
+  login: (email: string, password: string) => Promise<void>; // Added alias for signIn
+  logout: () => Promise<void>; // Added alias for signOut
+  register: (email: string, password: string, metadata?: any) => Promise<void>; // Added alias for signUp
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -65,12 +69,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (error) throw error;
   };
 
+  // Aliases for component compatibility
+  const login = signIn;
+  const logout = signOut;
+  const register = signUp;
+
   const value = {
     user,
     loading,
+    isLoading: loading, // Provide isLoading as alias for loading
     signUp,
     signIn,
-    signOut
+    signOut,
+    login,
+    logout,
+    register
   };
 
   return (
