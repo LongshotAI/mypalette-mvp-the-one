@@ -16,12 +16,15 @@ import SubmissionForm from './pages/SubmissionForm';
 import Dashboard from './pages/Dashboard';
 import Profile from './pages/Profile';
 import EditProfile from './pages/EditProfile';
+import MyPortfolios from './pages/MyPortfolios';
+import PortfolioEditor from './pages/PortfolioEditor';
 import HostApplication from './pages/HostApplication';
 import OpenCallDetails from './pages/OpenCallDetails';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminOpenCalls from './pages/admin/AdminOpenCalls';
+import AdminUsers from './pages/admin/AdminUsers';
 import AIFilm3Info from './pages/aifilm3/AIFilm3Info';
 import AIFilm3Announcements from './pages/aifilm3/AIFilm3Announcements';
 
@@ -75,6 +78,22 @@ function App() {
                 } 
               />
               <Route 
+                path="/my-portfolios" 
+                element={
+                  <ProtectedRoute>
+                    <MyPortfolios />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/portfolio/edit/:id" 
+                element={
+                  <ProtectedRoute>
+                    <PortfolioEditor />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
                 path="/host-application" 
                 element={
                   <ProtectedRoute>
@@ -95,6 +114,14 @@ function App() {
                 element={
                   <AdminRoute>
                     <AdminOpenCalls />
+                  </AdminRoute>
+                } 
+              />
+              <Route 
+                path="/admin/users" 
+                element={
+                  <AdminRoute>
+                    <AdminUsers />
                   </AdminRoute>
                 } 
               />

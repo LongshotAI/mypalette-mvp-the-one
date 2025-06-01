@@ -1,159 +1,232 @@
 
 import React from 'react';
 import Layout from '@/components/layout/Layout';
-import AIFilm3Footer from '@/components/layout/AIFilm3Footer';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Calendar, Users, Trophy, Film, ExternalLink } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Calendar, Users, Award, Film, Zap, Star } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
 
 const AIFilm3Info = () => {
   return (
-    <Layout showFooter={false}>
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-950 dark:to-blue-950">
-        {/* Hero Section */}
-        <section className="py-20 px-4">
-          <div className="container mx-auto text-center">
-            <Badge className="mb-4 bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
-              AI Film Festival 2024
-            </Badge>
-            <h1 className="text-4xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-              AIFilm3
-            </h1>
-            <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-300 mb-8 max-w-3xl mx-auto">
-              The third annual AI Film Festival celebrating the intersection of artificial intelligence and cinematic artistry
+    <Layout>
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-4xl mx-auto">
+          {/* Hero Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center mb-12"
+          >
+            <div className="flex items-center justify-center mb-6">
+              <Film className="h-16 w-16 text-primary mr-4" />
+              <div>
+                <h1 className="text-5xl font-bold mb-2">AI Film 3</h1>
+                <p className="text-xl text-muted-foreground">The Future of AI-Generated Cinema</p>
+              </div>
+            </div>
+            
+            <div className="flex items-center justify-center gap-4 mb-8">
+              <Badge variant="default" className="text-lg px-4 py-2">
+                <Zap className="h-4 w-4 mr-2" />
+                AI-Powered
+              </Badge>
+              <Badge variant="secondary" className="text-lg px-4 py-2">
+                <Users className="h-4 w-4 mr-2" />
+                Community Driven
+              </Badge>
+              <Badge variant="outline" className="text-lg px-4 py-2">
+                <Award className="h-4 w-4 mr-2" />
+                Award-Winning
+              </Badge>
+            </div>
+
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-8">
+              Join the revolutionary AI Film 3 festival - where artificial intelligence meets creative storytelling. 
+              Submit your AI-generated films, connect with innovators, and be part of the future of cinema.
             </p>
-            <div className="flex flex-wrap justify-center gap-4">
-              <Button size="lg" className="bg-purple-600 hover:bg-purple-700">
-                <Calendar className="mr-2 h-5 w-5" />
-                View Schedule
+
+            <div className="flex gap-4 justify-center">
+              <Button size="lg" asChild>
+                <Link to="/open-calls">
+                  Submit Your Film
+                </Link>
               </Button>
-              <Button size="lg" variant="outline">
-                <Film className="mr-2 h-5 w-5" />
-                Watch Films
+              <Button variant="outline" size="lg" asChild>
+                <Link to="/aifilm3/announcements">
+                  Latest Updates
+                </Link>
               </Button>
             </div>
-          </div>
-        </section>
+          </motion.div>
 
-        {/* About Section */}
-        <section className="py-16 px-4">
-          <div className="container mx-auto">
-            <div className="grid md:grid-cols-2 gap-12 items-center">
-              <div>
-                <h2 className="text-3xl font-bold mb-6">About AIFilm3</h2>
-                <p className="text-lg text-gray-600 dark:text-gray-300 mb-6">
-                  AIFilm3 represents the cutting edge of cinematic innovation, where artificial intelligence meets human creativity. Our festival showcases groundbreaking films that push the boundaries of storytelling through AI technology.
+          {/* Festival Stats */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12"
+          >
+            <Card className="text-center">
+              <CardContent className="p-6">
+                <Film className="h-8 w-8 mx-auto mb-3 text-primary" />
+                <div className="text-2xl font-bold mb-1">500+</div>
+                <p className="text-sm text-muted-foreground">Submissions Expected</p>
+              </CardContent>
+            </Card>
+            <Card className="text-center">
+              <CardContent className="p-6">
+                <Users className="h-8 w-8 mx-auto mb-3 text-primary" />
+                <div className="text-2xl font-bold mb-1">50+</div>
+                <p className="text-sm text-muted-foreground">Countries Participating</p>
+              </CardContent>
+            </Card>
+            <Card className="text-center">
+              <CardContent className="p-6">
+                <Award className="h-8 w-8 mx-auto mb-3 text-primary" />
+                <div className="text-2xl font-bold mb-1">$50K</div>
+                <p className="text-sm text-muted-foreground">Total Prize Pool</p>
+              </CardContent>
+            </Card>
+            <Card className="text-center">
+              <CardContent className="p-6">
+                <Star className="h-8 w-8 mx-auto mb-3 text-primary" />
+                <div className="text-2xl font-bold mb-1">10+</div>
+                <p className="text-sm text-muted-foreground">Award Categories</p>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* About Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="mb-12"
+          >
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-2xl">About AI Film 3</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <p className="text-muted-foreground">
+                  AI Film 3 represents the cutting edge of cinematic innovation, where artificial intelligence 
+                  becomes the brush and algorithms become the palette. This festival celebrates the intersection 
+                  of technology and creativity, showcasing films that push the boundaries of what's possible 
+                  when human imagination meets machine learning.
                 </p>
-                <p className="text-lg text-gray-600 dark:text-gray-300 mb-6">
-                  From AI-generated narratives to machine learning-enhanced visuals, AIFilm3 celebrates the future of filmmaking and the endless possibilities that emerge when technology amplifies human imagination.
-                </p>
-                <Button className="bg-blue-600 hover:bg-blue-700">
-                  Learn More
-                  <ExternalLink className="ml-2 h-4 w-4" />
-                </Button>
-              </div>
-              <div className="bg-white dark:bg-gray-800 rounded-2xl p-8 shadow-xl">
-                <h3 className="text-2xl font-bold mb-6">Festival Highlights</h3>
-                <div className="space-y-4">
-                  <div className="flex items-center space-x-3">
-                    <Film className="h-6 w-6 text-purple-600" />
-                    <span>50+ AI-generated films</span>
+                
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div>
+                    <h3 className="text-lg font-semibold mb-3">What We Celebrate</h3>
+                    <ul className="space-y-2 text-sm text-muted-foreground">
+                      <li>• AI-generated narratives and scripts</li>
+                      <li>• Machine learning visual effects</li>
+                      <li>• Procedural animation and characters</li>
+                      <li>• AI-composed soundtracks</li>
+                      <li>• Experimental AI cinematography</li>
+                    </ul>
                   </div>
-                  <div className="flex items-center space-x-3">
-                    <Users className="h-6 w-6 text-blue-600" />
-                    <span>International filmmaker community</span>
-                  </div>
-                  <div className="flex items-center space-x-3">
-                    <Trophy className="h-6 w-6 text-yellow-600" />
-                    <span>Innovation awards & recognition</span>
-                  </div>
-                  <div className="flex items-center space-x-3">
-                    <Calendar className="h-6 w-6 text-green-600" />
-                    <span>3-day virtual experience</span>
+                  
+                  <div>
+                    <h3 className="text-lg font-semibold mb-3">Submission Categories</h3>
+                    <ul className="space-y-2 text-sm text-muted-foreground">
+                      <li>• Best AI Short Film (Under 15 minutes)</li>
+                      <li>• Most Innovative AI Technique</li>
+                      <li>• Best AI-Generated Screenplay</li>
+                      <li>• Excellence in AI Visual Effects</li>
+                      <li>• People's Choice Award</li>
+                    </ul>
                   </div>
                 </div>
-              </div>
-            </div>
-          </div>
-        </section>
+              </CardContent>
+            </Card>
+          </motion.div>
 
-        {/* Team Section */}
-        <section className="py-16 px-4 bg-white/50 dark:bg-gray-900/50">
-          <div className="container mx-auto">
-            <h2 className="text-3xl font-bold text-center mb-12">Meet Our Team</h2>
-            <div className="grid md:grid-cols-3 gap-8">
-              {[
-                {
-                  name: "Alex Chen",
-                  role: "Festival Director",
-                  bio: "AI researcher and filmmaker with 10+ years in emerging technologies"
-                },
-                {
-                  name: "Sarah Johnson",
-                  role: "Creative Director",
-                  bio: "Award-winning director specializing in AI-human collaborative storytelling"
-                },
-                {
-                  name: "Michael Rodriguez",
-                  role: "Technical Director",
-                  bio: "Machine learning engineer and cinema technology innovator"
-                }
-              ].map((member, index) => (
-                <Card key={index} className="text-center">
-                  <CardHeader>
-                    <div className="w-24 h-24 rounded-full bg-gradient-to-r from-purple-400 to-blue-400 mx-auto mb-4"></div>
-                    <CardTitle>{member.name}</CardTitle>
-                    <p className="text-purple-600 font-medium">{member.role}</p>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-gray-600 dark:text-gray-300">{member.bio}</p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-        </section>
+          {/* Timeline */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="mb-12"
+          >
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-2xl flex items-center gap-2">
+                  <Calendar className="h-6 w-6" />
+                  Festival Timeline
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <span className="text-primary font-bold">1</span>
+                    </div>
+                    <div>
+                      <h3 className="font-semibold">Submission Period</h3>
+                      <p className="text-sm text-muted-foreground">January 1 - March 31, 2024</p>
+                      <p className="text-sm mt-1">Submit your AI-generated films through our platform</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <span className="text-primary font-bold">2</span>
+                    </div>
+                    <div>
+                      <h3 className="font-semibold">Judging Period</h3>
+                      <p className="text-sm text-muted-foreground">April 1 - May 15, 2024</p>
+                      <p className="text-sm mt-1">Expert panel reviews submissions across all categories</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <span className="text-primary font-bold">3</span>
+                    </div>
+                    <div>
+                      <h3 className="font-semibold">Awards Ceremony</h3>
+                      <p className="text-sm text-muted-foreground">June 1, 2024</p>
+                      <p className="text-sm mt-1">Virtual ceremony celebrating the winners and screening finalists</p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
 
-        {/* Events Section */}
-        <section className="py-16 px-4">
-          <div className="container mx-auto">
-            <h2 className="text-3xl font-bold text-center mb-12">Upcoming Events</h2>
-            <div className="grid md:grid-cols-2 gap-8">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <Calendar className="mr-2 h-5 w-5 text-purple-600" />
-                    Opening Ceremony
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-gray-600 dark:text-gray-300 mb-4">
-                    Join us for the grand opening of AIFilm3 featuring keynote presentations and premiere screenings.
-                  </p>
-                  <Badge variant="outline">March 15, 2024</Badge>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <Users className="mr-2 h-5 w-5 text-blue-600" />
-                    Panel Discussions
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-gray-600 dark:text-gray-300 mb-4">
-                    Industry experts discuss the future of AI in filmmaking and creative collaboration.
-                  </p>
-                  <Badge variant="outline">March 16, 2024</Badge>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </section>
+          {/* Call to Action */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="text-center"
+          >
+            <Card className="bg-gradient-to-r from-primary/10 to-secondary/10 border-primary/20">
+              <CardContent className="p-8">
+                <h2 className="text-2xl font-bold mb-4">Ready to Submit Your AI Film?</h2>
+                <p className="text-muted-foreground mb-6">
+                  Join hundreds of innovative filmmakers pushing the boundaries of AI-generated content.
+                </p>
+                <div className="flex gap-4 justify-center">
+                  <Button size="lg" asChild>
+                    <Link to="/open-calls">
+                      Start Your Submission
+                    </Link>
+                  </Button>
+                  <Button variant="outline" size="lg" asChild>
+                    <Link to="/discover">
+                      Explore Past Winners
+                    </Link>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        </div>
       </div>
-      <AIFilm3Footer />
     </Layout>
   );
 };
