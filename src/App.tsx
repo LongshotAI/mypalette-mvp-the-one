@@ -1,136 +1,154 @@
 
-import React from 'react';
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { AuthProvider } from './contexts/AuthContext';
-import { ThemeProvider } from './contexts/ThemeContext';
+import { ThemeProvider } from '@/contexts/ThemeContext';
+import { AuthProvider } from '@/contexts/AuthContext';
 import { Toaster } from '@/components/ui/toaster';
-import ProtectedRoute from './components/auth/ProtectedRoute';
-import AdminRoute from './components/auth/AdminRoute';
+import ErrorBoundary from '@/components/ErrorBoundary';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import AdminRoute from '@/components/auth/AdminRoute';
 
 // Pages
-import LandingPage from './pages/LandingPage';
-import Discover from './pages/Discover';
-import OpenCalls from './pages/OpenCalls';
-import SubmissionForm from './pages/SubmissionForm';
-import Dashboard from './pages/Dashboard';
-import Profile from './pages/Profile';
-import EditProfile from './pages/EditProfile';
-import MyPortfolios from './pages/MyPortfolios';
-import PortfolioEditor from './pages/PortfolioEditor';
-import HostApplication from './pages/HostApplication';
-import OpenCallDetails from './pages/OpenCallDetails';
-import Login from './pages/auth/Login';
-import Register from './pages/auth/Register';
-import AdminDashboard from './pages/admin/AdminDashboard';
-import AdminOpenCalls from './pages/admin/AdminOpenCalls';
-import AdminUsers from './pages/admin/AdminUsers';
-import AIFilm3Info from './pages/aifilm3/AIFilm3Info';
-import AIFilm3Announcements from './pages/aifilm3/AIFilm3Announcements';
+import Index from '@/pages/Index';
+import Landing from '@/pages/Landing';
+import Dashboard from '@/pages/Dashboard';
+import PortfolioView from '@/pages/PortfolioView';
+import PortfolioEditor from '@/pages/PortfolioEditor';
+import MyPortfolios from '@/pages/MyPortfolios';
+import ArtistProfile from '@/pages/ArtistProfile';
+import ProfileSettings from '@/pages/ProfileSettings';
+import Discover from '@/pages/Discover';
+import OpenCalls from '@/pages/OpenCalls';
+import OpenCallDetails from '@/pages/OpenCallDetails';
+import SubmissionForm from '@/pages/SubmissionForm';
+import HostApplication from '@/pages/HostApplication';
+import Education from '@/pages/Education';
+import EducationCategory from '@/pages/EducationCategory';
+import EducationContent from '@/pages/EducationContent';
+import NotFound from '@/pages/NotFound';
 
-const queryClient = new QueryClient();
+// Auth Pages
+import Login from '@/pages/auth/Login';
+import Register from '@/pages/auth/Register';
+import ForgotPassword from '@/pages/auth/ForgotPassword';
+
+// Admin Pages
+import AdminDashboard from '@/pages/admin/AdminDashboard';
+import AdminUsers from '@/pages/admin/AdminUsers';
+import AdminOpenCalls from '@/pages/admin/AdminOpenCalls';
+import AdminEducation from '@/pages/admin/AdminEducation';
+
+// AIFilm3 Pages
+import AIFilm3Info from '@/pages/aifilm3/AIFilm3Info';
+import AIFilm3Announcements from '@/pages/aifilm3/AIFilm3Announcements';
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      retry: 1,
+    },
+  },
+});
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
-        <AuthProvider>
-          <Router>
-            <Routes>
-              <Route path="/" element={<LandingPage />} />
-              <Route path="/discover" element={<Discover />} />
-              <Route path="/open-calls" element={<OpenCalls />} />
-              <Route path="/open-calls/:callId" element={<OpenCallDetails />} />
-              <Route path="/aifilm3/info" element={<AIFilm3Info />} />
-              <Route path="/aifilm3/announcements" element={<AIFilm3Announcements />} />
-              <Route path="/auth/login" element={<Login />} />
-              <Route path="/auth/register" element={<Register />} />
-              <Route 
-                path="/submit/:callId" 
-                element={
-                  <ProtectedRoute>
-                    <SubmissionForm />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/dashboard" 
-                element={
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider>
+          <AuthProvider>
+            <Router>
+              <Routes>
+                {/* Public Routes */}
+                <Route path="/" element={<Index />} />
+                <Route path="/landing" element={<Landing />} />
+                
+                {/* Auth Routes */}
+                <Route path="/auth/login" element={<Login />} />
+                <Route path="/auth/register" element={<Register />} />
+                <Route path="/auth/forgot-password" element={<ForgotPassword />} />
+                
+                {/* Public Portfolio & Profile Routes */}
+                <Route path="/portfolio/:slug" element={<PortfolioView />} />
+                <Route path="/artist/:username" element={<ArtistProfile />} />
+                <Route path="/discover" element={<Discover />} />
+                
+                {/* Open Calls - Public */}
+                <Route path="/open-calls" element={<OpenCalls />} />
+                <Route path="/open-calls/:callId" element={<OpenCallDetails />} />
+                
+                {/* Education - Public */}
+                <Route path="/education" element={<Education />} />
+                <Route path="/education/:category" element={<EducationCategory />} />
+                <Route path="/education/:category/:slug" element={<EducationContent />} />
+                
+                {/* AIFilm3 Routes */}
+                <Route path="/aifilm3/info" element={<AIFilm3Info />} />
+                <Route path="/aifilm3/announcements" element={<AIFilm3Announcements />} />
+                
+                {/* Protected Routes */}
+                <Route path="/dashboard" element={
                   <ProtectedRoute>
                     <Dashboard />
                   </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/profile/:username" 
-                element={
-                  <ProtectedRoute>
-                    <Profile />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/edit-profile" 
-                element={
-                  <ProtectedRoute>
-                    <EditProfile />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/my-portfolios" 
-                element={
+                } />
+                <Route path="/portfolios" element={
                   <ProtectedRoute>
                     <MyPortfolios />
                   </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/portfolio/edit/:id" 
-                element={
+                } />
+                <Route path="/portfolio/:slug/edit" element={
                   <ProtectedRoute>
                     <PortfolioEditor />
                   </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/host-application" 
-                element={
+                } />
+                <Route path="/settings" element={
+                  <ProtectedRoute>
+                    <ProfileSettings />
+                  </ProtectedRoute>
+                } />
+                <Route path="/submit/:callId" element={
+                  <ProtectedRoute>
+                    <SubmissionForm />
+                  </ProtectedRoute>
+                } />
+                <Route path="/host-application" element={
                   <ProtectedRoute>
                     <HostApplication />
                   </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/admin" 
-                element={
+                } />
+                
+                {/* Admin Routes */}
+                <Route path="/admin" element={
                   <AdminRoute>
                     <AdminDashboard />
                   </AdminRoute>
-                } 
-              />
-              <Route 
-                path="/admin/open-calls" 
-                element={
-                  <AdminRoute>
-                    <AdminOpenCalls />
-                  </AdminRoute>
-                } 
-              />
-              <Route 
-                path="/admin/users" 
-                element={
+                } />
+                <Route path="/admin/users" element={
                   <AdminRoute>
                     <AdminUsers />
                   </AdminRoute>
-                } 
-              />
-            </Routes>
-          </Router>
-          <Toaster />
-        </AuthProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
+                } />
+                <Route path="/admin/open-calls" element={
+                  <AdminRoute>
+                    <AdminOpenCalls />
+                  </AdminRoute>
+                } />
+                <Route path="/admin/education" element={
+                  <AdminRoute>
+                    <AdminEducation />
+                  </AdminRoute>
+                } />
+                
+                {/* 404 Route */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+              <Toaster />
+            </Router>
+          </AuthProvider>
+        </ThemeProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 

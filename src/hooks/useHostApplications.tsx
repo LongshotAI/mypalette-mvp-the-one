@@ -67,46 +67,45 @@ export const useHostApplications = () => {
 
   const createHostApplication = useMutation({
     mutationFn: async (applicationData: HostApplicationData) => {
-      console.log('Creating host application with data:', applicationData);
-      
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      // Since the host_applications table doesn't exist yet, 
-      // we'll store this in the open_calls table for now
-      const { data, error } = await supabase
-        .from('open_calls')
-        .insert({
-          title: applicationData.proposedTitle,
-          description: applicationData.proposedDescription,
-          organization_name: applicationData.organizationName,
-          organization_website: applicationData.websiteUrl,
-          submission_deadline: applicationData.proposedDeadline,
-          submission_fee: 0,
-          host_user_id: user.id,
-          status: 'pending'
-        })
-        .select()
-        .single();
+      // Use raw SQL to call the function directly with proper type casting
+      const { data, error } = await supabase.rpc('create_host_application' as any, {
+        p_applicant_id: user.id,
+        p_organization_name: applicationData.organizationName,
+        p_organization_type: applicationData.organizationType,
+        p_website_url: applicationData.websiteUrl,
+        p_contact_email: applicationData.contactEmail,
+        p_phone: applicationData.phone,
+        p_address: applicationData.address,
+        p_proposed_title: applicationData.proposedTitle,
+        p_proposed_description: applicationData.proposedDescription,
+        p_proposed_theme: applicationData.proposedTheme,
+        p_proposed_deadline: applicationData.proposedDeadline,
+        p_proposed_exhibition_dates: applicationData.proposedExhibitionDates,
+        p_proposed_venue: applicationData.proposedVenue,
+        p_proposed_budget: applicationData.proposedBudget,
+        p_proposed_prize_amount: applicationData.proposedPrizeAmount || 0,
+        p_target_submissions: applicationData.targetSubmissions || 100,
+        p_experience_description: applicationData.experienceDescription,
+        p_previous_exhibitions: applicationData.previousExhibitions,
+        p_curatorial_statement: applicationData.curatorialStatement,
+        p_technical_requirements: applicationData.technicalRequirements,
+        p_marketing_plan: applicationData.marketingPlan
+      });
 
-      if (error) {
-        console.error('Error creating host application:', error);
-        throw error;
-      }
-
-      console.log('Host application created successfully:', data);
+      if (error) throw error;
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['user-host-applications'] });
-      queryClient.invalidateQueries({ queryKey: ['admin-host-applications'] });
+      queryClient.invalidateQueries({ queryKey: ['host-applications'] });
       toast({
         title: "Application Submitted",
         description: "Your host application has been submitted for review.",
       });
     },
     onError: (error: any) => {
-      console.error('Host application submission error:', error);
       toast({
         title: "Application Failed",
         description: error.message || "Failed to submit application.",
@@ -118,84 +117,25 @@ export const useHostApplications = () => {
   const getUserHostApplications = useQuery({
     queryKey: ['user-host-applications'],
     queryFn: async () => {
-      console.log('Fetching user host applications...');
-      
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      // Fetch from open_calls table for now
-      const { data, error } = await supabase
-        .from('open_calls')
-        .select(`
-          *,
-          profiles(username, first_name, last_name)
-        `)
-        .eq('host_user_id', user.id)
-        .order('created_at', { ascending: false });
+      const { data, error } = await supabase.rpc('get_user_host_applications' as any, {
+        p_user_id: user.id
+      });
 
-      if (error) {
-        console.error('Error fetching user host applications:', error);
-        throw error;
-      }
-
-      console.log('User host applications fetched:', data);
-      // Transform to match HostApplication interface
-      return (data || []).map(item => ({
-        id: item.id,
-        applicant_id: item.host_user_id || '',
-        organization_name: item.organization_name || '',
-        organization_type: 'gallery',
-        contact_email: '',
-        proposed_title: item.title,
-        proposed_description: item.description,
-        proposed_deadline: item.submission_deadline,
-        experience_description: '',
-        curatorial_statement: '',
-        application_status: item.status || 'pending',
-        created_at: item.created_at,
-        updated_at: item.updated_at,
-        profiles: item.profiles
-      })) as HostApplication[];
+      if (error) throw error;
+      return (data || []) as HostApplication[];
     },
   });
 
   const getAllHostApplications = useQuery({
     queryKey: ['admin-host-applications'],
     queryFn: async () => {
-      console.log('Fetching all host applications for admin...');
-      
-      // Fetch from open_calls table for now
-      const { data, error } = await supabase
-        .from('open_calls')
-        .select(`
-          *,
-          profiles(username, first_name, last_name)
-        `)
-        .order('created_at', { ascending: false });
+      const { data, error } = await supabase.rpc('get_all_host_applications' as any, {});
 
-      if (error) {
-        console.error('Error fetching all host applications:', error);
-        throw error;
-      }
-
-      console.log('All host applications fetched:', data);
-      // Transform to match HostApplication interface
-      return (data || []).map(item => ({
-        id: item.id,
-        applicant_id: item.host_user_id || '',
-        organization_name: item.organization_name || '',
-        organization_type: 'gallery',
-        contact_email: '',
-        proposed_title: item.title,
-        proposed_description: item.description,
-        proposed_deadline: item.submission_deadline,
-        experience_description: '',
-        curatorial_statement: '',
-        application_status: item.status || 'pending',
-        created_at: item.created_at,
-        updated_at: item.updated_at,
-        profiles: item.profiles
-      })) as HostApplication[];
+      if (error) throw error;
+      return (data || []) as HostApplication[];
     },
   });
 
@@ -209,36 +149,23 @@ export const useHostApplications = () => {
       status: string; 
       notes?: string;
     }) => {
-      console.log('Updating host application status:', { applicationId, status, notes });
-      
-      const { error } = await supabase
-        .from('open_calls')
-        .update({ 
-          status,
-          admin_notes: notes 
-        })
-        .eq('id', applicationId);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
 
-      if (error) {
-        console.error('Error updating host application status:', error);
-        throw error;
-      }
+      const { error } = await supabase.rpc('update_host_application_status' as any, {
+        p_application_id: applicationId,
+        p_status: status,
+        p_notes: notes,
+        p_reviewer_id: user.id
+      });
 
-      console.log('Host application status updated successfully');
+      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-host-applications'] });
       toast({
         title: "Status Updated",
         description: "Application status has been updated.",
-      });
-    },
-    onError: (error: any) => {
-      console.error('Error updating host application status:', error);
-      toast({
-        title: "Update Failed",
-        description: error.message || "Failed to update status.",
-        variant: "destructive",
       });
     },
   });

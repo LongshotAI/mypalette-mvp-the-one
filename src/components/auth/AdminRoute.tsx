@@ -10,7 +10,7 @@ interface AdminRouteProps {
 }
 
 const AdminRoute = ({ children }: AdminRouteProps) => {
-  const { user, loading: authLoading } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const { data: userRole, isLoading: roleLoading, error } = useAdminCheck();
 
   console.log('AdminRoute - User:', user?.email, 'Role:', userRole, 'Auth Loading:', authLoading, 'Role Loading:', roleLoading);

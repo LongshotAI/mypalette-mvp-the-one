@@ -12,7 +12,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 const Register = () => {
   const navigate = useNavigate();
-  const { signUp, loading } = useAuth();
+  const { register, loading } = useAuth();
   
   const [formData, setFormData] = useState({
     email: '',
@@ -42,7 +42,7 @@ const Register = () => {
     }
 
     try {
-      await signUp(formData.email, formData.password, {
+      await register(formData.email, formData.password, {
         first_name: formData.firstName,
         last_name: formData.lastName,
       });

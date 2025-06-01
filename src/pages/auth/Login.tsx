@@ -12,7 +12,7 @@ import { toast } from '@/hooks/use-toast';
 
 const Login = () => {
   const navigate = useNavigate();
-  const { signIn } = useAuth();
+  const { login } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
@@ -25,7 +25,7 @@ const Login = () => {
     setIsLoading(true);
     
     try {
-      await signIn(formData.email, formData.password);
+      await login(formData.email, formData.password);
       toast({
         title: "Welcome back!",
         description: "You have successfully logged in.",
