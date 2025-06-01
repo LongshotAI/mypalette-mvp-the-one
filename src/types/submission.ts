@@ -1,4 +1,13 @@
 
+export interface SubmissionFile {
+  id: string;
+  file_name: string;
+  file_url: string;
+  file_type: string;
+  file_size?: number;
+  created_at: string;
+}
+
 export interface SubmissionData {
   title: string;
   description: string;
@@ -8,12 +17,7 @@ export interface SubmissionData {
   artist_statement: string;
   image_urls: string[];
   external_links?: string[];
-  files?: Array<{
-    file_name: string;
-    file_url: string;
-    file_type: string;
-    file_size?: number;
-  }>;
+  files?: SubmissionFile[];
 }
 
 export interface Submission {

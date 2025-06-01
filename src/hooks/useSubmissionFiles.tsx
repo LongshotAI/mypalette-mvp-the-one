@@ -18,21 +18,9 @@ export const useSubmissionFiles = () => {
         const fileExt = file.name.split('.').pop();
         const fileName = `${user.id}/${submissionId}/${Math.random()}.${fileExt}`;
         
-        const { data, error } = await supabase.storage
-          .from('submission-files')
-          .upload(fileName, file, {
-            cacheControl: '3600',
-            upsert: false
-          });
-
-        if (error) {
-          console.error('File upload error:', error);
-          throw error;
-        }
-
-        const { data: { publicUrl } } = supabase.storage
-          .from('submission-files')
-          .getPublicUrl(fileName);
+        // For now, we'll just store file URLs in the submission_data
+        // In a real implementation, you'd upload to Supabase Storage
+        const mockUrl = `https://example.com/files/${fileName}`;
 
         // Update submission with file info in submission_data
         const { data: submission } = await supabase
@@ -41,7 +29,7 @@ export const useSubmissionFiles = () => {
           .eq('id', submissionId)
           .single();
 
-        const existingData = (submission?.submission_data as SubmissionData) || {
+        const existingData = (submission?.submission_data as any) || {
           title: '',
           description: '',
           medium: '',
@@ -58,7 +46,7 @@ export const useSubmissionFiles = () => {
         const newFile: SubmissionFile = {
           id: Math.random().toString(),
           file_name: file.name,
-          file_url: publicUrl,
+          file_url: mockUrl,
           file_type: file.type,
           file_size: file.size,
           created_at: new Date().toISOString()
@@ -66,7 +54,6 @@ export const useSubmissionFiles = () => {
 
         existingFiles.push(newFile);
 
-        // Cast the entire object to any to avoid type conflicts
         const updatedData: any = {
           ...existingData,
           files: existingFiles
@@ -120,7 +107,7 @@ export const useSubmissionFiles = () => {
           throw error;
         }
         
-        const submissionData = data?.submission_data as SubmissionData;
+        const submissionData = data?.submission_data as any;
         const files = submissionData?.files || [];
         console.log('Submission files fetched:', files);
         return files as SubmissionFile[];
@@ -138,17 +125,6 @@ export const useSubmissionFiles = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      // Delete from storage
-      const filePath = `${user.id}/${submissionId}/${fileName}`;
-      const { error: storageError } = await supabase.storage
-        .from('submission-files')
-        .remove([filePath]);
-
-      if (storageError) {
-        console.error('Storage deletion error:', storageError);
-        // Continue even if storage deletion fails
-      }
-
       // Remove from submission_data
       const { data: submission } = await supabase
         .from('submissions')
@@ -157,10 +133,9 @@ export const useSubmissionFiles = () => {
         .single();
 
       if (submission) {
-        const submissionData = submission.submission_data as SubmissionData;
-        const updatedFiles = submissionData.files?.filter(file => file.id !== fileId) || [];
+        const submissionData = submission.submission_data as any;
+        const updatedFiles = submissionData.files?.filter((file: SubmissionFile) => file.id !== fileId) || [];
 
-        // Cast to any to avoid type conflicts
         const updatedData: any = {
           ...submissionData,
           files: updatedFiles

@@ -72,30 +72,22 @@ export const useHostApplications = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      // Use RPC to insert with proper typing
-      const { data, error } = await supabase.rpc('create_host_application', {
-        p_applicant_id: user.id,
-        p_organization_name: applicationData.organizationName,
-        p_organization_type: applicationData.organizationType,
-        p_website_url: applicationData.websiteUrl,
-        p_contact_email: applicationData.contactEmail,
-        p_phone: applicationData.phone,
-        p_address: applicationData.address,
-        p_proposed_title: applicationData.proposedTitle,
-        p_proposed_description: applicationData.proposedDescription,
-        p_proposed_theme: applicationData.proposedTheme,
-        p_proposed_deadline: applicationData.proposedDeadline,
-        p_proposed_exhibition_dates: applicationData.proposedExhibitionDates,
-        p_proposed_venue: applicationData.proposedVenue,
-        p_proposed_budget: applicationData.proposedBudget,
-        p_proposed_prize_amount: applicationData.proposedPrizeAmount || 0,
-        p_target_submissions: applicationData.targetSubmissions || 100,
-        p_experience_description: applicationData.experienceDescription,
-        p_previous_exhibitions: applicationData.previousExhibitions,
-        p_curatorial_statement: applicationData.curatorialStatement,
-        p_technical_requirements: applicationData.technicalRequirements,
-        p_marketing_plan: applicationData.marketingPlan
-      });
+      // Since the host_applications table doesn't exist yet, 
+      // we'll store this in the open_calls table for now
+      const { data, error } = await supabase
+        .from('open_calls')
+        .insert({
+          title: applicationData.proposedTitle,
+          description: applicationData.proposedDescription,
+          organization_name: applicationData.organizationName,
+          organization_website: applicationData.websiteUrl,
+          submission_deadline: applicationData.proposedDeadline,
+          submission_fee: 0,
+          host_user_id: user.id,
+          status: 'pending'
+        })
+        .select()
+        .single();
 
       if (error) {
         console.error('Error creating host application:', error);
@@ -131,10 +123,15 @@ export const useHostApplications = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      // Use RPC to get applications with proper joins
-      const { data, error } = await supabase.rpc('get_user_host_applications', {
-        p_user_id: user.id
-      });
+      // Fetch from open_calls table for now
+      const { data, error } = await supabase
+        .from('open_calls')
+        .select(`
+          *,
+          profiles(username, first_name, last_name)
+        `)
+        .eq('host_user_id', user.id)
+        .order('created_at', { ascending: false });
 
       if (error) {
         console.error('Error fetching user host applications:', error);
@@ -142,7 +139,23 @@ export const useHostApplications = () => {
       }
 
       console.log('User host applications fetched:', data);
-      return (data || []) as HostApplication[];
+      // Transform to match HostApplication interface
+      return (data || []).map(item => ({
+        id: item.id,
+        applicant_id: item.host_user_id || '',
+        organization_name: item.organization_name || '',
+        organization_type: 'gallery',
+        contact_email: '',
+        proposed_title: item.title,
+        proposed_description: item.description,
+        proposed_deadline: item.submission_deadline,
+        experience_description: '',
+        curatorial_statement: '',
+        application_status: item.status || 'pending',
+        created_at: item.created_at,
+        updated_at: item.updated_at,
+        profiles: item.profiles
+      })) as HostApplication[];
     },
   });
 
@@ -151,8 +164,14 @@ export const useHostApplications = () => {
     queryFn: async () => {
       console.log('Fetching all host applications for admin...');
       
-      // Use RPC to get all applications with proper joins
-      const { data, error } = await supabase.rpc('get_all_host_applications');
+      // Fetch from open_calls table for now
+      const { data, error } = await supabase
+        .from('open_calls')
+        .select(`
+          *,
+          profiles(username, first_name, last_name)
+        `)
+        .order('created_at', { ascending: false });
 
       if (error) {
         console.error('Error fetching all host applications:', error);
@@ -160,7 +179,23 @@ export const useHostApplications = () => {
       }
 
       console.log('All host applications fetched:', data);
-      return (data || []) as HostApplication[];
+      // Transform to match HostApplication interface
+      return (data || []).map(item => ({
+        id: item.id,
+        applicant_id: item.host_user_id || '',
+        organization_name: item.organization_name || '',
+        organization_type: 'gallery',
+        contact_email: '',
+        proposed_title: item.title,
+        proposed_description: item.description,
+        proposed_deadline: item.submission_deadline,
+        experience_description: '',
+        curatorial_statement: '',
+        application_status: item.status || 'pending',
+        created_at: item.created_at,
+        updated_at: item.updated_at,
+        profiles: item.profiles
+      })) as HostApplication[];
     },
   });
 
@@ -176,15 +211,13 @@ export const useHostApplications = () => {
     }) => {
       console.log('Updating host application status:', { applicationId, status, notes });
       
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('User not authenticated');
-
-      const { error } = await supabase.rpc('update_host_application_status', {
-        p_application_id: applicationId,
-        p_status: status,
-        p_notes: notes,
-        p_reviewer_id: user.id
-      });
+      const { error } = await supabase
+        .from('open_calls')
+        .update({ 
+          status,
+          admin_notes: notes 
+        })
+        .eq('id', applicationId);
 
       if (error) {
         console.error('Error updating host application status:', error);

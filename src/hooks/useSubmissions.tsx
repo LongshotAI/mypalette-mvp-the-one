@@ -54,7 +54,7 @@ export const useSubmissions = () => {
         .insert({
           open_call_id: openCallId,
           artist_id: user.id,
-          submission_data: submissionData,
+          submission_data: submissionData as any,
           payment_status: openCall.submission_fee > 0 ? 'pending' : 'free'
         })
         .select(`

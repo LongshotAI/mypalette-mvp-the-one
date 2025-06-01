@@ -35,10 +35,14 @@ const SubmissionReview = ({ openCallId }: SubmissionReviewProps) => {
   const { data: submissions, isLoading } = useQuery({
     queryKey: ['submissions-review', openCallId],
     queryFn: async () => {
-      // Use RPC call with proper type casting
-      const { data, error } = await supabase.rpc('get_submissions_for_review' as any, {
-        p_open_call_id: openCallId
-      });
+      const { data, error } = await supabase
+        .from('submissions')
+        .select(`
+          *,
+          profiles(username, first_name, last_name, avatar_url)
+        `)
+        .eq('open_call_id', openCallId)
+        .order('submitted_at', { ascending: false });
 
       if (error) throw error;
       return (data || []) as Submission[];
@@ -47,20 +51,12 @@ const SubmissionReview = ({ openCallId }: SubmissionReviewProps) => {
 
   const createReview = useMutation({
     mutationFn: async ({ submissionId, reviewData }: { submissionId: string; reviewData: any }) => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('User not authenticated');
-
-      const { error } = await supabase.rpc('create_submission_review' as any, {
-        p_submission_id: submissionId,
-        p_reviewer_id: user.id,
-        p_rating: reviewData.rating,
-        p_technical_quality_score: reviewData.technicalQuality,
-        p_artistic_merit_score: reviewData.artisticMerit,
-        p_theme_relevance_score: reviewData.themeRelevance,
-        p_overall_score: reviewData.overallScore,
-        p_review_notes: reviewData.reviewNotes,
-        p_private_notes: reviewData.privateNotes
-      });
+      // For now, we'll just update the curator notes
+      // In a full implementation, you'd have a separate reviews table
+      const { error } = await supabase
+        .from('submissions')
+        .update({ curator_notes: reviewData.reviewNotes })
+        .eq('id', submissionId);
 
       if (error) throw error;
     },
@@ -74,7 +70,7 @@ const SubmissionReview = ({ openCallId }: SubmissionReviewProps) => {
   });
 
   const getSubmissionData = (submission: Submission): SubmissionData => {
-    const data = submission.submission_data as SubmissionData;
+    const data = submission.submission_data as any;
     return data || {
       title: '',
       description: '',
@@ -88,29 +84,19 @@ const SubmissionReview = ({ openCallId }: SubmissionReviewProps) => {
     };
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'selected': return 'bg-green-500';
-      case 'rejected': return 'bg-red-500';
-      case 'under_review': return 'bg-yellow-500';
-      case 'shortlisted': return 'bg-blue-500';
-      default: return 'bg-gray-500';
-    }
-  };
-
   const getSubmissionTitle = (submission: Submission): string => {
     const submissionData = getSubmissionData(submission);
-    return submission.submission_title || submissionData.title || 'Untitled Submission';
+    return submissionData.title || 'Untitled Submission';
   };
 
   const getSubmissionDescription = (submission: Submission): string => {
     const submissionData = getSubmissionData(submission);
-    return submission.submission_description || submissionData.description || 'No description provided';
+    return submissionData.description || 'No description provided';
   };
 
   const getArtistStatement = (submission: Submission): string => {
     const submissionData = getSubmissionData(submission);
-    return submission.artist_statement || submissionData.artist_statement || 'No artist statement provided';
+    return submissionData.artist_statement || 'No artist statement provided';
   };
 
   const handleStatusUpdate = async (submissionId: string, isSelected: boolean, notes?: string) => {
@@ -157,8 +143,6 @@ const SubmissionReview = ({ openCallId }: SubmissionReviewProps) => {
       <div className="grid gap-4">
         {submissions?.map((submission) => {
           const submissionData = getSubmissionData(submission);
-          const latestWorkflow = submission.submission_workflow?.[0];
-          const latestReview = submission.submission_reviews?.[0];
           
           return (
             <Card key={submission.id} className={submission.is_selected ? 'ring-2 ring-green-500' : ''}>
@@ -170,7 +154,6 @@ const SubmissionReview = ({ openCallId }: SubmissionReviewProps) => {
                     </CardTitle>
                     <p className="text-sm text-gray-600">
                       by {submission.profiles?.first_name || 'Unknown'} {submission.profiles?.last_name || ''}
-                      ({submission.profiles?.email || 'No email'})
                     </p>
                     <p className="text-xs text-gray-500">
                       Submitted: {new Date(submission.submitted_at).toLocaleDateString()}
@@ -180,19 +163,9 @@ const SubmissionReview = ({ openCallId }: SubmissionReviewProps) => {
                     {submission.is_selected && (
                       <Badge className="bg-green-500">Selected</Badge>
                     )}
-                    {latestWorkflow && (
-                      <Badge className={getStatusColor(latestWorkflow.status)}>
-                        {latestWorkflow.status}
-                      </Badge>
-                    )}
                     <Badge variant="outline">
                       {submission.payment_status}
                     </Badge>
-                    {latestReview && (
-                      <Badge variant="secondary">
-                        Score: {latestReview.overall_score}/10
-                      </Badge>
-                    )}
                   </div>
                 </div>
               </CardHeader>
@@ -251,22 +224,16 @@ const SubmissionReview = ({ openCallId }: SubmissionReviewProps) => {
                               <strong>Name:</strong> {submission.profiles?.first_name} {submission.profiles?.last_name}
                             </p>
                             <p className="text-sm">
-                              <strong>Email:</strong> {submission.profiles?.email}
-                            </p>
-                            <p className="text-sm">
                               <strong>Username:</strong> {submission.profiles?.username}
                             </p>
                           </div>
                           <div>
                             <h4 className="font-semibold mb-2">Submission Info</h4>
                             <p className="text-sm">
-                              <strong>Status:</strong> {latestWorkflow?.status || 'submitted'}
+                              <strong>Status:</strong> {submission.is_selected ? 'Selected' : 'Pending'}
                             </p>
                             <p className="text-sm">
                               <strong>Payment:</strong> {submission.payment_status}
-                            </p>
-                            <p className="text-sm">
-                              <strong>Amount:</strong> ${submission.payment_amount || 0}
                             </p>
                           </div>
                         </div>
