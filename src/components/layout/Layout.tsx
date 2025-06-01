@@ -1,14 +1,14 @@
 
-import { ReactNode } from 'react';
+import React from 'react';
 import Header from './Header';
 import Footer from './Footer';
 
 interface LayoutProps {
-  children: ReactNode;
+  children: React.ReactNode;
   showFooter?: boolean;
 }
 
-const Layout: React.FC<LayoutProps> = ({ children, showFooter = true }) => {
+const Layout = ({ children, showFooter = true }: LayoutProps) => {
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
