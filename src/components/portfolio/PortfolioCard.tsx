@@ -11,17 +11,25 @@ import type { Portfolio } from '@/hooks/usePortfolios';
 interface PortfolioCardProps {
   portfolio: Portfolio;
   onDelete?: (portfolioId: string) => void;
+  onEdit?: (portfolio: Portfolio) => void;
   showActions?: boolean;
 }
 
 const PortfolioCard: React.FC<PortfolioCardProps> = ({
   portfolio,
   onDelete,
+  onEdit,
   showActions = false
 }) => {
   const handleDelete = () => {
     if (onDelete && portfolio.id) {
       onDelete(portfolio.id);
+    }
+  };
+
+  const handleEdit = () => {
+    if (onEdit) {
+      onEdit(portfolio);
     }
   };
 
@@ -123,12 +131,19 @@ const PortfolioCard: React.FC<PortfolioCardProps> = ({
                 </Link>
               </Button>
               
-              <Button asChild variant="outline" size="sm" className="flex-1">
-                <Link to={`/portfolio/${portfolio.slug}/edit`}>
+              {onEdit ? (
+                <Button variant="outline" size="sm" className="flex-1" onClick={handleEdit}>
                   <Edit className="h-4 w-4 mr-2" />
                   Edit
-                </Link>
-              </Button>
+                </Button>
+              ) : (
+                <Button asChild variant="outline" size="sm" className="flex-1">
+                  <Link to={`/portfolio/${portfolio.slug}/edit`}>
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit
+                  </Link>
+                </Button>
+              )}
               
               {onDelete && (
                 <Button
