@@ -1,4 +1,3 @@
-
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from '@/contexts/ThemeContext';
@@ -75,7 +74,7 @@ function App() {
                 
                 {/* Open Calls - Public */}
                 <Route path="/open-calls" element={<OpenCalls />} />
-                <Route path="/open-calls/:callId" element={<OpenCallDetails />} />
+                <Route path="/open-calls/:id" element={<OpenCallDetails />} />
                 
                 {/* Education - Public */}
                 <Route path="/education" element={<Education />} />
@@ -92,7 +91,7 @@ function App() {
                     <Dashboard />
                   </ProtectedRoute>
                 } />
-                <Route path="/portfolios" element={
+                <Route path="/my-portfolios" element={
                   <ProtectedRoute>
                     <MyPortfolios />
                   </ProtectedRoute>

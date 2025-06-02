@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Menu, X, Search, User, Bell, ChevronDown } from 'lucide-react';
@@ -164,7 +163,7 @@ const Header = () => {
                     <Link to="/my-portfolios">My Portfolios</Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link to="/profile/settings">Settings</Link>
+                    <Link to="/settings">Settings</Link>
                   </DropdownMenuItem>
                   {userRole === 'admin' && (
                     <>
