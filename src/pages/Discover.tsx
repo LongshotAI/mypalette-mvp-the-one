@@ -1,4 +1,3 @@
-
 import Layout from '@/components/layout/Layout';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -35,7 +34,12 @@ const Discover = () => {
                  portfoliosLoading;
 
   const handleFiltersChange = (newFilters: SearchFiltersType) => {
-    updateFilters(newFilters);
+    // Fix: Ensure sortOrder is properly typed
+    const typedFilters = {
+      ...newFilters,
+      sortOrder: newFilters.sortOrder as 'asc' | 'desc'
+    };
+    updateFilters(typedFilters);
     setActiveView('search');
   };
 
@@ -97,13 +101,24 @@ const Discover = () => {
       
       {portfolios.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {portfolios.map((portfolio) => (
-            <PortfolioCard
-              key={portfolio.id}
-              portfolio={portfolio}
-              showActions={false}
-            />
-          ))}
+          {portfolios.map((portfolio) => {
+            // Fix: Transform the portfolio data to match the expected Portfolio type
+            const transformedPortfolio = {
+              ...portfolio,
+              profiles: {
+                ...portfolio.profiles,
+                artistic_medium: portfolio.profiles?.artistic_medium || null
+              }
+            };
+            
+            return (
+              <PortfolioCard
+                key={portfolio.id}
+                portfolio={transformedPortfolio}
+                showActions={false}
+              />
+            );
+          })}
         </div>
       ) : (
         <div className="text-center py-12">

@@ -36,6 +36,7 @@ export interface Portfolio {
     first_name: string | null;
     last_name: string | null;
     avatar_url: string | null;
+    artistic_medium?: string | null; // Make this optional to handle data variations
   };
 }
 
@@ -47,7 +48,7 @@ export interface SearchFilters {
   yearsActive: string;
   availableForCommission: boolean | null;
   sortBy: string;
-  sortOrder: 'asc' | 'desc';
+  sortOrder: 'asc' | 'desc'; // Fix: Properly type the sortOrder
   selectedCategory: string;
 }
 
@@ -88,7 +89,8 @@ export const useDiscovery = () => {
               username,
               first_name,
               last_name,
-              avatar_url
+              avatar_url,
+              artistic_medium
             )
           `)
           .eq('is_public', true)
@@ -120,7 +122,7 @@ export const useDiscovery = () => {
 
       // Apply search filters
       if (filters.query) {
-        // Fix the search query syntax - use 'or' filter properly
+        // Fix: Use proper OR syntax for Supabase
         query = query.or(`first_name.ilike.%${filters.query}%,last_name.ilike.%${filters.query}%,username.ilike.%${filters.query}%,bio.ilike.%${filters.query}%,artistic_medium.ilike.%${filters.query}%,artistic_style.ilike.%${filters.query}%`);
       }
 
@@ -179,7 +181,8 @@ export const useDiscovery = () => {
             username,
             first_name,
             last_name,
-            avatar_url
+            avatar_url,
+            artistic_medium
           )
         `)
         .eq('is_public', true);
