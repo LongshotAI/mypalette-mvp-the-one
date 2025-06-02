@@ -8,51 +8,43 @@ import { Palette, TrendingUp, Users, Star } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import SearchFilters, { SearchFilters as SearchFiltersType } from '@/components/discover/SearchFilters';
 import ArtistCard from '@/components/discover/ArtistCard';
+import PortfolioCard from '@/components/portfolio/PortfolioCard';
 import { useDiscovery } from '@/hooks/useDiscovery';
 
 const Discover = () => {
   const {
+    filters,
+    updateFilters,
     artists,
-    featuredContent,
-    loading,
-    hasMore,
-    searchArtists,
-    loadFeaturedContent,
-    loadMore,
-    updateFollowStatus
+    artistsLoading,
+    portfolios,
+    portfoliosLoading,
+    featuredData,
+    featuredLoading,
+    followArtist,
+    nextPage,
+    prevPage,
+    currentPage
   } = useDiscovery();
-
-  const [currentFilters, setCurrentFilters] = useState<SearchFiltersType>({
-    query: '',
-    artisticMedium: [],
-    artisticStyle: [],
-    location: '',
-    yearsActive: '',
-    availableForCommission: null,
-    sortBy: 'created_at',
-    sortOrder: 'desc'
-  });
 
   const [activeView, setActiveView] = useState<'search' | 'featured' | 'trending'>('featured');
 
-  useEffect(() => {
-    loadFeaturedContent();
-  }, [loadFeaturedContent]);
+  // Determine loading state based on active view
+  const loading = activeView === 'featured' ? featuredLoading : 
+                 activeView === 'search' ? artistsLoading : 
+                 portfoliosLoading;
 
-  const handleFiltersChange = (filters: SearchFiltersType) => {
-    setCurrentFilters(filters);
+  const handleFiltersChange = (newFilters: SearchFiltersType) => {
+    updateFilters(newFilters);
     setActiveView('search');
-    searchArtists(filters, 0, false);
   };
 
   const handleViewChange = (view: 'search' | 'featured' | 'trending') => {
     setActiveView(view);
-    
-    if (view === 'search') {
-      searchArtists(currentFilters, 0, false);
-    } else if (view === 'featured') {
-      loadFeaturedContent();
-    }
+  };
+
+  const updateFollowStatus = (artistId: string, isFollowing: boolean) => {
+    followArtist(artistId, isFollowing);
   };
 
   const renderArtistGrid = (artistList: any[], title: string, subtitle?: string) => (
@@ -86,9 +78,9 @@ const Discover = () => {
         </div>
       )}
 
-      {hasMore && activeView === 'search' && (
+      {activeView === 'search' && artists.length >= 12 && (
         <div className="text-center">
-          <Button onClick={loadMore} disabled={loading} variant="outline">
+          <Button onClick={nextPage} disabled={loading} variant="outline">
             {loading ? 'Loading...' : 'Load More Artists'}
           </Button>
         </div>
@@ -103,43 +95,14 @@ const Discover = () => {
         <p className="text-muted-foreground">Most viewed portfolios this week</p>
       </div>
       
-      {featuredContent.trending_portfolios.length > 0 ? (
+      {portfolios.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {featuredContent.trending_portfolios.map((portfolio) => (
-            <motion.div
+          {portfolios.map((portfolio) => (
+            <PortfolioCard
               key={portfolio.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              whileHover={{ y: -5 }}
-            >
-              <Card className="hover:shadow-lg transition-shadow">
-                <div className="aspect-video overflow-hidden rounded-t-lg">
-                  {portfolio.cover_image ? (
-                    <img
-                      src={portfolio.cover_image}
-                      alt={portfolio.title}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-primary/20 to-primary/40 flex items-center justify-center">
-                      <Palette className="h-12 w-12 text-primary/60" />
-                    </div>
-                  )}
-                </div>
-                <CardContent className="p-4">
-                  <h3 className="font-semibold mb-2 line-clamp-1">{portfolio.title}</h3>
-                  <p className="text-sm text-muted-foreground mb-2">
-                    by {portfolio.profiles?.first_name && portfolio.profiles?.last_name 
-                      ? `${portfolio.profiles.first_name} ${portfolio.profiles.last_name}`
-                      : portfolio.profiles?.username || 'Unknown Artist'}
-                  </p>
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>{portfolio.view_count || 0} views</span>
-                    <Badge variant="secondary">{portfolio.template_id}</Badge>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
+              portfolio={portfolio}
+              showActions={false}
+            />
           ))}
         </div>
       ) : (
@@ -151,6 +114,60 @@ const Discover = () => {
           <p className="text-muted-foreground">
             Check back soon to see what's trending!
           </p>
+        </div>
+      )}
+    </div>
+  );
+
+  const renderFeaturedContent = () => (
+    <div className="space-y-6">
+      <div className="text-center">
+        <h2 className="text-2xl font-bold mb-2">Featured Content</h2>
+        <p className="text-muted-foreground">Discover amazing artists and portfolios</p>
+      </div>
+      
+      {featuredData ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                Featured Artists
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-primary">
+                {featuredData.artists}
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Artists to discover
+              </p>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Palette className="h-5 w-5" />
+                Featured Portfolios
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-primary">
+                {featuredData.portfolios}
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Portfolios to explore
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      ) : (
+        <div className="text-center py-12">
+          <div className="w-16 h-16 mx-auto mb-4 bg-primary/10 rounded-full flex items-center justify-center">
+            <Star className="h-8 w-8 text-primary/60" />
+          </div>
+          <h3 className="text-lg font-semibold mb-2">Loading featured content...</h3>
         </div>
       )}
     </div>
@@ -228,13 +245,15 @@ const Discover = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
         >
-          {loading && artists.length === 0 && featuredContent.featured_artists.length === 0 ? (
+          {loading && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {[...Array(8)].map((_, i) => (
                 <div key={i} className="h-80 bg-muted animate-pulse rounded-lg" />
               ))}
             </div>
-          ) : (
+          )}
+          
+          {!loading && (
             <>
               {activeView === 'search' && renderArtistGrid(
                 artists,
@@ -242,11 +261,7 @@ const Discover = () => {
                 `Found ${artists.length} artists`
               )}
               
-              {activeView === 'featured' && renderArtistGrid(
-                featuredContent.featured_artists,
-                'Featured Artists',
-                'Discover talented artists making waves in the community'
-              )}
+              {activeView === 'featured' && renderFeaturedContent()}
               
               {activeView === 'trending' && renderTrendingPortfolios()}
             </>
