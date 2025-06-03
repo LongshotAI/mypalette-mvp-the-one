@@ -1,8 +1,5 @@
 
-import { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/hooks/use-toast';
+import { useState } from 'react';
 
 export interface Notification {
   id: string;
@@ -15,128 +12,33 @@ export interface Notification {
   metadata?: any;
 }
 
+// Placeholder notification system until database table is created
 export const useNotifications = () => {
-  const [unreadCount, setUnreadCount] = useState(0);
-  const queryClient = useQueryClient();
+  const [notifications] = useState<Notification[]>([]);
+  const [unreadCount] = useState(0);
 
-  // Fetch notifications
-  const { data: notifications, isLoading } = useQuery({
-    queryKey: ['notifications'],
-    queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return [];
-
-      const { data, error } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(50);
-
-      if (error) throw error;
-      return data as Notification[];
+  const markAsRead = {
+    mutate: (notificationId: string) => {
+      console.log('Mark as read placeholder:', notificationId);
     },
-  });
+  };
 
-  // Mark as read mutation
-  const markAsRead = useMutation({
-    mutationFn: async (notificationId: string) => {
-      const { error } = await supabase
-        .from('notifications')
-        .update({ is_read: true })
-        .eq('id', notificationId);
-
-      if (error) throw error;
+  const markAllAsRead = {
+    mutate: () => {
+      console.log('Mark all as read placeholder');
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+  };
+
+  const createNotification = {
+    mutate: (notification: Omit<Notification, 'id' | 'created_at' | 'is_read'>) => {
+      console.log('Create notification placeholder:', notification);
     },
-  });
-
-  // Mark all as read
-  const markAllAsRead = useMutation({
-    mutationFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { error } = await supabase
-        .from('notifications')
-        .update({ is_read: true })
-        .eq('user_id', user.id)
-        .eq('is_read', false);
-
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notifications'] });
-      toast({
-        title: "Success",
-        description: "All notifications marked as read",
-      });
-    },
-  });
-
-  // Create notification
-  const createNotification = useMutation({
-    mutationFn: async (notification: Omit<Notification, 'id' | 'created_at' | 'is_read'>) => {
-      const { error } = await supabase
-        .from('notifications')
-        .insert({
-          ...notification,
-          is_read: false
-        });
-
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notifications'] });
-    },
-  });
-
-  // Update unread count
-  useEffect(() => {
-    if (notifications) {
-      const unread = notifications.filter(n => !n.is_read).length;
-      setUnreadCount(unread);
-    }
-  }, [notifications]);
-
-  // Real-time subscription
-  useEffect(() => {
-    const { data: { user } } = supabase.auth.getUser();
-    
-    const setupSubscription = async () => {
-      const userData = await user;
-      if (!userData) return;
-
-      const subscription = supabase
-        .channel('notifications')
-        .on('postgres_changes', {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${userData.id}`,
-        }, (payload) => {
-          queryClient.invalidateQueries({ queryKey: ['notifications'] });
-          toast({
-            title: "New Notification",
-            description: payload.new.title,
-          });
-        })
-        .subscribe();
-
-      return () => {
-        subscription.unsubscribe();
-      };
-    };
-
-    setupSubscription();
-  }, [queryClient]);
+  };
 
   return {
-    notifications: notifications || [],
+    notifications,
     unreadCount,
-    isLoading,
+    isLoading: false,
     markAsRead,
     markAllAsRead,
     createNotification,

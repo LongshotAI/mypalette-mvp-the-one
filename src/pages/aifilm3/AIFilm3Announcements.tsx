@@ -79,7 +79,7 @@ const AIFilm3Announcements = () => {
   };
 
   return (
-    <Layout showFooter={false}>
+    <Layout>
       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-950 dark:to-blue-950">
         {/* Hero Section */}
         <section className="py-16 px-4">

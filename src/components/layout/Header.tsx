@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
-import NotificationCenter from '@/components/notifications/NotificationCenter';
+import { supabase } from '@/integrations/supabase/client';
 import SearchCommand from '@/components/discover/SearchCommand';
 
 interface HeaderProps {
@@ -32,14 +32,14 @@ interface HeaderProps {
 }
 
 const Header = ({ showNotifications = true }: HeaderProps) => {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const { profile } = useProfile();
   const navigate = useNavigate();
   const [searchOpen, setSearchOpen] = useState(false);
 
   const handleSignOut = async () => {
     try {
-      await signOut();
+      await supabase.auth.signOut();
       navigate('/');
     } catch (error) {
       console.error('Error signing out:', error);
@@ -93,9 +93,6 @@ const Header = ({ showNotifications = true }: HeaderProps) => {
 
             {user ? (
               <>
-                {/* Notifications */}
-                {showNotifications && <NotificationCenter />}
-
                 {/* Create Menu */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
