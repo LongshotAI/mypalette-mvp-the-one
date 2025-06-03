@@ -1,275 +1,276 @@
 
-import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import React from 'react';
 import Layout from '@/components/layout/Layout';
+import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Users, FileText, Calendar, DollarSign, TrendingUp, Eye, Film } from 'lucide-react';
-import AdminOpenCallManagement from '@/components/admin/AdminOpenCallManagement';
-import SubmissionReview from '@/components/admin/SubmissionReview';
-import AdminDebugInfo from '@/components/admin/AdminDebugInfo';
-import AIFilm3AdminPanel from '@/components/admin/AIFilm3AdminPanel';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import {
+  Users,
+  Palette,
+  TrendingUp,
+  Settings,
+  FileText,
+  BarChart3,
+  Shield,
+  Bell,
+  Plus,
+  Eye
+} from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { useAnalytics } from '@/hooks/useAnalytics';
+import LoadingSpinner from '@/components/ui/LoadingSpinner';
 
 const AdminDashboard = () => {
-  const [selectedOpenCall, setSelectedOpenCall] = useState<string | null>(null);
+  const { platformStats, platformLoading } = useAnalytics();
 
-  // Fetch dashboard statistics
-  const { data: stats } = useQuery({
-    queryKey: ['admin-stats'],
-    queryFn: async () => {
-      const [
-        { count: totalUsers },
-        { count: totalOpenCalls },
-        { count: totalSubmissions },
-        { count: pendingCalls }
-      ] = await Promise.all([
-        supabase.from('profiles').select('*', { count: 'exact', head: true }),
-        supabase.from('open_calls').select('*', { count: 'exact', head: true }),
-        supabase.from('submissions').select('*', { count: 'exact', head: true }),
-        supabase.from('open_calls').select('*', { count: 'exact', head: true }).eq('status', 'pending')
-      ]);
-
-      const { data: revenueData } = await supabase
-        .from('submissions')
-        .select('submission_data')
-        .in('payment_status', ['paid']);
-
-      const totalRevenue = revenueData?.length * 2 || 0;
-
-      return {
-        totalUsers: totalUsers || 0,
-        totalOpenCalls: totalOpenCalls || 0,
-        totalSubmissions: totalSubmissions || 0,
-        pendingCalls: pendingCalls || 0,
-        totalRevenue
-      };
+  const quickActions = [
+    {
+      title: 'User Management',
+      description: 'Manage user accounts and permissions',
+      icon: Users,
+      href: '/admin/users',
+      color: 'text-blue-600',
+      bgColor: 'bg-blue-100'
     },
-  });
-
-  const { data: recentActivity } = useQuery({
-    queryKey: ['admin-recent-activity'],
-    queryFn: async () => {
-      const { data: recentSubmissions } = await supabase
-        .from('submissions')
-        .select(`
-          *,
-          profiles(username, first_name, last_name),
-          open_calls(title)
-        `)
-        .order('submitted_at', { ascending: false })
-        .limit(5);
-
-      const { data: recentCalls } = await supabase
-        .from('open_calls')
-        .select(`
-          *,
-          profiles(username, first_name, last_name)
-        `)
-        .order('created_at', { ascending: false })
-        .limit(5);
-
-      return {
-        recentSubmissions: recentSubmissions || [],
-        recentCalls: recentCalls || []
-      };
+    {
+      title: 'Open Calls',
+      description: 'Review and manage open call submissions',
+      icon: TrendingUp,
+      href: '/admin/open-calls',
+      color: 'text-green-600',
+      bgColor: 'bg-green-100'
     },
-  });
+    {
+      title: 'Education Content',
+      description: 'Create and edit educational resources',
+      icon: FileText,
+      href: '/admin/education',
+      color: 'text-purple-600',
+      bgColor: 'bg-purple-100'
+    },
+    {
+      title: 'Platform Analytics',
+      description: 'View detailed platform analytics',
+      icon: BarChart3,
+      href: '/admin/analytics',
+      color: 'text-orange-600',
+      bgColor: 'bg-orange-100'
+    }
+  ];
+
+  if (platformLoading) {
+    return (
+      <Layout>
+        <div className="container mx-auto px-4 py-8">
+          <div className="flex items-center justify-center py-12">
+            <LoadingSpinner size="lg" />
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
       <div className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-          <p className="text-gray-600 mt-2">Monitor and manage the MyPalette platform</p>
-        </div>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-8"
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold flex items-center gap-2">
+                <Shield className="h-8 w-8 text-primary" />
+                Admin Dashboard
+              </h1>
+              <p className="text-muted-foreground mt-2">
+                Manage and monitor the MyPalette platform
+              </p>
+            </div>
+            <Badge variant="outline" className="text-sm">
+              Administrator
+            </Badge>
+          </div>
 
-        <AdminDebugInfo />
+          {/* Platform Stats */}
+          {platformStats && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center space-x-4">
+                    <div className="p-3 rounded-full bg-blue-100">
+                      <Users className="h-6 w-6 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Total Users</p>
+                      <p className="text-2xl font-bold">{platformStats.totalUsers.toLocaleString()}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-        {/* Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats?.totalUsers || 0}</div>
-              <p className="text-xs text-muted-foreground">Registered artists</p>
-            </CardContent>
-          </Card>
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center space-x-4">
+                    <div className="p-3 rounded-full bg-green-100">
+                      <Palette className="h-6 w-6 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Total Portfolios</p>
+                      <p className="text-2xl font-bold">{platformStats.totalPortfolios.toLocaleString()}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Open Calls</CardTitle>
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats?.totalOpenCalls || 0}</div>
-              <p className="text-xs text-muted-foreground">Total created</p>
-            </CardContent>
-          </Card>
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center space-x-4">
+                    <div className="p-3 rounded-full bg-purple-100">
+                      <TrendingUp className="h-6 w-6 text-purple-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Open Calls</p>
+                      <p className="text-2xl font-bold">{platformStats.totalOpenCalls.toLocaleString()}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Submissions</CardTitle>
-              <FileText className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats?.totalSubmissions || 0}</div>
-              <p className="text-xs text-muted-foreground">All time</p>
-            </CardContent>
-          </Card>
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center space-x-4">
+                    <div className="p-3 rounded-full bg-orange-100">
+                      <Users className="h-6 w-6 text-orange-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">New Users (30d)</p>
+                      <p className="text-2xl font-bold">{platformStats.newUsersThisMonth.toLocaleString()}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pending</CardTitle>
-              <Eye className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats?.pendingCalls || 0}</div>
-              <p className="text-xs text-muted-foreground">Need review</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Revenue</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">${stats?.totalRevenue || 0}</div>
-              <p className="text-xs text-muted-foreground">From submissions</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Main Content Tabs */}
-        <Tabs defaultValue="open-calls" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="open-calls">Open Calls</TabsTrigger>
-            <TabsTrigger value="submissions">Submissions</TabsTrigger>
-            <TabsTrigger value="users">Users</TabsTrigger>
-            <TabsTrigger value="aifilm3">AIFilm3</TabsTrigger>
-            <TabsTrigger value="analytics">Analytics</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="open-calls" className="space-y-6">
-            <AdminOpenCallManagement />
-          </TabsContent>
-
-          <TabsContent value="submissions" className="space-y-6">
-            <div className="space-y-4">
-              <h2 className="text-2xl font-bold">Submission Management</h2>
-              
-              {selectedOpenCall ? (
-                <div>
-                  <button 
-                    onClick={() => setSelectedOpenCall(null)}
-                    className="text-blue-600 hover:underline mb-4"
+          {/* Quick Actions */}
+          <div>
+            <h2 className="text-xl font-semibold mb-6">Quick Actions</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {quickActions.map((action, index) => {
+                const IconComponent = action.icon;
+                return (
+                  <motion.div
+                    key={action.title}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1 }}
                   >
-                    ← Back to all submissions
-                  </button>
-                  <SubmissionReview openCallId={selectedOpenCall} />
-                </div>
-              ) : (
-                <div className="grid gap-4">
-                  {recentActivity?.recentCalls?.map((call) => (
-                    <Card key={call.id} className="cursor-pointer hover:shadow-md transition-shadow"
-                          onClick={() => setSelectedOpenCall(call.id)}>
-                      <CardHeader>
-                        <CardTitle className="text-lg">{call.title}</CardTitle>
-                        <p className="text-sm text-gray-600">
-                          by {call.profiles?.first_name} {call.profiles?.last_name}
-                        </p>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm text-gray-500">
-                            Deadline: {new Date(call.submission_deadline).toLocaleDateString()}
-                          </span>
-                          <span className="text-sm font-medium text-blue-600">
-                            View submissions →
-                          </span>
+                    <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+                      <CardHeader className="pb-3">
+                        <div className={`w-12 h-12 rounded-lg ${action.bgColor} flex items-center justify-center mb-3`}>
+                          <IconComponent className={`h-6 w-6 ${action.color}`} />
                         </div>
+                        <CardTitle className="text-lg">{action.title}</CardTitle>
+                      </CardHeader>
+                      <CardContent className="pt-0">
+                        <p className="text-sm text-muted-foreground mb-4">
+                          {action.description}
+                        </p>
+                        <Button asChild variant="outline" size="sm" className="w-full">
+                          <Link to={action.href}>
+                            Access <Eye className="h-4 w-4 ml-2" />
+                          </Link>
+                        </Button>
                       </CardContent>
                     </Card>
-                  ))}
+                  </motion.div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Platform Health */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Platform Health</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="flex items-center space-x-3 p-4 bg-green-50 rounded-lg">
+                  <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                  <div>
+                    <p className="font-medium text-green-900">System Status</p>
+                    <p className="text-sm text-green-700">All systems operational</p>
+                  </div>
                 </div>
-              )}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="users" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>User Management</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600">User management interface coming soon...</p>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="aifilm3" className="space-y-6">
-            <AIFilm3AdminPanel />
-          </TabsContent>
-
-          <TabsContent value="analytics" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Recent Activity</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div>
-                      <h4 className="font-medium mb-2">Recent Submissions</h4>
-                      <div className="space-y-2">
-                        {recentActivity?.recentSubmissions?.map((submission) => {
-                          const submissionData = submission.submission_data as any;
-                          return (
-                            <div key={submission.id} className="text-sm p-2 bg-gray-50 rounded">
-                              <strong>{submissionData?.title || 'Untitled Submission'}</strong>
-                              <br />
-                              by {submission.profiles?.first_name} {submission.profiles?.last_name}
-                              <br />
-                              <span className="text-gray-500">
-                                {new Date(submission.submitted_at).toLocaleDateString()}
-                              </span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
+                
+                <div className="flex items-center space-x-3 p-4 bg-blue-50 rounded-lg">
+                  <Users className="h-5 w-5 text-blue-600" />
+                  <div>
+                    <p className="font-medium text-blue-900">Active Users</p>
+                    <p className="text-sm text-blue-700">{platformStats?.activeUsers || 0} online</p>
                   </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Platform Growth</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm">User Growth</span>
-                      <span className="text-sm text-green-600">+12% this month</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm">Open Call Activity</span>
-                      <span className="text-sm text-green-600">+8% this month</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm">Revenue Growth</span>
-                      <span className="text-sm text-green-600">+15% this month</span>
-                    </div>
+                </div>
+                
+                <div className="flex items-center space-x-3 p-4 bg-purple-50 rounded-lg">
+                  <TrendingUp className="h-5 w-5 text-purple-600" />
+                  <div>
+                    <p className="font-medium text-purple-900">Growth Rate</p>
+                    <p className="text-sm text-purple-700">
+                      +{platformStats?.newUsersThisMonth || 0} new users this month
+                    </p>
                   </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-        </Tabs>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Recent Activity Preview */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Recent Platform Activity</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex items-center space-x-3 p-3 border rounded-lg">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">New user registration</p>
+                    <p className="text-xs text-muted-foreground">2 minutes ago</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center space-x-3 p-3 border rounded-lg">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">Portfolio published</p>
+                    <p className="text-xs text-muted-foreground">15 minutes ago</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center space-x-3 p-3 border rounded-lg">
+                  <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">Open call submission received</p>
+                    <p className="text-xs text-muted-foreground">1 hour ago</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="mt-4 pt-4 border-t">
+                <Button variant="outline" size="sm" asChild className="w-full">
+                  <Link to="/admin/analytics">
+                    View Full Analytics <BarChart3 className="h-4 w-4 ml-2" />
+                  </Link>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
       </div>
     </Layout>
   );

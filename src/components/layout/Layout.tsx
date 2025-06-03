@@ -1,21 +1,30 @@
 
-import { ReactNode } from 'react';
+import React from 'react';
+import { motion } from 'framer-motion';
 import Header from './Header';
 import Footer from './Footer';
+import NotificationCenter from '@/components/notifications/NotificationCenter';
 
 interface LayoutProps {
-  children: ReactNode;
-  showFooter?: boolean;
+  children: React.ReactNode;
+  showNotifications?: boolean;
 }
 
-const Layout: React.FC<LayoutProps> = ({ children, showFooter = true }) => {
+const Layout = ({ children, showNotifications = true }: LayoutProps) => {
   return (
-    <div className="min-h-screen flex flex-col">
-      <Header />
-      <main className="flex-1">
+    <div className="min-h-screen bg-background flex flex-col">
+      <Header showNotifications={showNotifications} />
+      
+      <motion.main 
+        className="flex-1"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.3 }}
+      >
         {children}
-      </main>
-      {showFooter && <Footer />}
+      </motion.main>
+      
+      <Footer />
     </div>
   );
 };

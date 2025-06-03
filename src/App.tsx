@@ -1,3 +1,4 @@
+
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from '@/contexts/ThemeContext';
@@ -36,6 +37,7 @@ import AdminDashboard from '@/pages/admin/AdminDashboard';
 import AdminUsers from '@/pages/admin/AdminUsers';
 import AdminOpenCalls from '@/pages/admin/AdminOpenCalls';
 import AdminEducation from '@/pages/admin/AdminEducation';
+import AdminAnalytics from '@/pages/admin/AdminAnalytics';
 
 // AIFilm3 Pages
 import AIFilm3Info from '@/pages/aifilm3/AIFilm3Info';
@@ -136,6 +138,11 @@ function App() {
                 <Route path="/admin/education" element={
                   <AdminRoute>
                     <AdminEducation />
+                  </AdminRoute>
+                } />
+                <Route path="/admin/analytics" element={
+                  <AdminRoute>
+                    <AdminAnalytics />
                   </AdminRoute>
                 } />
                 
