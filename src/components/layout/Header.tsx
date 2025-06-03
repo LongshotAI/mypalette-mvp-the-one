@@ -20,7 +20,9 @@ import {
   Palette, 
   Plus,
   Menu,
-  Shield
+  Shield,
+  Film,
+  ChevronDown
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
@@ -62,8 +64,8 @@ const Header = ({ showNotifications = true }: HeaderProps) => {
             <span className="font-bold text-xl hidden sm:inline-block">MyPalette</span>
           </Link>
 
-          {/* Search */}
-          <div className="flex-1 max-w-md mx-8">
+          {/* Search - Adjusted width to accommodate AIFilm3 menu */}
+          <div className="flex-1 max-w-sm mx-6">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -89,6 +91,31 @@ const Header = ({ showNotifications = true }: HeaderProps) => {
               <Button variant="ghost" size="sm" asChild>
                 <Link to="/education">Learn</Link>
               </Button>
+              
+              {/* AIFilm3 Dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="flex items-center">
+                    <Film className="h-4 w-4 mr-1" />
+                    AIFilm3
+                    <ChevronDown className="h-3 w-3 ml-1" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem asChild>
+                    <Link to="/aifilm3/info" className="flex items-center">
+                      <Film className="h-4 w-4 mr-2" />
+                      Festival Info
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/aifilm3/announcements" className="flex items-center">
+                      <Settings className="h-4 w-4 mr-2" />
+                      Announcements
+                    </Link>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </nav>
 
             {user ? (
@@ -210,6 +237,13 @@ const Header = ({ showNotifications = true }: HeaderProps) => {
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link to="/education">Learn</Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link to="/aifilm3/info">AIFilm3 Info</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/aifilm3/announcements">AIFilm3 Announcements</Link>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
