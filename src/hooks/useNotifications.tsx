@@ -1,5 +1,7 @@
 
-import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
 
 export interface Notification {
   id: string;
@@ -12,33 +14,73 @@ export interface Notification {
   metadata?: any;
 }
 
-// Placeholder notification system until database table is created
 export const useNotifications = () => {
-  const [notifications] = useState<Notification[]>([]);
-  const [unreadCount] = useState(0);
+  const queryClient = useQueryClient();
 
-  const markAsRead = {
-    mutate: (notificationId: string) => {
-      console.log('Mark as read placeholder:', notificationId);
-    },
-  };
+  const { data: notifications = [], isLoading } = useQuery({
+    queryKey: ['notifications'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-  const markAllAsRead = {
-    mutate: () => {
-      console.log('Mark all as read placeholder');
+      if (error) throw error;
+      return data as Notification[];
     },
-  };
+  });
 
-  const createNotification = {
-    mutate: (notification: Omit<Notification, 'id' | 'created_at' | 'is_read'>) => {
-      console.log('Create notification placeholder:', notification);
+  const unreadCount = notifications.filter(n => !n.is_read).length;
+
+  const markAsRead = useMutation({
+    mutationFn: async (notificationId: string) => {
+      const { error } = await supabase
+        .from('notifications')
+        .update({ is_read: true })
+        .eq('id', notificationId);
+
+      if (error) throw error;
     },
-  };
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    },
+  });
+
+  const markAllAsRead = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from('notifications')
+        .update({ is_read: true })
+        .eq('is_read', false);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    },
+  });
+
+  const createNotification = useMutation({
+    mutationFn: async (notification: Omit<Notification, 'id' | 'created_at' | 'is_read'>) => {
+      const { error } = await supabase.rpc('create_notification', {
+        p_user_id: notification.user_id,
+        p_type: notification.type,
+        p_title: notification.title,
+        p_message: notification.message,
+        p_metadata: notification.metadata || {}
+      });
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    },
+  });
 
   return {
     notifications,
     unreadCount,
-    isLoading: false,
+    isLoading,
     markAsRead,
     markAllAsRead,
     createNotification,

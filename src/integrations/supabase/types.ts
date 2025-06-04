@@ -194,6 +194,102 @@ export type Database = {
           },
         ]
       }
+      host_applications: {
+        Row: {
+          admin_notes: string | null
+          applicant_id: string
+          contact_email: string
+          contact_phone: string | null
+          event_description: string
+          event_title: string
+          event_type: string
+          id: string
+          max_submissions: number | null
+          organization_name: string
+          organization_website: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string | null
+          submission_deadline: string
+          submission_fee: number | null
+          submission_requirements: Json | null
+          submitted_at: string | null
+        }
+        Insert: {
+          admin_notes?: string | null
+          applicant_id: string
+          contact_email: string
+          contact_phone?: string | null
+          event_description: string
+          event_title: string
+          event_type: string
+          id?: string
+          max_submissions?: number | null
+          organization_name: string
+          organization_website?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string | null
+          submission_deadline: string
+          submission_fee?: number | null
+          submission_requirements?: Json | null
+          submitted_at?: string | null
+        }
+        Update: {
+          admin_notes?: string | null
+          applicant_id?: string
+          contact_email?: string
+          contact_phone?: string | null
+          event_description?: string
+          event_title?: string
+          event_type?: string
+          id?: string
+          max_submissions?: number | null
+          organization_name?: string
+          organization_website?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string | null
+          submission_deadline?: string
+          submission_fee?: number | null
+          submission_requirements?: Json | null
+          submitted_at?: string | null
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_read: boolean | null
+          message: string
+          metadata: Json | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          message: string
+          metadata?: Json | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          message?: string
+          metadata?: Json | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       open_calls: {
         Row: {
           admin_notes: string | null
@@ -291,6 +387,71 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      portfolio_templates: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          is_premium: boolean | null
+          name: string
+          preview_image: string | null
+          template_data: Json
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id: string
+          is_premium?: boolean | null
+          name: string
+          preview_image?: string | null
+          template_data: Json
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_premium?: boolean | null
+          name?: string
+          preview_image?: string | null
+          template_data?: Json
+        }
+        Relationships: []
+      }
+      portfolio_views: {
+        Row: {
+          created_at: string | null
+          id: string
+          ip_address: unknown | null
+          portfolio_id: string
+          user_agent: string | null
+          viewer_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          ip_address?: unknown | null
+          portfolio_id: string
+          user_agent?: string | null
+          viewer_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          ip_address?: unknown | null
+          portfolio_id?: string
+          user_agent?: string | null
+          viewer_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portfolio_views_portfolio_id_fkey"
+            columns: ["portfolio_id"]
+            isOneToOne: false
+            referencedRelation: "portfolios"
             referencedColumns: ["id"]
           },
         ]
@@ -461,6 +622,44 @@ export type Database = {
           },
         ]
       }
+      submission_curation: {
+        Row: {
+          action: string
+          created_at: string | null
+          curator_id: string
+          curator_type: string
+          id: string
+          notes: string | null
+          submission_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          curator_id: string
+          curator_type: string
+          id?: string
+          notes?: string | null
+          submission_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          curator_id?: string
+          curator_type?: string
+          id?: string
+          notes?: string | null
+          submission_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "submission_curation_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: false
+            referencedRelation: "submissions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       submissions: {
         Row: {
           artist_id: string | null
@@ -522,11 +721,45 @@ export type Database = {
           },
         ]
       }
+      user_analytics: {
+        Row: {
+          created_at: string | null
+          event_data: Json | null
+          event_type: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          event_data?: Json | null
+          event_type: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          event_data?: Json | null
+          event_type?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      create_notification: {
+        Args: {
+          p_user_id: string
+          p_type: string
+          p_title: string
+          p_message: string
+          p_metadata?: Json
+        }
+        Returns: string
+      }
       generate_portfolio_slug: {
         Args: { title: string; user_id: string }
         Returns: string
@@ -546,6 +779,18 @@ export type Database = {
       }
       increment_portfolio_views: {
         Args: { portfolio_id: string }
+        Returns: undefined
+      }
+      track_portfolio_view: {
+        Args: {
+          p_portfolio_id: string
+          p_ip_address?: unknown
+          p_user_agent?: string
+        }
+        Returns: undefined
+      }
+      track_user_event: {
+        Args: { p_event_type: string; p_event_data?: Json }
         Returns: undefined
       }
       update_submission_status: {
