@@ -10,17 +10,16 @@ import {
   Calendar,
   Palette
 } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useUserAnalytics } from '@/hooks/useUserAnalytics';
 import { useSocialStats } from '@/hooks/useSocialStats';
 import { format, subDays } from 'date-fns';
 
 const UserAnalytics = () => {
   const { getUserStats } = useUserAnalytics();
-  const { getFollowStats } = useSocialStats();
+  const { stats: socialStats, loading: socialLoading } = useSocialStats();
 
   const { data: userStats, isLoading: statsLoading } = getUserStats;
-  const { data: socialStats, isLoading: socialLoading } = getFollowStats;
 
   if (statsLoading || socialLoading) {
     return (

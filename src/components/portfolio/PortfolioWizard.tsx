@@ -33,6 +33,7 @@ interface PortfolioWizardProps {
 
 const PortfolioWizard = ({ onComplete, onCancel }: PortfolioWizardProps) => {
   const [currentStep, setCurrentStep] = useState(0);
+  const [isCreating, setIsCreating] = useState(false);
   const [portfolioData, setPortfolioData] = useState({
     title: '',
     description: '',
@@ -73,46 +74,55 @@ const PortfolioWizard = ({ onComplete, onCancel }: PortfolioWizardProps) => {
       return;
     }
 
-    createPortfolio.mutate({
-      title: portfolioData.title,
-      description: portfolioData.description,
-      template_id: portfolioData.templateId,
-      custom_settings: portfolioData.customSettings,
-      is_public: portfolioData.isPublic,
-    }, {
-      onSuccess: (portfolio) => {
-        trackEvent.mutate({
-          eventType: 'portfolio_created',
-          eventData: { templateId: portfolioData.templateId, wizardUsed: true }
-        });
-        toast({
-          title: "Portfolio Created!",
-          description: "Your stunning portfolio is ready to showcase your work.",
-        });
-        onComplete(portfolio.id);
-      },
-    });
+    setIsCreating(true);
+    try {
+      const portfolio = await createPortfolio({
+        title: portfolioData.title,
+        description: portfolioData.description,
+        template_id: portfolioData.templateId,
+        is_public: portfolioData.isPublic,
+      });
+
+      trackEvent.mutate({
+        eventType: 'portfolio_created',
+        eventData: { templateId: portfolioData.templateId, wizardUsed: true }
+      });
+
+      toast({
+        title: "Portfolio Created!",
+        description: "Your stunning portfolio is ready to showcase your work.",
+      });
+
+      onComplete(portfolio.id);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create portfolio. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCreating(false);
+    }
   };
 
   const getTemplatePreview = (template: PortfolioTemplate) => {
     const { theme, colors, effects } = template.template_data;
     
-    let previewStyle = {
+    const baseStyle: React.CSSProperties = {
       background: `linear-gradient(135deg, ${colors.primary}, ${colors.secondary})`,
     };
 
     if (effects?.includes('blur')) {
-      previewStyle = {
-        ...previewStyle,
-        backdropFilter: 'blur(10px)',
+      Object.assign(baseStyle, {
+        filter: 'blur(0.5px)',
         background: `linear-gradient(135deg, ${colors.primary}80, ${colors.secondary}80)`,
-      };
+      });
     }
 
     return (
       <div 
         className="w-full h-32 rounded-lg relative overflow-hidden"
-        style={previewStyle}
+        style={baseStyle}
       >
         <div className="absolute inset-0 p-4 text-white">
           <div className="w-8 h-8 bg-white/20 rounded mb-2"></div>
@@ -373,10 +383,10 @@ const PortfolioWizard = ({ onComplete, onCancel }: PortfolioWizardProps) => {
         {currentStep === WIZARD_STEPS.length - 1 ? (
           <Button
             onClick={handleComplete}
-            disabled={createPortfolio.isPending}
+            disabled={isCreating}
             className="bg-gradient-to-r from-primary to-primary/80"
           >
-            {createPortfolio.isPending ? 'Creating...' : 'Create Portfolio'}
+            {isCreating ? 'Creating...' : 'Create Portfolio'}
             <Sparkles className="h-4 w-4 ml-2" />
           </Button>
         ) : (
