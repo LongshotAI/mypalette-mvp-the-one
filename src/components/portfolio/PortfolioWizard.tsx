@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { ChevronRight, ChevronLeft, Palette, Sparkles, Eye, Check } from 'lucide-react';
-import { usePortfolioTemplates, PortfolioTemplate } from '@/hooks/usePortfolioTemplates';
+import PortfolioTemplateSelector from './templates/PortfolioTemplateSelector';
 import { usePortfolios } from '@/hooks/usePortfolios';
 import { useUserAnalytics } from '@/hooks/useUserAnalytics';
 import { toast } from '@/hooks/use-toast';
@@ -42,11 +42,8 @@ const PortfolioWizard = ({ onComplete, onCancel }: PortfolioWizardProps) => {
     isPublic: true,
   });
 
-  const { data: templates = [], isLoading: templatesLoading } = usePortfolioTemplates();
   const { createPortfolio } = usePortfolios();
   const { trackEvent } = useUserAnalytics();
-
-  const selectedTemplate = templates.find(t => t.id === portfolioData.templateId);
 
   const handleNext = () => {
     if (currentStep < WIZARD_STEPS.length - 1) {
@@ -105,43 +102,6 @@ const PortfolioWizard = ({ onComplete, onCancel }: PortfolioWizardProps) => {
     }
   };
 
-  const getTemplatePreview = (template: PortfolioTemplate) => {
-    const { theme, colors, effects } = template.template_data;
-    
-    const baseStyle: React.CSSProperties = {
-      background: `linear-gradient(135deg, ${colors.primary}, ${colors.secondary})`,
-    };
-
-    if (effects?.includes('blur')) {
-      Object.assign(baseStyle, {
-        filter: 'blur(0.5px)',
-        background: `linear-gradient(135deg, ${colors.primary}80, ${colors.secondary}80)`,
-      });
-    }
-
-    return (
-      <div 
-        className="w-full h-32 rounded-lg relative overflow-hidden"
-        style={baseStyle}
-      >
-        <div className="absolute inset-0 p-4 text-white">
-          <div className="w-8 h-8 bg-white/20 rounded mb-2"></div>
-          <div className="w-16 h-2 bg-white/30 rounded mb-1"></div>
-          <div className="w-12 h-2 bg-white/20 rounded"></div>
-        </div>
-        {effects?.includes('parallax') && (
-          <motion.div
-            className="absolute top-2 right-2"
-            animate={{ y: [0, -5, 0] }}
-            transition={{ duration: 2, repeat: Infinity }}
-          >
-            <Sparkles className="h-4 w-4 text-white/60" />
-          </motion.div>
-        )}
-      </div>
-    );
-  };
-
   const renderStepContent = () => {
     switch (WIZARD_STEPS[currentStep].id) {
       case 'basic':
@@ -171,106 +131,31 @@ const PortfolioWizard = ({ onComplete, onCancel }: PortfolioWizardProps) => {
 
       case 'template':
         return (
-          <div className="space-y-6">
-            {templatesLoading ? (
-              <div className="text-center py-8">Loading templates...</div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {templates.map((template) => (
-                  <Card
-                    key={template.id}
-                    className={`cursor-pointer transition-all duration-200 ${
-                      portfolioData.templateId === template.id
-                        ? 'ring-2 ring-primary border-primary'
-                        : 'hover:border-primary/50'
-                    }`}
-                    onClick={() => setPortfolioData({ ...portfolioData, templateId: template.id })}
-                  >
-                    <CardHeader className="pb-3">
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-lg">{template.name}</CardTitle>
-                        {template.is_premium && (
-                          <Badge variant="secondary" className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white">
-                            Premium
-                          </Badge>
-                        )}
-                      </div>
-                      <CardDescription>{template.description}</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      {getTemplatePreview(template)}
-                      {portfolioData.templateId === template.id && (
-                        <div className="flex items-center mt-3 text-primary">
-                          <Check className="h-4 w-4 mr-2" />
-                          <span className="text-sm font-medium">Selected</span>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </div>
+          <PortfolioTemplateSelector
+            selectedTemplate={portfolioData.templateId}
+            onSelectTemplate={(templateId) => setPortfolioData({ ...portfolioData, templateId })}
+          />
         );
 
       case 'customize':
         return (
           <div className="space-y-6">
-            {selectedTemplate && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Customizing: {selectedTemplate.name}</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>Primary Color</Label>
-                    <div className="flex items-center space-x-2 mt-1">
-                      <div
-                        className="w-8 h-8 rounded border"
-                        style={{ backgroundColor: selectedTemplate.template_data.colors.primary }}
-                      />
-                      <Input
-                        type="color"
-                        value={selectedTemplate.template_data.colors.primary}
-                        onChange={(e) => {
-                          const newSettings = {
-                            ...portfolioData.customSettings,
-                            colors: {
-                              ...selectedTemplate.template_data.colors,
-                              primary: e.target.value,
-                            },
-                          };
-                          setPortfolioData({ ...portfolioData, customSettings: newSettings });
-                        }}
-                        className="w-16 h-8"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <Label>Secondary Color</Label>
-                    <div className="flex items-center space-x-2 mt-1">
-                      <div
-                        className="w-8 h-8 rounded border"
-                        style={{ backgroundColor: selectedTemplate.template_data.colors.secondary }}
-                      />
-                      <Input
-                        type="color"
-                        value={selectedTemplate.template_data.colors.secondary}
-                        onChange={(e) => {
-                          const newSettings = {
-                            ...portfolioData.customSettings,
-                            colors: {
-                              ...selectedTemplate.template_data.colors,
-                              secondary: e.target.value,
-                            },
-                          };
-                          setPortfolioData({ ...portfolioData, customSettings: newSettings });
-                        }}
-                        className="w-16 h-8"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
+            <div className="text-center">
+              <h3 className="text-lg font-semibold mb-2">Customize Your Portfolio</h3>
+              <p className="text-muted-foreground">
+                Advanced customization options will be available after creation
+              </p>
+            </div>
+            
+            <div className="bg-muted/50 p-6 rounded-lg">
+              <h4 className="font-medium mb-3">Coming Soon:</h4>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li>• Color scheme customization</li>
+                <li>• Typography options</li>
+                <li>• Layout variations</li>
+                <li>• Animation preferences</li>
+              </ul>
+            </div>
           </div>
         );
 
@@ -292,7 +177,9 @@ const PortfolioWizard = ({ onComplete, onCancel }: PortfolioWizardProps) => {
                 )}
                 <div>
                   <dt className="font-medium">Template:</dt>
-                  <dd className="text-muted-foreground">{selectedTemplate?.name}</dd>
+                  <dd className="text-muted-foreground">
+                    {portfolioData.templateId.charAt(0).toUpperCase() + portfolioData.templateId.slice(1)}
+                  </dd>
                 </div>
                 <div>
                   <dt className="font-medium">Visibility:</dt>
@@ -301,6 +188,16 @@ const PortfolioWizard = ({ onComplete, onCancel }: PortfolioWizardProps) => {
                   </dd>
                 </div>
               </dl>
+            </div>
+            
+            <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
+              <h4 className="font-medium text-blue-900 mb-2">Next Steps:</h4>
+              <ul className="text-sm text-blue-800 space-y-1">
+                <li>• Upload your artwork using our enhanced upload tool</li>
+                <li>• Organize your pieces with drag-and-drop</li>
+                <li>• Customize your portfolio design</li>
+                <li>• Share your portfolio with the world</li>
+              </ul>
             </div>
           </div>
         );

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
@@ -14,7 +13,7 @@ import { motion } from 'framer-motion';
 import { usePortfolios } from '@/hooks/usePortfolios';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import ArtworkUpload from '@/components/portfolio/ArtworkUpload';
+import EnhancedArtworkUpload from '@/components/portfolio/EnhancedArtworkUpload';
 import ArtworkGrid from '@/components/portfolio/ArtworkGrid';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -32,7 +31,7 @@ const PortfolioEditor = () => {
     description: '',
     slug: '',
     is_public: false,
-    template_id: 'crestline',
+    template_id: 'minimal',
     cover_image: null as string | null
   });
 
@@ -74,7 +73,7 @@ const PortfolioEditor = () => {
           description: data.description || '',
           slug: data.slug || '',
           is_public: data.is_public || false,
-          template_id: data.template_id || 'crestline',
+          template_id: data.template_id || 'minimal',
           cover_image: data.cover_image
         });
       } catch (error) {
@@ -158,7 +157,6 @@ const PortfolioEditor = () => {
         .from('portfolio-images')
         .getPublicUrl(fileName);
 
-      // Update portfolio with new cover image
       await updatePortfolio(portfolio.id, { cover_image: publicUrl });
       
       setPortfolio(prev => ({ ...prev, cover_image: publicUrl }));
@@ -178,8 +176,9 @@ const PortfolioEditor = () => {
   };
 
   const templates = [
-    { id: 'crestline', name: 'Crestline', description: 'Clean and professional' },
-    { id: 'minimalist', name: 'Minimalist', description: 'Simple and elegant' },
+    { id: 'minimal', name: 'Minimal', description: 'Clean and elegant design' },
+    { id: 'glassmorphic', name: 'Glassmorphic', description: 'Modern glass-like effects' },
+    { id: 'parallax', name: 'Parallax', description: 'Dynamic scrolling with depth' },
     { id: 'gallery', name: 'Gallery', description: 'Image-focused layout' },
     { id: 'modern', name: 'Modern', description: 'Contemporary design' },
   ];
@@ -374,7 +373,7 @@ const PortfolioEditor = () => {
 
             {activeTab === 'artworks' && (
               <div className="space-y-6">
-                <ArtworkUpload 
+                <EnhancedArtworkUpload 
                   portfolioId={portfolio.id} 
                   onSuccess={() => setRefreshKey(prev => prev + 1)}
                 />
