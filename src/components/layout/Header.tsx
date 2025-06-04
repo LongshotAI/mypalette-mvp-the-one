@@ -23,10 +23,13 @@ import {
   Shield,
   Film,
   ChevronDown,
-  Wand2
+  Wand2,
+  Moon,
+  Sun
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
+import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/integrations/supabase/client';
 import SearchCommand from '@/components/discover/SearchCommand';
 
@@ -37,6 +40,7 @@ interface HeaderProps {
 const Header = ({ showNotifications = true }: HeaderProps) => {
   const { user } = useAuth();
   const { profile } = useProfile();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [searchOpen, setSearchOpen] = useState(false);
 
@@ -65,7 +69,7 @@ const Header = ({ showNotifications = true }: HeaderProps) => {
             <span className="font-bold text-xl hidden sm:inline-block">MyPalette</span>
           </Link>
 
-          {/* Search - Adjusted width to accommodate AIFilm3 menu */}
+          {/* Search - Adjusted width to accommodate theme toggle */}
           <div className="flex-1 max-w-sm mx-6">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -81,6 +85,21 @@ const Header = ({ showNotifications = true }: HeaderProps) => {
 
           {/* Right side */}
           <div className="flex items-center space-x-4">
+            {/* Theme Toggle */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={toggleTheme}
+              className="w-9 h-9 rounded-md"
+            >
+              {theme === 'dark' ? (
+                <Sun className="h-4 w-4" />
+              ) : (
+                <Moon className="h-4 w-4" />
+              )}
+              <span className="sr-only">Toggle theme</span>
+            </Button>
+
             {/* Navigation Links */}
             <nav className="hidden md:flex items-center space-x-1">
               <Button variant="ghost" size="sm" asChild>

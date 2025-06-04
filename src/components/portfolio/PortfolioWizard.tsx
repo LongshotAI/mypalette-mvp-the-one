@@ -37,7 +37,7 @@ const PortfolioWizard = ({ onComplete, onCancel }: PortfolioWizardProps) => {
   const [portfolioData, setPortfolioData] = useState({
     title: '',
     description: '',
-    templateId: '',
+    templateId: 'minimal', // Default to minimal template
     customSettings: {},
     isPublic: true,
   });

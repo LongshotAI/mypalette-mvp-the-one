@@ -3,18 +3,9 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Check, Eye, Sparkles, Layout, Minimize2 } from 'lucide-react';
+import { Check, Eye, Sparkles, Layout, Minimize2, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
-
-interface TemplateOption {
-  id: string;
-  name: string;
-  description: string;
-  features: string[];
-  icon: React.ReactNode;
-  preview: React.ReactNode;
-  isPremium?: boolean;
-}
+import { usePortfolioTemplates } from '@/hooks/usePortfolioTemplates';
 
 interface PortfolioTemplateSelectorProps {
   selectedTemplate: string;
@@ -23,15 +14,17 @@ interface PortfolioTemplateSelectorProps {
 
 const PortfolioTemplateSelector = ({ selectedTemplate, onSelectTemplate }: PortfolioTemplateSelectorProps) => {
   const [previewTemplate, setPreviewTemplate] = useState<string | null>(null);
+  const { data: templates, isLoading, error } = usePortfolioTemplates();
 
-  const templates: TemplateOption[] = [
+  // Fallback templates if database is not available
+  const fallbackTemplates = [
     {
       id: 'glassmorphic',
       name: 'Glassmorphic',
       description: 'Modern glass-like effects with blur and transparency',
       features: ['Glass blur effects', 'Floating elements', 'Gradient backgrounds', 'Smooth animations'],
       icon: <Sparkles className="h-5 w-5" />,
-      isPremium: true,
+      is_premium: true,
       preview: (
         <div className="relative w-full h-32 rounded-lg overflow-hidden bg-gradient-to-br from-purple-400 via-pink-500 to-red-500">
           <div className="absolute inset-2 bg-white/20 backdrop-blur-md rounded-lg border border-white/30">
@@ -55,7 +48,7 @@ const PortfolioTemplateSelector = ({ selectedTemplate, onSelectTemplate }: Portf
       description: 'Dynamic scrolling effects with depth and movement',
       features: ['Parallax scrolling', 'Layer depth effects', 'Interactive elements', 'Immersive experience'],
       icon: <Layout className="h-5 w-5" />,
-      isPremium: true,
+      is_premium: true,
       preview: (
         <div className="relative w-full h-32 rounded-lg overflow-hidden bg-gradient-to-r from-blue-600 to-purple-600">
           <motion.div
@@ -91,6 +84,7 @@ const PortfolioTemplateSelector = ({ selectedTemplate, onSelectTemplate }: Portf
       description: 'Clean, elegant design focused on your artwork',
       features: ['Clean typography', 'Spacious layouts', 'Focus on content', 'Fast loading'],
       icon: <Minimize2 className="h-5 w-5" />,
+      is_premium: false,
       preview: (
         <div className="w-full h-32 rounded-lg border-2 border-gray-200 bg-white">
           <div className="p-4">
@@ -111,6 +105,31 @@ const PortfolioTemplateSelector = ({ selectedTemplate, onSelectTemplate }: Portf
     }
   ];
 
+  const displayTemplates = templates && templates.length > 0 ? templates.map(template => ({
+    id: template.id,
+    name: template.name,
+    description: template.description || 'Portfolio template',
+    features: template.template_data?.effects || ['Professional design', 'Responsive layout', 'Easy customization'],
+    icon: template.id === 'glassmorphic' ? <Sparkles className="h-5 w-5" /> : 
+          template.id === 'parallax' ? <Layout className="h-5 w-5" /> : 
+          <Minimize2 className="h-5 w-5" />,
+    is_premium: template.is_premium,
+    preview: fallbackTemplates.find(ft => ft.id === template.id)?.preview || (
+      <div className="w-full h-32 rounded-lg bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+        <p className="text-gray-500 text-sm">Template Preview</p>
+      </div>
+    )
+  })) : fallbackTemplates;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <Loader2 className="h-6 w-6 animate-spin mr-2" />
+        <span>Loading templates...</span>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="text-center">
@@ -121,7 +140,7 @@ const PortfolioTemplateSelector = ({ selectedTemplate, onSelectTemplate }: Portf
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {templates.map((template) => (
+        {displayTemplates.map((template) => (
           <Card
             key={template.id}
             className={`cursor-pointer transition-all duration-200 hover:shadow-lg ${
@@ -137,7 +156,7 @@ const PortfolioTemplateSelector = ({ selectedTemplate, onSelectTemplate }: Portf
                   {template.icon}
                   {template.name}
                 </CardTitle>
-                {template.isPremium && (
+                {template.is_premium && (
                   <Badge variant="secondary" className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white">
                     Premium
                   </Badge>
@@ -201,14 +220,14 @@ const PortfolioTemplateSelector = ({ selectedTemplate, onSelectTemplate }: Portf
         ))}
       </div>
 
-      {/* Template Preview Modal would go here */}
+      {/* Template Preview Modal */}
       {previewTemplate && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg max-w-4xl w-full max-h-[80vh] overflow-y-auto">
             <div className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold">
-                  {templates.find(t => t.id === previewTemplate)?.name} Template Preview
+                  {displayTemplates.find(t => t.id === previewTemplate)?.name} Template Preview
                 </h3>
                 <Button
                   variant="ghost"

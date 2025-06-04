@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
@@ -46,6 +47,7 @@ const PortfolioEditor = () => {
       if (isNew || !id || !user?.id) return;
 
       try {
+        setLoading(true);
         console.log('Loading portfolio for editing:', id);
         
         const { data, error } = await supabase
