@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
@@ -15,9 +14,11 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
-import { Plus, Palette } from 'lucide-react';
+import { Plus, Palette, Sparkles, Layout, Minimize2 } from 'lucide-react';
 import { usePortfolios } from '@/hooks/usePortfolios';
+import { usePortfolioTemplates } from '@/hooks/usePortfolioTemplates';
 import { toast } from '@/hooks/use-toast';
+import PortfolioTemplateSelector from './templates/PortfolioTemplateSelector';
 
 interface CreatePortfolioDialogProps {
   onPortfolioCreated?: () => void;
@@ -26,21 +27,14 @@ interface CreatePortfolioDialogProps {
 const CreatePortfolioDialog = ({ onPortfolioCreated }: CreatePortfolioDialogProps) => {
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState('minimal');
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    template_id: 'crestline',
     is_public: false
   });
 
   const { createPortfolio } = usePortfolios();
-
-  const templates = [
-    { id: 'crestline', name: 'Crestline', description: 'Clean and modern layout' },
-    { id: 'artfolio', name: 'Artfolio', description: 'Gallery-focused design' },
-    { id: 'rowan', name: 'Rowan', description: 'Minimalist showcase' },
-    { id: 'panorama', name: 'Panorama', description: 'Wide format display' }
-  ];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,17 +48,29 @@ const CreatePortfolioDialog = ({ onPortfolioCreated }: CreatePortfolioDialogProp
       return;
     }
 
+    if (!selectedTemplate) {
+      toast({
+        title: "Error", 
+        description: "Please select a template",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsLoading(true);
     
     try {
-      await createPortfolio(formData);
+      await createPortfolio({
+        ...formData,
+        template_id: selectedTemplate
+      });
       setOpen(false);
       setFormData({
         title: '',
         description: '',
-        template_id: 'crestline',
         is_public: false
       });
+      setSelectedTemplate('minimal');
       onPortfolioCreated?.();
       toast({
         title: "Success",
@@ -90,7 +96,7 @@ const CreatePortfolioDialog = ({ onPortfolioCreated }: CreatePortfolioDialogProp
           Create Portfolio
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Palette className="h-5 w-5" />
@@ -124,27 +130,10 @@ const CreatePortfolioDialog = ({ onPortfolioCreated }: CreatePortfolioDialogProp
             />
           </div>
 
-          <div className="space-y-2">
-            <Label>Template</Label>
-            <Select 
-              value={formData.template_id} 
-              onValueChange={(value) => setFormData(prev => ({ ...prev, template_id: value }))}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Choose a template" />
-              </SelectTrigger>
-              <SelectContent>
-                {templates.map((template) => (
-                  <SelectItem key={template.id} value={template.id}>
-                    <div>
-                      <div className="font-medium">{template.name}</div>
-                      <div className="text-sm text-muted-foreground">{template.description}</div>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <PortfolioTemplateSelector
+            selectedTemplate={selectedTemplate}
+            onSelectTemplate={setSelectedTemplate}
+          />
 
           <div className="flex items-center justify-between p-4 border rounded-lg">
             <div className="space-y-0.5">
