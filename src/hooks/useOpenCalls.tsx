@@ -30,6 +30,55 @@ export const useOpenCalls = () => {
     },
   });
 
+  const getAllOpenCalls = useQuery({
+    queryKey: ['admin-open-calls'],
+    queryFn: async () => {
+      console.log('Fetching all open calls for admin...');
+      
+      const { data, error } = await supabase
+        .from('open_calls')
+        .select(`
+          *,
+          profiles(first_name, last_name, username, avatar_url)
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching admin open calls:', error);
+        throw error;
+      }
+
+      console.log('Admin open calls fetched:', data);
+      return data;
+    },
+  });
+
+  const getFeaturedOpenCalls = useQuery({
+    queryKey: ['featured-open-calls'],
+    queryFn: async () => {
+      console.log('Fetching featured open calls...');
+      
+      const { data, error } = await supabase
+        .from('open_calls')
+        .select(`
+          *,
+          profiles(first_name, last_name, username, avatar_url)
+        `)
+        .eq('status', 'live')
+        .eq('is_featured', true)
+        .order('submission_deadline', { ascending: true })
+        .limit(6);
+
+      if (error) {
+        console.error('Error fetching featured open calls:', error);
+        throw error;
+      }
+
+      console.log('Featured open calls fetched:', data);
+      return data;
+    },
+  });
+
   const getOpenCallById = (id: string) => {
     return useQuery({
       queryKey: ['open-call', id],
@@ -57,6 +106,46 @@ export const useOpenCalls = () => {
     });
   };
 
+  const updateOpenCallStatus = useMutation({
+    mutationFn: async ({ id, status, is_featured }: { id: string; status?: string; is_featured?: boolean }) => {
+      console.log('Updating open call status:', id, { status, is_featured });
+      
+      const updates: any = { updated_at: new Date().toISOString() };
+      if (status !== undefined) updates.status = status;
+      if (is_featured !== undefined) updates.is_featured = is_featured;
+
+      const { data, error } = await supabase
+        .from('open_calls')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error updating open call:', error);
+        throw error;
+      }
+
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['open-calls'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-open-calls'] });
+      queryClient.invalidateQueries({ queryKey: ['featured-open-calls'] });
+      toast({
+        title: "Open Call Updated",
+        description: "Open call status has been updated successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update open call.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const createOpenCall = useMutation({
     mutationFn: async (openCallData: any) => {
       console.log('Creating open call:', openCallData);
@@ -69,7 +158,7 @@ export const useOpenCalls = () => {
         .insert({
           ...openCallData,
           host_user_id: user.id,
-          status: 'pending'
+          status: 'live' // Default to live for admin-created calls
         })
         .select()
         .single();
@@ -84,15 +173,17 @@ export const useOpenCalls = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['open-calls'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-open-calls'] });
+      queryClient.invalidateQueries({ queryKey: ['featured-open-calls'] });
       toast({
-        title: "Open Call Submitted",
-        description: "Your open call has been submitted for review.",
+        title: "Open Call Created",
+        description: "Open call has been created and is now live.",
       });
     },
     onError: (error: any) => {
       toast({
-        title: "Submission Failed",
-        description: error.message || "Failed to submit open call.",
+        title: "Creation Failed",
+        description: error.message || "Failed to create open call.",
         variant: "destructive",
       });
     },
@@ -100,7 +191,10 @@ export const useOpenCalls = () => {
 
   return {
     getOpenCalls,
+    getAllOpenCalls,
+    getFeaturedOpenCalls,
     getOpenCallById,
+    updateOpenCallStatus,
     createOpenCall,
   };
 };

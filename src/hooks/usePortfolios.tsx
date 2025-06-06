@@ -1,8 +1,8 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 export interface Portfolio {
   id: string;
@@ -32,6 +32,154 @@ export const usePortfolios = () => {
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  // Query for featured portfolios
+  const featuredPortfoliosQuery = useQuery({
+    queryKey: ['featured-portfolios'],
+    queryFn: async () => {
+      console.log('Fetching featured portfolios...');
+      
+      const { data, error } = await supabase
+        .from('portfolios')
+        .select(`
+          id,
+          title,
+          description,
+          slug,
+          cover_image,
+          view_count,
+          user_id,
+          created_at,
+          updated_at,
+          template_id,
+          is_public,
+          is_featured,
+          profiles!inner (
+            username,
+            first_name,
+            last_name,
+            avatar_url,
+            artistic_medium
+          )
+        `)
+        .eq('is_public', true)
+        .eq('is_featured', true)
+        .order('view_count', { ascending: false })
+        .limit(6);
+
+      if (error) throw error;
+      console.log('Featured portfolios fetched:', data);
+      return data || [];
+    },
+  });
+
+  // Query for all portfolios (admin use)
+  const allPortfoliosQuery = useQuery({
+    queryKey: ['admin-portfolios'],
+    queryFn: async () => {
+      console.log('Fetching all portfolios for admin...');
+      
+      const { data, error } = await supabase
+        .from('portfolios')
+        .select(`
+          id,
+          title,
+          description,
+          slug,
+          cover_image,
+          view_count,
+          user_id,
+          created_at,
+          updated_at,
+          template_id,
+          is_public,
+          is_featured,
+          profiles (
+            username,
+            first_name,
+            last_name,
+            avatar_url,
+            artistic_medium
+          )
+        `)
+        .order('updated_at', { ascending: false });
+
+      if (error) throw error;
+      console.log('All portfolios fetched:', data);
+      return data || [];
+    },
+  });
+
+  // Mutation for updating portfolio featured status
+  const updatePortfolioFeatured = useMutation({
+    mutationFn: async ({ id, is_featured }: { id: string; is_featured: boolean }) => {
+      console.log('Updating portfolio featured status:', id, is_featured);
+
+      const { data, error } = await supabase
+        .from('portfolios')
+        .update({ 
+          is_featured,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['featured-portfolios'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-portfolios'] });
+      toast({
+        title: "Portfolio Updated",
+        description: "Portfolio featured status has been updated successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update portfolio.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Mutation for updating portfolio visibility
+  const updatePortfolioVisibility = useMutation({
+    mutationFn: async ({ id, is_public }: { id: string; is_public: boolean }) => {
+      console.log('Updating portfolio visibility:', id, is_public);
+
+      const { data, error } = await supabase
+        .from('portfolios')
+        .update({ 
+          is_public,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['featured-portfolios'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-portfolios'] });
+      toast({
+        title: "Portfolio Updated",
+        description: "Portfolio visibility has been updated successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update portfolio visibility.",
+        variant: "destructive",
+      });
+    },
+  });
 
   const fetchFeaturedPortfolios = async () => {
     try {
@@ -293,6 +441,10 @@ export const usePortfolios = () => {
     portfolios,
     loading,
     error,
+    featuredPortfoliosQuery,
+    allPortfoliosQuery,
+    updatePortfolioFeatured,
+    updatePortfolioVisibility,
     fetchFeaturedPortfolios,
     fetchUserPortfolios,
     createPortfolio,
