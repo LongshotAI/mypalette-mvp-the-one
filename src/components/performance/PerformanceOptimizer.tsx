@@ -1,17 +1,23 @@
 
 import React, { memo, useMemo } from 'react';
-import { ErrorBoundary } from 'react-error-boundary';
+import { ErrorBoundary, FallbackProps } from 'react-error-boundary';
 
 interface PerformanceOptimizerProps {
   children: React.ReactNode;
   dependencies?: any[];
-  fallback?: React.ComponentType<{ error: Error }>;
+  fallback?: React.ComponentType<FallbackProps>;
 }
 
-const ErrorFallback = ({ error }: { error: Error }) => (
+const ErrorFallback = ({ error, resetErrorBoundary }: FallbackProps) => (
   <div className="p-4 border border-red-200 rounded-lg bg-red-50">
     <h3 className="text-red-800 font-medium">Something went wrong</h3>
     <p className="text-red-600 text-sm mt-1">{error.message}</p>
+    <button 
+      onClick={resetErrorBoundary}
+      className="mt-2 px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
+    >
+      Try again
+    </button>
   </div>
 );
 

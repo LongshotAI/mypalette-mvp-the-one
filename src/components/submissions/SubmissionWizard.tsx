@@ -8,16 +8,29 @@ import SubmissionFormFields from '@/components/submissions/SubmissionFormFields'
 import { useSubmissions } from '@/hooks/useSubmissions';
 import { useOpenCalls } from '@/hooks/useOpenCalls';
 import { toast } from '@/hooks/use-toast';
+import { SubmissionData } from '@/types/submission';
 
 interface SubmissionWizardProps {
   openCallId: string;
   onSuccess?: () => void;
 }
 
+interface LocalSubmissionData {
+  title: string;
+  description: string;
+  medium: string;
+  year: string;
+  dimensions: string;
+  artist_statement: string;
+  image_urls: string[];
+  external_links: string[];
+  files: any[];
+}
+
 const SubmissionWizard = ({ openCallId, onSuccess }: SubmissionWizardProps) => {
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submissionData, setSubmissionData] = useState({
+  const [submissionData, setSubmissionData] = useState<LocalSubmissionData>({
     title: '',
     description: '',
     medium: '',
@@ -30,7 +43,7 @@ const SubmissionWizard = ({ openCallId, onSuccess }: SubmissionWizardProps) => {
   });
 
   const { createSubmission } = useSubmissions();
-  const { getOpenCallById } = useOpenCalls(openCallId);
+  const { getOpenCallById } = useOpenCalls();
   const openCallQuery = getOpenCallById(openCallId);
 
   const steps = [
@@ -70,6 +83,20 @@ const SubmissionWizard = ({ openCallId, onSuccess }: SubmissionWizardProps) => {
     setCurrentStep(prev => Math.max(prev - 1, 0));
   };
 
+  const handleDataChange = (data: SubmissionData) => {
+    setSubmissionData({
+      title: data.title,
+      description: data.description,
+      medium: data.medium,
+      year: data.year,
+      dimensions: data.dimensions,
+      artist_statement: data.artist_statement,
+      image_urls: data.image_urls,
+      external_links: data.external_links,
+      files: data.files || []
+    });
+  };
+
   const handleSubmit = async () => {
     if (!validateCurrentStep()) return;
 
@@ -77,9 +104,21 @@ const SubmissionWizard = ({ openCallId, onSuccess }: SubmissionWizardProps) => {
     try {
       console.log('Submitting artwork to open call:', openCallId, submissionData);
       
+      // Convert local submission data to the expected format
+      const submissionDataForAPI: SubmissionData = {
+        title: submissionData.title,
+        description: submissionData.description,
+        medium: submissionData.medium,
+        year: submissionData.year,
+        dimensions: submissionData.dimensions,
+        artist_statement: submissionData.artist_statement,
+        image_urls: submissionData.image_urls,
+        external_links: submissionData.external_links
+      };
+
       const result = await createSubmission.mutateAsync({
         openCallId,
-        submissionData
+        submissionData: submissionDataForAPI
       });
 
       if (result.paymentRequired) {
@@ -175,7 +214,7 @@ const SubmissionWizard = ({ openCallId, onSuccess }: SubmissionWizardProps) => {
           {currentStep === 0 && (
             <SubmissionFormFields
               submissionData={submissionData}
-              onDataChange={setSubmissionData}
+              onDataChange={handleDataChange}
               requirements={openCall.submission_requirements}
             />
           )}

@@ -209,7 +209,7 @@ const OpenCallDetails = ({ callId }: { callId: string }) => {
                       by {submission.profiles?.first_name} {submission.profiles?.last_name}
                     </p>
                   </div>
-                  <Badge size="sm" variant="outline">
+                  <Badge variant="outline">
                     {submission.payment_status}
                   </Badge>
                 </div>
