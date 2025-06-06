@@ -19,12 +19,11 @@ import ArtworkGrid from '@/components/portfolio/ArtworkGrid';
 import { supabase } from '@/integrations/supabase/client';
 
 const PortfolioEditor = () => {
-  const { id } = useParams();
+  const { slug } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { updatePortfolio } = usePortfolios();
   const { toast } = useToast();
-  const isNew = id === 'new';
   
   const [portfolio, setPortfolio] = useState({
     id: '',
@@ -37,23 +36,26 @@ const PortfolioEditor = () => {
   });
 
   const [activeTab, setActiveTab] = useState<'details' | 'artworks' | 'settings'>('details');
-  const [loading, setLoading] = useState(!isNew);
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  // Load portfolio data if editing existing portfolio
+  // Load portfolio data
   useEffect(() => {
     const loadPortfolio = async () => {
-      if (isNew || !id || !user?.id) return;
+      if (!slug || !user?.id) {
+        setLoading(false);
+        return;
+      }
 
       try {
         setLoading(true);
-        console.log('Loading portfolio for editing:', id);
+        console.log('Loading portfolio for editing:', slug);
         
         const { data, error } = await supabase
           .from('portfolios')
           .select('*')
-          .eq('id', id)
+          .eq('slug', slug)
           .eq('user_id', user.id)
           .single();
 
@@ -62,6 +64,16 @@ const PortfolioEditor = () => {
           toast({
             title: "Error",
             description: "Failed to load portfolio. You may not have permission to edit this portfolio.",
+            variant: "destructive"
+          });
+          navigate('/my-portfolios');
+          return;
+        }
+
+        if (!data) {
+          toast({
+            title: "Not Found",
+            description: "Portfolio not found or you don't have permission to edit it.",
             variant: "destructive"
           });
           navigate('/my-portfolios');
@@ -92,7 +104,7 @@ const PortfolioEditor = () => {
     };
 
     loadPortfolio();
-  }, [id, isNew, user?.id, navigate, toast]);
+  }, [slug, user?.id, navigate, toast]);
 
   const handleSave = async () => {
     if (!portfolio.title.trim()) {
@@ -184,11 +196,6 @@ const PortfolioEditor = () => {
     { id: 'gallery', name: 'Gallery', description: 'Image-focused layout' },
     { id: 'modern', name: 'Modern', description: 'Contemporary design' },
   ];
-
-  if (isNew) {
-    navigate('/my-portfolios');
-    return null;
-  }
 
   if (loading) {
     return (

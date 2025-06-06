@@ -1,12 +1,11 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Eye, Edit, Trash2, Image as ImageIcon } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { Edit, Trash2, ExternalLink, Calendar, Ruler } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from '@/hooks/use-toast';
 
 interface Artwork {
   id: string;
@@ -15,10 +14,10 @@ interface Artwork {
   medium: string | null;
   year: number | null;
   dimensions: string | null;
-  tags: string[] | null;
   image_url: string;
-  sort_order: number | null;
-  created_at: string | null;
+  video_url: string | null;
+  external_url: string | null;
+  created_at: string;
 }
 
 interface ArtworkGridProps {
@@ -29,17 +28,17 @@ interface ArtworkGridProps {
 const ArtworkGrid = ({ portfolioId, onRefresh }: ArtworkGridProps) => {
   const [artworks, setArtworks] = useState<Artwork[]>([]);
   const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
+  const [deleting, setDeleting] = useState<string | null>(null);
 
   const fetchArtworks = async () => {
     try {
+      setLoading(true);
       console.log('Fetching artworks for portfolio:', portfolioId);
       
       const { data, error } = await supabase
         .from('artworks')
         .select('*')
         .eq('portfolio_id', portfolioId)
-        .order('sort_order', { ascending: true })
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -58,10 +57,17 @@ const ArtworkGrid = ({ portfolioId, onRefresh }: ArtworkGridProps) => {
     }
   };
 
-  const deleteArtwork = async (artworkId: string) => {
+  useEffect(() => {
+    if (portfolioId) {
+      fetchArtworks();
+    }
+  }, [portfolioId]);
+
+  const handleDelete = async (artworkId: string) => {
+    if (!confirm('Are you sure you want to delete this artwork?')) return;
+
+    setDeleting(artworkId);
     try {
-      console.log('Deleting artwork:', artworkId);
-      
       const { error } = await supabase
         .from('artworks')
         .delete()
@@ -70,35 +76,32 @@ const ArtworkGrid = ({ portfolioId, onRefresh }: ArtworkGridProps) => {
       if (error) throw error;
 
       toast({
-        title: "Artwork deleted",
-        description: "The artwork has been removed successfully"
+        title: "Artwork Deleted",
+        description: "The artwork has been removed from your portfolio."
       });
 
-      // Refresh the artworks list
-      fetchArtworks();
-      onRefresh?.();
+      setArtworks(prev => prev.filter(artwork => artwork.id !== artworkId));
+      
+      if (onRefresh) {
+        onRefresh();
+      }
     } catch (error) {
       console.error('Error deleting artwork:', error);
       toast({
-        title: "Error",
+        title: "Delete Failed",
         description: "Failed to delete artwork",
         variant: "destructive"
       });
+    } finally {
+      setDeleting(null);
     }
   };
 
-  useEffect(() => {
-    if (portfolioId) {
-      fetchArtworks();
-    }
-  }, [portfolioId]);
-
   if (loading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {[...Array(6)].map((_, i) => (
-          <div key={i} className="aspect-square bg-muted animate-pulse rounded-lg" />
-        ))}
+      <div className="text-center py-8">
+        <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+        <p>Loading artworks...</p>
       </div>
     );
   }
@@ -106,61 +109,51 @@ const ArtworkGrid = ({ portfolioId, onRefresh }: ArtworkGridProps) => {
   if (artworks.length === 0) {
     return (
       <div className="text-center py-12">
-        <div className="w-16 h-16 mx-auto mb-4 bg-primary/10 rounded-full flex items-center justify-center">
-          <ImageIcon className="h-8 w-8 text-primary/60" />
+        <div className="mx-auto h-24 w-24 text-muted-foreground mb-4">
+          <svg className="h-full w-full" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
         </div>
-        <h3 className="text-lg font-semibold mb-2">No artworks yet</h3>
+        <h3 className="text-lg font-medium mb-2">No artworks yet</h3>
         <p className="text-muted-foreground">
-          Add your first artwork to start building your portfolio.
+          Upload your first artwork to start building your portfolio.
         </p>
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {artworks.map((artwork, index) => (
-        <motion.div
-          key={artwork.id}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 * index }}
-        >
-          <Card className="group overflow-hidden hover:shadow-lg transition-shadow">
-            <div className="relative aspect-square overflow-hidden">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {artworks.map((artwork) => (
+        <Card key={artwork.id} className="overflow-hidden">
+          <div className="aspect-square relative">
+            {artwork.video_url ? (
+              <video
+                src={artwork.video_url}
+                className="w-full h-full object-cover"
+                controls
+              />
+            ) : (
               <img
                 src={artwork.image_url}
                 alt={artwork.title}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                className="w-full h-full object-cover"
               />
-              
-              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                <Button variant="secondary" size="sm">
-                  <Eye className="h-4 w-4" />
-                </Button>
-                <Button variant="secondary" size="sm">
-                  <Edit className="h-4 w-4" />
-                </Button>
-                <Button 
-                  variant="destructive" 
-                  size="sm"
-                  onClick={() => deleteArtwork(artwork.id)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+            )}
+          </div>
+          
+          <CardContent className="p-4">
+            <div className="space-y-3">
+              <div>
+                <h3 className="font-medium line-clamp-1">{artwork.title}</h3>
+                {artwork.description && (
+                  <p className="text-sm text-muted-foreground line-clamp-2">
+                    {artwork.description}
+                  </p>
+                )}
               </div>
-            </div>
-            
-            <CardContent className="p-4">
-              <h3 className="font-semibold mb-2 line-clamp-1">{artwork.title}</h3>
-              
-              {artwork.description && (
-                <p className="text-sm text-muted-foreground mb-2 line-clamp-2">
-                  {artwork.description}
-                </p>
-              )}
-              
-              <div className="flex flex-wrap gap-1 mb-2">
+
+              <div className="flex flex-wrap gap-2">
                 {artwork.medium && (
                   <Badge variant="secondary" className="text-xs">
                     {artwork.medium}
@@ -168,28 +161,58 @@ const ArtworkGrid = ({ portfolioId, onRefresh }: ArtworkGridProps) => {
                 )}
                 {artwork.year && (
                   <Badge variant="outline" className="text-xs">
+                    <Calendar className="h-3 w-3 mr-1" />
                     {artwork.year}
                   </Badge>
                 )}
+                {artwork.dimensions && (
+                  <Badge variant="outline" className="text-xs">
+                    <Ruler className="h-3 w-3 mr-1" />
+                    {artwork.dimensions}
+                  </Badge>
+                )}
               </div>
-              
-              {artwork.tags && artwork.tags.length > 0 && (
-                <div className="flex flex-wrap gap-1">
-                  {artwork.tags.slice(0, 3).map((tag, tagIndex) => (
-                    <Badge key={tagIndex} variant="outline" className="text-xs">
-                      {tag}
-                    </Badge>
-                  ))}
-                  {artwork.tags.length > 3 && (
-                    <Badge variant="outline" className="text-xs">
-                      +{artwork.tags.length - 3}
-                    </Badge>
+
+              <div className="flex justify-between items-center pt-2">
+                <div className="flex gap-2">
+                  {artwork.external_url && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => window.open(artwork.external_url!, '_blank')}
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </Button>
                   )}
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        </motion.div>
+                
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      // TODO: Implement artwork editing
+                      toast({
+                        title: "Coming Soon",
+                        description: "Artwork editing will be available soon!"
+                      });
+                    }}
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleDelete(artwork.id)}
+                    disabled={deleting === artwork.id}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       ))}
     </div>
   );

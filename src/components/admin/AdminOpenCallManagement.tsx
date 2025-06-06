@@ -1,227 +1,238 @@
 
 import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CheckCircle, XCircle, Clock, Search, Filter } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { Eye, Users, Calendar, DollarSign, RefreshCw } from 'lucide-react';
+import { useOpenCalls } from '@/hooks/useOpenCalls';
+import { useSubmissions } from '@/hooks/useSubmissions';
 import { toast } from '@/hooks/use-toast';
 
 const AdminOpenCallManagement = () => {
-  const [filter, setFilter] = useState('all');
-  const [search, setSearch] = useState('');
-  const queryClient = useQueryClient();
+  const { getOpenCalls } = useOpenCalls();
+  const { updateSubmissionStatus } = useSubmissions();
+  const [selectedCall, setSelectedCall] = useState<string | null>(null);
+  const [actionNotes, setActionNotes] = useState('');
 
-  const { data: openCalls, isLoading } = useQuery({
-    queryKey: ['admin-open-calls', filter],
-    queryFn: async () => {
-      let query = supabase
-        .from('open_calls')
-        .select(`
-          *,
-          profiles(username, first_name, last_name)
-        `)
-        .order('created_at', { ascending: false });
+  const openCallsQuery = getOpenCalls;
 
-      if (filter !== 'all') {
-        query = query.eq('status', filter);
-      }
-
-      const { data, error } = await query;
-      if (error) throw error;
-      return data;
-    },
-  });
-
-  const updateOpenCallStatus = useMutation({
-    mutationFn: async ({ id, status, notes }: { id: string; status: string; notes?: string }) => {
-      const { error } = await supabase
-        .from('open_calls')
-        .update({ 
-          status,
-          admin_notes: notes,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', id);
-      
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-open-calls'] });
+  const handleStatusUpdate = async (submissionId: string, newStatus: string) => {
+    try {
+      await updateSubmissionStatus.mutateAsync({
+        submissionId,
+        status: newStatus,
+        notes: actionNotes
+      });
+      setActionNotes('');
       toast({
         title: "Status Updated",
-        description: "Open call status has been updated successfully.",
+        description: "Submission status has been updated successfully.",
       });
-    },
-  });
-
-  const filteredCalls = openCalls?.filter(call =>
-    call.title.toLowerCase().includes(search.toLowerCase()) ||
-    call.organization_name?.toLowerCase().includes(search.toLowerCase())
-  ) || [];
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'pending': return 'bg-yellow-500';
-      case 'approved': return 'bg-blue-500';
-      case 'live': return 'bg-green-500';
-      case 'rejected': return 'bg-red-500';
-      case 'closed': return 'bg-gray-500';
-      default: return 'bg-gray-500';
+    } catch (error) {
+      console.error('Error updating submission status:', error);
     }
   };
 
-  if (isLoading) {
-    return <div className="animate-pulse space-y-4">
-      {[...Array(3)].map((_, i) => (
-        <Card key={i}>
-          <CardContent className="p-6">
-            <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-            <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-          </CardContent>
-        </Card>
-      ))}
-    </div>;
+  const handleRefresh = () => {
+    openCallsQuery.refetch();
+    toast({
+      title: "Refreshed",
+      description: "Open calls data has been refreshed.",
+    });
+  };
+
+  if (openCallsQuery.isLoading) {
+    return (
+      <Card>
+        <CardContent className="p-6 text-center">
+          <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p>Loading open calls...</p>
+        </CardContent>
+      </Card>
+    );
   }
+
+  if (openCallsQuery.error) {
+    return (
+      <Card>
+        <CardContent className="p-6 text-center">
+          <p className="text-red-600">Error loading open calls. Please try again.</p>
+          <Button onClick={handleRefresh} className="mt-2">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Retry
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const openCalls = openCallsQuery.data || [];
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">Open Call Management</h2>
-        <div className="flex gap-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-            <Input
-              placeholder="Search open calls..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-10 w-64"
-            />
-          </div>
-          <Select value={filter} onValueChange={setFilter}>
-            <SelectTrigger className="w-40">
-              <Filter className="h-4 w-4 mr-2" />
-              <SelectValue placeholder="Filter by status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="pending">Pending</SelectItem>
-              <SelectItem value="approved">Approved</SelectItem>
-              <SelectItem value="live">Live</SelectItem>
-              <SelectItem value="rejected">Rejected</SelectItem>
-              <SelectItem value="closed">Closed</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        <Button onClick={handleRefresh} variant="outline" size="sm">
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Refresh
+        </Button>
       </div>
 
-      <div className="grid gap-4">
-        {filteredCalls.map((call) => (
-          <Card key={call.id}>
-            <CardHeader>
-              <div className="flex justify-between items-start">
-                <div>
-                  <CardTitle className="text-lg">{call.title}</CardTitle>
-                  <p className="text-sm text-gray-600">
-                    by {call.profiles?.first_name || 'Unknown'} {call.profiles?.last_name || ''} 
-                    ({call.profiles?.username || 'No username'})
-                  </p>
-                  {call.organization_name && (
-                    <p className="text-sm text-gray-500">{call.organization_name}</p>
-                  )}
-                </div>
-                <Badge className={getStatusColor(call.status)}>
-                  {call.status}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-sm text-gray-700 line-clamp-2">{call.description}</p>
-              
-              <div className="flex gap-2 text-xs text-gray-500">
-                <span>Deadline: {new Date(call.submission_deadline).toLocaleDateString()}</span>
-                <span>•</span>
-                <span>Fee: ${call.submission_fee}</span>
-                <span>•</span>
-                <span>Max: {call.max_submissions} submissions</span>
-              </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Open Calls List */}
+        <div className="lg:col-span-2 space-y-4">
+          {openCalls.length === 0 ? (
+            <Card>
+              <CardContent className="p-6 text-center">
+                <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <h3 className="text-lg font-medium mb-2">No Open Calls</h3>
+                <p className="text-muted-foreground">No open calls are currently available.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            openCalls.map((openCall: any) => (
+              <Card key={openCall.id} className={selectedCall === openCall.id ? 'ring-2 ring-primary' : ''}>
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <CardTitle className="text-lg">{openCall.title}</CardTitle>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {openCall.organization_name}
+                      </p>
+                    </div>
+                    <Badge variant={openCall.status === 'live' ? 'default' : 'secondary'}>
+                      {openCall.status}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <p className="text-sm line-clamp-2">{openCall.description}</p>
+                    
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <Calendar className="h-4 w-4" />
+                        {new Date(openCall.submission_deadline).toLocaleDateString()}
+                      </div>
+                      {openCall.submission_fee > 0 && (
+                        <div className="flex items-center gap-1">
+                          <DollarSign className="h-4 w-4" />
+                          ${openCall.submission_fee}
+                        </div>
+                      )}
+                      <div className="flex items-center gap-1">
+                        <Users className="h-4 w-4" />
+                        {openCall.max_submissions} max
+                      </div>
+                    </div>
 
-              {call.admin_notes && (
-                <div className="bg-gray-50 p-3 rounded text-sm">
-                  <strong>Admin Notes:</strong> {call.admin_notes}
-                </div>
-              )}
-
-              <div className="flex gap-2">
-                {call.status === 'pending' && (
-                  <>
-                    <Button
-                      size="sm"
-                      onClick={() => updateOpenCallStatus.mutate({ 
-                        id: call.id, 
-                        status: 'approved' 
-                      })}
-                      className="bg-green-600 hover:bg-green-700"
-                    >
-                      <CheckCircle className="h-4 w-4 mr-1" />
-                      Approve
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      onClick={() => updateOpenCallStatus.mutate({ 
-                        id: call.id, 
-                        status: 'rejected',
-                        notes: 'Does not meet platform guidelines'
-                      })}
-                    >
-                      <XCircle className="h-4 w-4 mr-1" />
-                      Reject
-                    </Button>
-                  </>
-                )}
-                
-                {call.status === 'approved' && (
-                  <Button
-                    size="sm"
-                    onClick={() => updateOpenCallStatus.mutate({ 
-                      id: call.id, 
-                      status: 'live' 
-                    })}
-                    className="bg-blue-600 hover:bg-blue-700"
-                  >
-                    <Clock className="h-4 w-4 mr-1" />
-                    Make Live
-                  </Button>
-                )}
-
-                {call.status === 'live' && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => updateOpenCallStatus.mutate({ 
-                      id: call.id, 
-                      status: 'closed' 
-                    })}
-                  >
-                    Close Call
-                  </Button>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {filteredCalls.length === 0 && (
-        <div className="text-center py-12">
-          <p className="text-gray-500">No open calls found.</p>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant={selectedCall === openCall.id ? 'default' : 'outline'}
+                        onClick={() => setSelectedCall(openCall.id)}
+                      >
+                        <Eye className="h-4 w-4 mr-2" />
+                        {selectedCall === openCall.id ? 'Selected' : 'View Details'}
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          )}
         </div>
-      )}
+
+        {/* Selected Open Call Details */}
+        <div className="space-y-4">
+          {selectedCall ? (
+            <OpenCallDetails callId={selectedCall} />
+          ) : (
+            <Card>
+              <CardContent className="p-6 text-center">
+                <Eye className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <h3 className="text-lg font-medium mb-2">Select an Open Call</h3>
+                <p className="text-muted-foreground text-sm">
+                  Choose an open call from the list to view details and manage submissions.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </div>
     </div>
+  );
+};
+
+const OpenCallDetails = ({ callId }: { callId: string }) => {
+  const { getSubmissionsByCall } = useSubmissions();
+  const submissionsQuery = getSubmissionsByCall(callId);
+
+  if (submissionsQuery.isLoading) {
+    return (
+      <Card>
+        <CardContent className="p-6 text-center">
+          <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full mx-auto mb-2"></div>
+          <p className="text-sm">Loading submissions...</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const submissions = submissionsQuery.data || [];
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Users className="h-5 w-5" />
+          Submissions ({submissions.length})
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-3">
+          {submissions.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              No submissions yet
+            </p>
+          ) : (
+            submissions.slice(0, 5).map((submission: any) => (
+              <div key={submission.id} className="border rounded p-3 space-y-2">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="font-medium text-sm">
+                      {submission.submission_data?.title || 'Untitled'}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      by {submission.profiles?.first_name} {submission.profiles?.last_name}
+                    </p>
+                  </div>
+                  <Badge size="sm" variant="outline">
+                    {submission.payment_status}
+                  </Badge>
+                </div>
+                
+                {submission.submission_data?.image_urls?.[0] && (
+                  <img
+                    src={submission.submission_data.image_urls[0]}
+                    alt="Submission"
+                    className="w-full h-20 object-cover rounded"
+                  />
+                )}
+              </div>
+            ))
+          )}
+          
+          {submissions.length > 5 && (
+            <p className="text-xs text-muted-foreground text-center">
+              +{submissions.length - 5} more submissions
+            </p>
+          )}
+        </div>
+      </CardContent>
+    </Card>
   );
 };
 

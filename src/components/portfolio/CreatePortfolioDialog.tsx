@@ -13,9 +13,10 @@ import { toast } from '@/hooks/use-toast';
 interface CreatePortfolioDialogProps {
   trigger?: React.ReactNode;
   onSuccess?: (portfolioId: string) => void;
+  onPortfolioCreated?: () => void; // Add this prop to fix the error
 }
 
-const CreatePortfolioDialog = ({ trigger, onSuccess }: CreatePortfolioDialogProps) => {
+const CreatePortfolioDialog = ({ trigger, onSuccess, onPortfolioCreated }: CreatePortfolioDialogProps) => {
   const [open, setOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [formData, setFormData] = useState({
@@ -41,6 +42,7 @@ const CreatePortfolioDialog = ({ trigger, onSuccess }: CreatePortfolioDialogProp
 
     setIsCreating(true);
     try {
+      console.log('Creating portfolio with data:', formData);
       const portfolio = await createPortfolio(formData);
       
       toast({
@@ -56,12 +58,20 @@ const CreatePortfolioDialog = ({ trigger, onSuccess }: CreatePortfolioDialogProp
         is_public: false,
       });
       
+      // Call both callback functions if they exist
       if (onSuccess) {
         onSuccess(portfolio.id);
       }
+      if (onPortfolioCreated) {
+        onPortfolioCreated();
+      }
     } catch (error) {
       console.error('Failed to create portfolio:', error);
-      // Error toast is handled in the hook
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to create portfolio",
+        variant: "destructive",
+      });
     } finally {
       setIsCreating(false);
     }
@@ -111,6 +121,23 @@ const CreatePortfolioDialog = ({ trigger, onSuccess }: CreatePortfolioDialogProp
               maxLength={500}
               disabled={isCreating}
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="template">Template</Label>
+            <select
+              id="template"
+              value={formData.template_id}
+              onChange={(e) => setFormData({ ...formData, template_id: e.target.value })}
+              className="w-full p-2 border rounded-md"
+              disabled={isCreating}
+            >
+              <option value="minimal">Minimal - Clean and elegant</option>
+              <option value="glassmorphic">Glassmorphic - Modern glass effects</option>
+              <option value="parallax">Parallax - Dynamic scrolling</option>
+              <option value="gallery">Gallery - Image focused</option>
+              <option value="modern">Modern - Contemporary design</option>
+            </select>
           </div>
 
           <div className="flex items-center justify-between">
