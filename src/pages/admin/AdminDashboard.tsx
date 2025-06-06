@@ -18,14 +18,16 @@ import {
   Activity,
   UserCheck,
   FileText,
-  MessageSquare
+  Plus
 } from 'lucide-react';
 import AdminAnalyticsDashboard from '@/components/admin/AdminAnalyticsDashboard';
-import AIFilm3AdminPanel from '@/components/admin/AIFilm3AdminPanel';
 import UserManagementTable from '@/components/admin/UserManagementTable';
 import AdminOpenCallManagement from '@/components/admin/AdminOpenCallManagement';
 import HostApplicationManagement from '@/components/admin/HostApplicationManagement';
 import AdminDebugInfo from '@/components/admin/AdminDebugInfo';
+import CreateOpenCallDialog from '@/components/admin/CreateOpenCallDialog';
+import ContentManagementPanel from '@/components/admin/ContentManagementPanel';
+import AIFilm3ManagementPanel from '@/components/admin/AIFilm3ManagementPanel';
 import { useAnalytics } from '@/hooks/useAnalytics';
 import { useUserAnalytics } from '@/hooks/useUserAnalytics';
 import { useAuth } from '@/contexts/AuthContext';
@@ -266,14 +268,22 @@ const AdminDashboard = () => {
 
           <TabsContent value="open-calls">
             <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold">Open Calls Management</h2>
+                  <p className="text-muted-foreground">Create and manage open calls for artists</p>
+                </div>
+                <CreateOpenCallDialog />
+              </div>
+              
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Calendar className="h-5 w-5" />
-                    Open Calls Management Hub
+                    Active Open Calls
                   </CardTitle>
                   <CardDescription>
-                    Complete management of open calls, submissions, and host applications
+                    Manage open calls, submissions, and host applications
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -298,42 +308,12 @@ const AdminDashboard = () => {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <FileText className="h-5 w-5" />
-                  Content Management
+                  Content Management Hub
                 </CardTitle>
-                <CardDescription>Manage platform content, portfolios, and artworks</CardDescription>
+                <CardDescription>Manage platform content, portfolios, and featured artworks</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  <div className="p-6 border rounded-lg">
-                    <h3 className="font-semibold mb-2">Portfolio Management</h3>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Monitor and manage user portfolios
-                    </p>
-                    <Button variant="outline" className="w-full">
-                      View All Portfolios
-                    </Button>
-                  </div>
-                  
-                  <div className="p-6 border rounded-lg">
-                    <h3 className="font-semibold mb-2">Artwork Moderation</h3>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Review and moderate artwork submissions
-                    </p>
-                    <Button variant="outline" className="w-full">
-                      Moderate Content
-                    </Button>
-                  </div>
-                  
-                  <div className="p-6 border rounded-lg">
-                    <h3 className="font-semibold mb-2">Featured Content</h3>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Manage featured portfolios and artworks
-                    </p>
-                    <Button variant="outline" className="w-full">
-                      Manage Featured
-                    </Button>
-                  </div>
-                </div>
+                <ContentManagementPanel />
               </CardContent>
             </Card>
           </TabsContent>
@@ -348,7 +328,7 @@ const AdminDashboard = () => {
                 <CardDescription>Manage AIFilm3 festival content and announcements</CardDescription>
               </CardHeader>
               <CardContent>
-                <AIFilm3AdminPanel />
+                <AIFilm3ManagementPanel />
               </CardContent>
             </Card>
           </TabsContent>

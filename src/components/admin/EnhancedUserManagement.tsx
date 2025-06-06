@@ -19,7 +19,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Search, Shield, User, Mail, Crown, UserX } from 'lucide-react';
+import { MoreHorizontal, Search, Shield, User, Crown, UserX } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { useAuth } from '@/contexts/AuthContext';
@@ -304,7 +304,7 @@ const EnhancedUserManagement = () => {
                               onClick={() => updateUserRole.mutate({
                                 userId: user.id,
                                 newRole: user.role === 'admin' ? 'user' : 'admin',
-                                userEmail: user.first_name + '@domain.com' // You might want to get actual email
+                                userEmail: currentUser?.email || ''
                               })}
                               disabled={updateUserRole.isPending}
                             >
