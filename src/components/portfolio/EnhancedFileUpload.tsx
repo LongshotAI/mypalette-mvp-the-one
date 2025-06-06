@@ -76,6 +76,12 @@ const EnhancedFileUpload = ({
       setUploading(true);
       setUploadProgress(0);
 
+      // Get current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        throw new Error('You must be logged in to upload files');
+      }
+
       // Validate file size
       if (file.size > maxSizeMB * 1024 * 1024) {
         throw new Error(`File size must be less than ${maxSizeMB}MB`);
@@ -89,19 +95,21 @@ const EnhancedFileUpload = ({
         setUploadProgress(30);
       }
 
-      // Generate unique filename
+      // Generate unique filename with user folder structure
       const fileExt = fileToUpload.name.split('.').pop();
-      const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
-      const filePath = `${fileName}`;
+      const fileName = `${user.id}/${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
 
       setUploadProgress(50);
 
       // Upload to Supabase Storage
       const { data, error } = await supabase.storage
         .from(bucket)
-        .upload(filePath, fileToUpload);
+        .upload(fileName, fileToUpload);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Upload error:', error);
+        throw new Error(`Upload failed: ${error.message}`);
+      }
 
       setUploadProgress(80);
 

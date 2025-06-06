@@ -39,7 +39,7 @@ PerformanceOptimizer.displayName = 'PerformanceOptimizer';
 export default PerformanceOptimizer;
 
 // Hook for debouncing values
-export const useDebounce = <T>(value: T, delay: number): T => {
+export const useDebounce = <T,>(value: T, delay: number): T => {
   const [debouncedValue, setDebouncedValue] = React.useState<T>(value);
 
   React.useEffect(() => {

@@ -1,37 +1,28 @@
 
-import { useState } from 'react';
-import { motion } from 'framer-motion';
+import React, { useState } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
-import { Plus, Palette, Sparkles, Layout, Minimize2 } from 'lucide-react';
+import { Plus, Palette } from 'lucide-react';
 import { usePortfolios } from '@/hooks/usePortfolios';
-import { usePortfolioTemplates } from '@/hooks/usePortfolioTemplates';
 import { toast } from '@/hooks/use-toast';
-import PortfolioTemplateSelector from './templates/PortfolioTemplateSelector';
 
 interface CreatePortfolioDialogProps {
-  onPortfolioCreated?: () => void;
+  trigger?: React.ReactNode;
+  onSuccess?: (portfolioId: string) => void;
 }
 
-const CreatePortfolioDialog = ({ onPortfolioCreated }: CreatePortfolioDialogProps) => {
+const CreatePortfolioDialog = ({ trigger, onSuccess }: CreatePortfolioDialogProps) => {
   const [open, setOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [selectedTemplate, setSelectedTemplate] = useState('minimal');
+  const [isCreating, setIsCreating] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    is_public: false
+    template_id: 'minimal',
+    is_public: false,
   });
 
   const { createPortfolio } = usePortfolios();
@@ -41,70 +32,59 @@ const CreatePortfolioDialog = ({ onPortfolioCreated }: CreatePortfolioDialogProp
     
     if (!formData.title.trim()) {
       toast({
-        title: "Error",
-        description: "Portfolio title is required",
-        variant: "destructive"
+        title: "Validation Error",
+        description: "Please enter a portfolio title.",
+        variant: "destructive",
       });
       return;
     }
 
-    if (!selectedTemplate) {
-      toast({
-        title: "Error", 
-        description: "Please select a template",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setIsLoading(true);
-    
+    setIsCreating(true);
     try {
-      await createPortfolio({
-        ...formData,
-        template_id: selectedTemplate
+      const portfolio = await createPortfolio(formData);
+      
+      toast({
+        title: "Success",
+        description: "Portfolio created successfully!",
       });
+      
       setOpen(false);
       setFormData({
         title: '',
         description: '',
-        is_public: false
+        template_id: 'minimal',
+        is_public: false,
       });
-      setSelectedTemplate('minimal');
-      onPortfolioCreated?.();
-      toast({
-        title: "Success",
-        description: "Portfolio created successfully!"
-      });
+      
+      if (onSuccess) {
+        onSuccess(portfolio.id);
+      }
     } catch (error) {
-      console.error('Error creating portfolio:', error);
-      toast({
-        title: "Error",
-        description: "Failed to create portfolio. Please try again.",
-        variant: "destructive"
-      });
+      console.error('Failed to create portfolio:', error);
+      // Error toast is handled in the hook
     } finally {
-      setIsLoading(false);
+      setIsCreating(false);
     }
   };
+
+  const defaultTrigger = (
+    <Button variant="default" className="gap-2">
+      <Plus className="h-4 w-4" />
+      Create Portfolio
+    </Button>
+  );
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>
-          <Plus className="h-4 w-4 mr-2" />
-          Create Portfolio
-        </Button>
+        {trigger || defaultTrigger}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Palette className="h-5 w-5" />
             Create New Portfolio
           </DialogTitle>
-          <DialogDescription>
-            Create a new portfolio to showcase your artistic work
-          </DialogDescription>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -113,9 +93,10 @@ const CreatePortfolioDialog = ({ onPortfolioCreated }: CreatePortfolioDialogProp
             <Input
               id="title"
               value={formData.title}
-              onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-              placeholder="Enter portfolio title"
-              required
+              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              placeholder="My Creative Portfolio"
+              maxLength={100}
+              disabled={isCreating}
             />
           </div>
 
@@ -124,37 +105,43 @@ const CreatePortfolioDialog = ({ onPortfolioCreated }: CreatePortfolioDialogProp
             <Textarea
               id="description"
               value={formData.description}
-              onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-              placeholder="Describe your portfolio (optional)"
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              placeholder="Tell visitors about your artistic vision..."
               rows={3}
+              maxLength={500}
+              disabled={isCreating}
             />
           </div>
 
-          <PortfolioTemplateSelector
-            selectedTemplate={selectedTemplate}
-            onSelectTemplate={setSelectedTemplate}
-          />
-
-          <div className="flex items-center justify-between p-4 border rounded-lg">
-            <div className="space-y-0.5">
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
               <Label htmlFor="is_public">Make Public</Label>
-              <div className="text-sm text-muted-foreground">
-                Allow others to discover and view this portfolio
-              </div>
+              <p className="text-sm text-muted-foreground">
+                Allow others to discover your portfolio
+              </p>
             </div>
             <Switch
               id="is_public"
               checked={formData.is_public}
-              onCheckedChange={(checked) => setFormData(prev => ({ ...prev, is_public: checked }))}
+              onCheckedChange={(checked) => setFormData({ ...formData, is_public: checked })}
+              disabled={isCreating}
             />
           </div>
 
-          <div className="flex gap-3 pt-4">
-            <Button type="button" variant="outline" onClick={() => setOpen(false)} className="flex-1">
+          <div className="flex justify-end space-x-2">
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => setOpen(false)}
+              disabled={isCreating}
+            >
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading} className="flex-1">
-              {isLoading ? 'Creating...' : 'Create Portfolio'}
+            <Button 
+              type="submit" 
+              disabled={isCreating || !formData.title.trim()}
+            >
+              {isCreating ? 'Creating...' : 'Create Portfolio'}
             </Button>
           </div>
         </form>

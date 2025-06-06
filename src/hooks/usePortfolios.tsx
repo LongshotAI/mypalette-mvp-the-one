@@ -28,7 +28,7 @@ export interface Portfolio {
 
 export const usePortfolios = () => {
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
@@ -85,6 +85,7 @@ export const usePortfolios = () => {
       if (!targetUserId) {
         console.log('No user ID provided for portfolio fetch');
         setPortfolios([]);
+        setLoading(false);
         return;
       }
 
@@ -169,14 +170,24 @@ export const usePortfolios = () => {
           user_id: user.id
         });
 
-      if (slugError) throw slugError;
+      if (slugError) {
+        console.warn('Slug generation failed, using fallback:', slugError);
+        // Fallback slug generation
+        const baseSlug = portfolioData.title.toLowerCase()
+          .replace(/[^a-z0-9\s]/g, '')
+          .replace(/\s+/g, '-');
+        
+        const timestamp = Date.now();
+        var fallbackSlug = `${baseSlug}-${timestamp}`;
+      }
 
       const { data, error } = await supabase
         .from('portfolios')
         .insert({
           ...portfolioData,
           user_id: user.id,
-          slug: slugData
+          slug: slugData || fallbackSlug,
+          template_id: portfolioData.template_id || 'minimal'
         })
         .select()
         .single();
