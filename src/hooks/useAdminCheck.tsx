@@ -59,5 +59,6 @@ export const useAdminCheck = () => {
     enabled: !!user,
     retry: 3,
     retryDelay: 1000,
+    refetchInterval: 30000, // Refetch every 30 seconds for real-time updates
   });
 };
