@@ -71,6 +71,22 @@ export const useOpenCalls = () => {
 
       if (error) {
         console.error('Error fetching featured open calls:', error);
+        // If the is_featured column doesn't exist yet, fall back to regular query
+        if (error.message?.includes('is_featured')) {
+          console.log('is_featured column not found, using fallback query');
+          const { data: fallbackData, error: fallbackError } = await supabase
+            .from('open_calls')
+            .select(`
+              *,
+              profiles(first_name, last_name, username, avatar_url)
+            `)
+            .eq('status', 'live')
+            .order('submission_deadline', { ascending: true })
+            .limit(6);
+          
+          if (fallbackError) throw fallbackError;
+          return fallbackData;
+        }
         throw error;
       }
 

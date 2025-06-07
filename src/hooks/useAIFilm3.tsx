@@ -46,22 +46,35 @@ export const useAIFilm3 = () => {
     queryFn: async () => {
       console.log('Fetching AIFilm3 announcements...');
       
-      const { data, error } = await supabase
-        .from('aifilm3_announcements')
-        .select(`
-          *,
-          profiles(first_name, last_name, username)
-        `)
-        .eq('is_published', true)
-        .order('publish_date', { ascending: false });
+      try {
+        const { data, error } = await supabase
+          .rpc('exec_sql', {
+            sql: `
+              SELECT 
+                a.*,
+                json_build_object(
+                  'first_name', p.first_name,
+                  'last_name', p.last_name,
+                  'username', p.username
+                ) as profiles
+              FROM aifilm3_announcements a
+              LEFT JOIN profiles p ON a.author_id = p.id
+              WHERE a.is_published = true
+              ORDER BY a.publish_date DESC
+            `
+          });
 
-      if (error) {
-        console.error('Error fetching announcements:', error);
-        throw error;
+        if (error) {
+          console.error('Error fetching announcements:', error);
+          return [];
+        }
+
+        console.log('AIFilm3 announcements fetched:', data);
+        return (data || []) as AIFilm3Announcement[];
+      } catch (err) {
+        console.error('AIFilm3 announcements table may not exist yet:', err);
+        return [];
       }
-
-      console.log('AIFilm3 announcements fetched:', data);
-      return data as AIFilm3Announcement[];
     },
   });
 
@@ -71,21 +84,34 @@ export const useAIFilm3 = () => {
     queryFn: async () => {
       console.log('Fetching all AIFilm3 announcements for admin...');
       
-      const { data, error } = await supabase
-        .from('aifilm3_announcements')
-        .select(`
-          *,
-          profiles(first_name, last_name, username)
-        `)
-        .order('created_at', { ascending: false });
+      try {
+        const { data, error } = await supabase
+          .rpc('exec_sql', {
+            sql: `
+              SELECT 
+                a.*,
+                json_build_object(
+                  'first_name', p.first_name,
+                  'last_name', p.last_name,
+                  'username', p.username
+                ) as profiles
+              FROM aifilm3_announcements a
+              LEFT JOIN profiles p ON a.author_id = p.id
+              ORDER BY a.created_at DESC
+            `
+          });
 
-      if (error) {
-        console.error('Error fetching admin announcements:', error);
-        throw error;
+        if (error) {
+          console.error('Error fetching admin announcements:', error);
+          return [];
+        }
+
+        console.log('All AIFilm3 announcements fetched:', data);
+        return (data || []) as AIFilm3Announcement[];
+      } catch (err) {
+        console.error('AIFilm3 announcements table may not exist yet:', err);
+        return [];
       }
-
-      console.log('All AIFilm3 announcements fetched:', data);
-      return data as AIFilm3Announcement[];
     },
   });
 
@@ -95,19 +121,28 @@ export const useAIFilm3 = () => {
     queryFn: async () => {
       console.log('Fetching AIFilm3 festival configuration...');
       
-      const { data, error } = await supabase
-        .from('aifilm3_config')
-        .select('*')
-        .eq('is_active', true)
-        .single();
+      try {
+        const { data, error } = await supabase
+          .rpc('exec_sql', {
+            sql: `
+              SELECT * FROM aifilm3_config 
+              WHERE is_active = true 
+              ORDER BY created_at DESC 
+              LIMIT 1
+            `
+          });
 
-      if (error) {
-        console.error('Error fetching festival config:', error);
-        throw error;
+        if (error) {
+          console.error('Error fetching festival config:', error);
+          return null;
+        }
+
+        console.log('AIFilm3 config fetched:', data);
+        return data && data.length > 0 ? data[0] as AIFilm3Config : null;
+      } catch (err) {
+        console.error('AIFilm3 config table may not exist yet:', err);
+        return null;
       }
-
-      console.log('AIFilm3 config fetched:', data);
-      return data as AIFilm3Config;
     },
   });
 
@@ -126,16 +161,20 @@ export const useAIFilm3 = () => {
       if (!user) throw new Error('User not authenticated');
 
       const { data, error } = await supabase
-        .from('aifilm3_announcements')
-        .insert({
-          ...announcementData,
-          author_id: user.id
-        })
-        .select(`
-          *,
-          profiles(first_name, last_name, username)
-        `)
-        .single();
+        .rpc('exec_sql', {
+          sql: `
+            INSERT INTO aifilm3_announcements (
+              title, content, announcement_type, is_published, publish_date, author_id
+            ) VALUES (
+              '${announcementData.title}',
+              '${announcementData.content}',
+              '${announcementData.announcement_type}',
+              ${announcementData.is_published},
+              '${announcementData.publish_date}',
+              '${user.id}'
+            ) RETURNING *
+          `
+        });
 
       if (error) {
         console.error('Error creating announcement:', error);
@@ -169,18 +208,19 @@ export const useAIFilm3 = () => {
     }) => {
       console.log('Updating AIFilm3 announcement:', id, updates);
 
+      const setClause = Object.entries(updates)
+        .map(([key, value]) => `${key} = '${value}'`)
+        .join(', ');
+
       const { data, error } = await supabase
-        .from('aifilm3_announcements')
-        .update({
-          ...updates,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', id)
-        .select(`
-          *,
-          profiles(first_name, last_name, username)
-        `)
-        .single();
+        .rpc('exec_sql', {
+          sql: `
+            UPDATE aifilm3_announcements 
+            SET ${setClause}, updated_at = now()
+            WHERE id = '${id}'
+            RETURNING *
+          `
+        });
 
       if (error) {
         console.error('Error updating announcement:', error);
@@ -212,13 +252,33 @@ export const useAIFilm3 = () => {
       console.log('Updating AIFilm3 festival config:', configData);
 
       const { data, error } = await supabase
-        .from('aifilm3_config')
-        .upsert({
-          ...configData,
-          updated_at: new Date().toISOString()
-        })
-        .select()
-        .single();
+        .rpc('exec_sql', {
+          sql: `
+            INSERT INTO aifilm3_config (
+              festival_name, festival_description, submission_deadline,
+              festival_dates, submission_guidelines, prizes, judges, is_active
+            ) VALUES (
+              '${configData.festival_name}',
+              '${configData.festival_description}',
+              '${configData.submission_deadline}',
+              '${JSON.stringify(configData.festival_dates)}',
+              '${configData.submission_guidelines}',
+              ARRAY[${configData.prizes?.map(p => `'${p}'`).join(',')}],
+              ARRAY[${configData.judges?.map(j => `'${j}'`).join(',')}],
+              true
+            )
+            ON CONFLICT (id) DO UPDATE SET
+              festival_name = EXCLUDED.festival_name,
+              festival_description = EXCLUDED.festival_description,
+              submission_deadline = EXCLUDED.submission_deadline,
+              festival_dates = EXCLUDED.festival_dates,
+              submission_guidelines = EXCLUDED.submission_guidelines,
+              prizes = EXCLUDED.prizes,
+              judges = EXCLUDED.judges,
+              updated_at = now()
+            RETURNING *
+          `
+        });
 
       if (error) {
         console.error('Error updating festival config:', error);
@@ -249,9 +309,9 @@ export const useAIFilm3 = () => {
       console.log('Deleting AIFilm3 announcement:', id);
 
       const { error } = await supabase
-        .from('aifilm3_announcements')
-        .delete()
-        .eq('id', id);
+        .rpc('exec_sql', {
+          sql: `DELETE FROM aifilm3_announcements WHERE id = '${id}'`
+        });
 
       if (error) {
         console.error('Error deleting announcement:', error);
