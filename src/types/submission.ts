@@ -8,7 +8,16 @@ export interface SubmissionData {
   artist_statement: string;
   image_urls: string[];
   external_links: string[];
-  files?: File[];
+  files?: SubmissionFile[];
+}
+
+export interface SubmissionFile {
+  id: string;
+  file_name: string;
+  file_url: string;
+  file_type: string;
+  file_size: number;
+  created_at: string;
 }
 
 export interface Submission {
@@ -27,6 +36,7 @@ export interface Submission {
     last_name: string | null;
     username: string | null;
     avatar_url: string | null;
+    email?: string | null;
   };
 }
 

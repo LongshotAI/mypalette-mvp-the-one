@@ -2,18 +2,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-
-export interface SubmissionData {
-  title: string;
-  description: string;
-  medium: string;
-  year: string;
-  dimensions: string;
-  artist_statement: string;
-  image_urls: string[];
-  external_links: string[];
-  files?: File[];
-}
+import { SubmissionData, Submission } from '@/types/submission';
 
 export const useSubmissions = () => {
   const queryClient = useQueryClient();
@@ -44,6 +33,35 @@ export const useSubmissions = () => {
         return data || [];
       },
       enabled: !!openCallId,
+    });
+  };
+
+  const getUserSubmissions = () => {
+    return useQuery({
+      queryKey: ['user-submissions'],
+      queryFn: async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('User not authenticated');
+
+        console.log('Fetching submissions for user:', user.id);
+        
+        const { data, error } = await supabase
+          .from('submissions')
+          .select(`
+            *,
+            open_calls(title, organization_name, submission_deadline, status)
+          `)
+          .eq('artist_id', user.id)
+          .order('submitted_at', { ascending: false });
+
+        if (error) {
+          console.error('Error fetching user submissions:', error);
+          throw error;
+        }
+
+        console.log('User submissions fetched:', data);
+        return data || [];
+      },
     });
   };
 
@@ -85,13 +103,13 @@ export const useSubmissions = () => {
         throw new Error(`Maximum submissions (${openCall?.max_submissions}) reached for this open call`);
       }
 
-      // Create the submission
+      // Create the submission - cast submissionData to Json type for database
       const { data, error } = await supabase
         .from('submissions')
         .insert({
           open_call_id: openCallId,
           artist_id: user.id,
-          submission_data: submissionData,
+          submission_data: submissionData as any,
           payment_status: openCall?.submission_fee && openCall.submission_fee > 0 ? 'pending' : 'free',
           submitted_at: new Date().toISOString()
         })
@@ -112,6 +130,7 @@ export const useSubmissions = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['submissions-by-call'] });
+      queryClient.invalidateQueries({ queryKey: ['user-submissions'] });
       toast({
         title: "Submission Created",
         description: "Your submission has been created successfully.",
@@ -153,6 +172,7 @@ export const useSubmissions = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['submissions-by-call'] });
+      queryClient.invalidateQueries({ queryKey: ['user-submissions'] });
       toast({
         title: "Submission Updated",
         description: "Submission status has been updated successfully.",
@@ -169,6 +189,7 @@ export const useSubmissions = () => {
 
   return {
     getSubmissionsByCall,
+    getUserSubmissions,
     createSubmission,
     updateSubmissionStatus,
   };

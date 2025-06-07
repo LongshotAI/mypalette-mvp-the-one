@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -10,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Eye, Star, MessageSquare, Download, FileText, Image } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import { Submission, SubmissionData } from '@/types/submission';
+import { Submission, SubmissionData, SubmissionFile } from '@/types/submission';
 import { useSubmissions } from '@/hooks/useSubmissions';
 
 interface SubmissionReviewProps {
@@ -34,10 +35,14 @@ const SubmissionReview = ({ openCallId }: SubmissionReviewProps) => {
   const { data: submissions, isLoading } = useQuery({
     queryKey: ['submissions-review', openCallId],
     queryFn: async () => {
-      // Use RPC call with proper type casting
-      const { data, error } = await supabase.rpc('get_submissions_for_review' as any, {
-        p_open_call_id: openCallId
-      });
+      const { data, error } = await supabase
+        .from('submissions')
+        .select(`
+          *,
+          profiles(first_name, last_name, username, avatar_url)
+        `)
+        .eq('open_call_id', openCallId)
+        .order('submitted_at', { ascending: false });
 
       if (error) throw error;
       return (data || []) as Submission[];
@@ -49,17 +54,13 @@ const SubmissionReview = ({ openCallId }: SubmissionReviewProps) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      const { error } = await supabase.rpc('create_submission_review' as any, {
-        p_submission_id: submissionId,
-        p_reviewer_id: user.id,
-        p_rating: reviewData.rating,
-        p_technical_quality_score: reviewData.technicalQuality,
-        p_artistic_merit_score: reviewData.artisticMerit,
-        p_theme_relevance_score: reviewData.themeRelevance,
-        p_overall_score: reviewData.overallScore,
-        p_review_notes: reviewData.reviewNotes,
-        p_private_notes: reviewData.privateNotes
-      });
+      // For now, we'll store review data in curator_notes since we don't have review tables
+      const reviewText = `Rating: ${reviewData.rating}/5, Technical: ${reviewData.technicalQuality}/10, Artistic: ${reviewData.artisticMerit}/10, Theme: ${reviewData.themeRelevance}/10, Overall: ${reviewData.overallScore}/10\n\nReview Notes: ${reviewData.reviewNotes}\n\nPrivate Notes: ${reviewData.privateNotes}`;
+      
+      const { error } = await supabase
+        .from('submissions')
+        .update({ curator_notes: reviewText })
+        .eq('id', submissionId);
 
       if (error) throw error;
     },
@@ -99,17 +100,22 @@ const SubmissionReview = ({ openCallId }: SubmissionReviewProps) => {
 
   const getSubmissionTitle = (submission: Submission): string => {
     const submissionData = getSubmissionData(submission);
-    return submission.submission_title || submissionData.title || 'Untitled Submission';
+    return submissionData.title || 'Untitled Submission';
   };
 
   const getSubmissionDescription = (submission: Submission): string => {
     const submissionData = getSubmissionData(submission);
-    return submission.submission_description || submissionData.description || 'No description provided';
+    return submissionData.description || 'No description provided';
   };
 
   const getArtistStatement = (submission: Submission): string => {
     const submissionData = getSubmissionData(submission);
-    return submission.artist_statement || submissionData.artist_statement || 'No artist statement provided';
+    return submissionData.artist_statement || 'No artist statement provided';
+  };
+
+  const getSubmissionFiles = (submission: Submission): SubmissionFile[] => {
+    const submissionData = getSubmissionData(submission);
+    return submissionData.files || [];
   };
 
   if (isLoading) {
@@ -144,8 +150,7 @@ const SubmissionReview = ({ openCallId }: SubmissionReviewProps) => {
       <div className="grid gap-4">
         {submissions?.map((submission) => {
           const submissionData = getSubmissionData(submission);
-          const latestWorkflow = submission.submission_workflow?.[0];
-          const latestReview = submission.submission_reviews?.[0];
+          const files = getSubmissionFiles(submission);
           
           return (
             <Card key={submission.id} className={submission.is_selected ? 'ring-2 ring-green-500' : ''}>
@@ -157,7 +162,6 @@ const SubmissionReview = ({ openCallId }: SubmissionReviewProps) => {
                     </CardTitle>
                     <p className="text-sm text-gray-600">
                       by {submission.profiles?.first_name || 'Unknown'} {submission.profiles?.last_name || ''}
-                      ({submission.profiles?.email || 'No email'})
                     </p>
                     <p className="text-xs text-gray-500">
                       Submitted: {new Date(submission.submitted_at).toLocaleDateString()}
@@ -167,19 +171,9 @@ const SubmissionReview = ({ openCallId }: SubmissionReviewProps) => {
                     {submission.is_selected && (
                       <Badge className="bg-green-500">Selected</Badge>
                     )}
-                    {latestWorkflow && (
-                      <Badge className={getStatusColor(latestWorkflow.status)}>
-                        {latestWorkflow.status}
-                      </Badge>
-                    )}
                     <Badge variant="outline">
                       {submission.payment_status}
                     </Badge>
-                    {latestReview && (
-                      <Badge variant="secondary">
-                        Score: {latestReview.overall_score}/10
-                      </Badge>
-                    )}
                   </div>
                 </div>
               </CardHeader>
@@ -197,11 +191,11 @@ const SubmissionReview = ({ openCallId }: SubmissionReviewProps) => {
                   </div>
                 )}
 
-                {submissionData.files && submissionData.files.length > 0 && (
+                {files.length > 0 && (
                   <div className="flex gap-2">
                     <Download className="h-4 w-4 text-gray-500 mt-0.5" />
                     <span className="text-sm text-gray-600">
-                      {submissionData.files.length} file(s) attached
+                      {files.length} file(s) attached
                     </span>
                   </div>
                 )}
@@ -238,23 +232,22 @@ const SubmissionReview = ({ openCallId }: SubmissionReviewProps) => {
                               <strong>Name:</strong> {submission.profiles?.first_name} {submission.profiles?.last_name}
                             </p>
                             <p className="text-sm">
-                              <strong>Email:</strong> {submission.profiles?.email}
-                            </p>
-                            <p className="text-sm">
                               <strong>Username:</strong> {submission.profiles?.username}
                             </p>
                           </div>
                           <div>
                             <h4 className="font-semibold mb-2">Submission Info</h4>
                             <p className="text-sm">
-                              <strong>Status:</strong> {latestWorkflow?.status || 'submitted'}
-                            </p>
-                            <p className="text-sm">
                               <strong>Payment:</strong> {submission.payment_status}
                             </p>
                             <p className="text-sm">
-                              <strong>Amount:</strong> ${submission.payment_amount || 0}
+                              <strong>Medium:</strong> {submissionData.medium}
                             </p>
+                            {submissionData.year && (
+                              <p className="text-sm">
+                                <strong>Year:</strong> {submissionData.year}
+                              </p>
+                            )}
                           </div>
                         </div>
                         
@@ -272,11 +265,11 @@ const SubmissionReview = ({ openCallId }: SubmissionReviewProps) => {
                           </p>
                         </div>
                         
-                        {submissionData.files && submissionData.files.length > 0 && (
+                        {files.length > 0 && (
                           <div>
                             <h4 className="font-semibold">Attached Files</h4>
                             <div className="grid grid-cols-2 gap-4 mt-2">
-                              {submissionData.files.map((file, index) => (
+                              {files.map((file, index) => (
                                 <div key={index} className="border rounded p-2">
                                   {file.file_type?.startsWith('image/') ? (
                                     <div className="relative">
@@ -436,47 +429,6 @@ const SubmissionReview = ({ openCallId }: SubmissionReviewProps) => {
       )}
     </div>
   );
-};
-
-// Helper functions
-const getSubmissionData = (submission: Submission): SubmissionData => {
-  const data = submission.submission_data as SubmissionData;
-  return data || {
-    title: '',
-    description: '',
-    medium: '',
-    year: '',
-    dimensions: '',
-    artist_statement: '',
-    image_urls: [],
-    external_links: [],
-    files: []
-  };
-};
-
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'selected': return 'bg-green-500';
-    case 'rejected': return 'bg-red-500';
-    case 'under_review': return 'bg-yellow-500';
-    case 'shortlisted': return 'bg-blue-500';
-    default: return 'bg-gray-500';
-  }
-};
-
-const getSubmissionTitle = (submission: Submission): string => {
-  const submissionData = getSubmissionData(submission);
-  return submission.submission_title || submissionData.title || 'Untitled Submission';
-};
-
-const getSubmissionDescription = (submission: Submission): string => {
-  const submissionData = getSubmissionData(submission);
-  return submission.submission_description || submissionData.description || 'No description provided';
-};
-
-const getArtistStatement = (submission: Submission): string => {
-  const submissionData = getSubmissionData(submission);
-  return submission.artist_statement || submissionData.artist_statement || 'No artist statement provided';
 };
 
 export default SubmissionReview;

@@ -40,39 +40,26 @@ export interface AIFilm3Config {
 export const useAIFilm3 = () => {
   const queryClient = useQueryClient();
 
-  // Fetch all published announcements using dynamic table access
+  // Fetch all published announcements using direct table access with error handling
   const getAnnouncements = useQuery({
     queryKey: ['aifilm3-announcements'],
     queryFn: async () => {
       console.log('Fetching AIFilm3 announcements...');
       
       try {
-        // Use dynamic query to avoid TypeScript issues
-        const { data, error } = await supabase.rpc('get_table_data', {
-          table_name: 'aifilm3_announcements',
-          filters: { is_published: true },
-          order_by: 'publish_date',
-          order_desc: true
-        });
+        // Try direct query with type assertion since table may not exist in types
+        const { data, error } = await (supabase as any)
+          .from('aifilm3_announcements')
+          .select(`
+            *,
+            profiles(first_name, last_name, username)
+          `)
+          .eq('is_published', true)
+          .order('publish_date', { ascending: false });
 
         if (error) {
-          console.error('Error fetching announcements via RPC:', error);
-          // Fallback to direct query with type assertion
-          const { data: fallbackData, error: fallbackError } = await (supabase as any)
-            .from('aifilm3_announcements')
-            .select(`
-              *,
-              profiles(first_name, last_name, username)
-            `)
-            .eq('is_published', true)
-            .order('publish_date', { ascending: false });
-
-          if (fallbackError) {
-            console.error('Fallback query also failed:', fallbackError);
-            return [];
-          }
-
-          return (fallbackData || []) as AIFilm3Announcement[];
+          console.error('Error fetching announcements:', error);
+          return [];
         }
 
         return (data || []) as AIFilm3Announcement[];
