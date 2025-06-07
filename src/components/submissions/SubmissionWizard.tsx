@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,22 +14,10 @@ interface SubmissionWizardProps {
   onSuccess?: () => void;
 }
 
-interface LocalSubmissionData {
-  title: string;
-  description: string;
-  medium: string;
-  year: string;
-  dimensions: string;
-  artist_statement: string;
-  image_urls: string[];
-  external_links: string[];
-  files: any[];
-}
-
 const SubmissionWizard = ({ openCallId, onSuccess }: SubmissionWizardProps) => {
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submissionData, setSubmissionData] = useState<LocalSubmissionData>({
+  const [submissionData, setSubmissionData] = useState<SubmissionData>({
     title: '',
     description: '',
     medium: '',
@@ -84,17 +71,7 @@ const SubmissionWizard = ({ openCallId, onSuccess }: SubmissionWizardProps) => {
   };
 
   const handleDataChange = (data: SubmissionData) => {
-    setSubmissionData({
-      title: data.title,
-      description: data.description,
-      medium: data.medium,
-      year: data.year,
-      dimensions: data.dimensions,
-      artist_statement: data.artist_statement,
-      image_urls: data.image_urls,
-      external_links: data.external_links,
-      files: data.files || []
-    });
+    setSubmissionData(data);
   };
 
   const handleSubmit = async () => {
@@ -104,21 +81,9 @@ const SubmissionWizard = ({ openCallId, onSuccess }: SubmissionWizardProps) => {
     try {
       console.log('Submitting artwork to open call:', openCallId, submissionData);
       
-      // Convert local submission data to the expected format
-      const submissionDataForAPI: SubmissionData = {
-        title: submissionData.title,
-        description: submissionData.description,
-        medium: submissionData.medium,
-        year: submissionData.year,
-        dimensions: submissionData.dimensions,
-        artist_statement: submissionData.artist_statement,
-        image_urls: submissionData.image_urls,
-        external_links: submissionData.external_links
-      };
-
       const result = await createSubmission.mutateAsync({
         openCallId,
-        submissionData: submissionDataForAPI
+        submissionData
       });
 
       if (result.paymentRequired) {

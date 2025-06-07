@@ -1,13 +1,4 @@
 
-export interface SubmissionFile {
-  id: string;
-  file_name: string;
-  file_url: string;
-  file_type: string;
-  file_size: number;
-  created_at: string;
-}
-
 export interface SubmissionData {
   title: string;
   description: string;
@@ -17,8 +8,7 @@ export interface SubmissionData {
   artist_statement: string;
   image_urls: string[];
   external_links: string[];
-  files?: SubmissionFile[];
-  [key: string]: any; // This allows it to be compatible with Json type
+  files?: File[];
 }
 
 export interface Submission {
@@ -26,36 +16,21 @@ export interface Submission {
   open_call_id: string;
   artist_id: string;
   artwork_id?: string;
-  submission_data: SubmissionData | any;
-  payment_status: string;
+  submission_data: SubmissionData;
+  payment_status: 'pending' | 'paid' | 'free' | 'failed';
   payment_id?: string;
-  is_selected: boolean;
   curator_notes?: string;
+  is_selected: boolean;
   submitted_at: string;
-  submission_title?: string;
-  submission_description?: string;
-  artist_statement?: string;
-  is_first_submission?: boolean;
-  payment_amount?: number;
-  open_calls?: {
-    title: string;
-    organization_name?: string;
-  };
   profiles?: {
-    username?: string;
-    first_name?: string;
-    last_name?: string;
-    avatar_url?: string;
-    email?: string;
+    first_name: string | null;
+    last_name: string | null;
+    username: string | null;
+    avatar_url: string | null;
   };
-  submission_workflow?: Array<{
-    status: string;
-    notes?: string;
-    created_at: string;
-  }>;
-  submission_reviews?: Array<{
-    rating?: number;
-    overall_score?: number;
-    review_notes?: string;
-  }>;
+}
+
+export interface OpenCallSubmissionResponse {
+  submission: Submission;
+  paymentRequired: boolean;
 }
