@@ -3,6 +3,31 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
+export interface OpenCall {
+  id: string;
+  title: string;
+  description: string;
+  organization_name: string | null;
+  organization_website: string | null;
+  submission_deadline: string;
+  submission_fee: number;
+  max_submissions: number;
+  submission_requirements: any;
+  status: string;
+  host_user_id: string | null;
+  banner_image: string | null;
+  admin_notes: string | null;
+  is_featured: boolean | null;
+  created_at: string;
+  updated_at: string;
+  profiles?: {
+    first_name: string | null;
+    last_name: string | null;
+    username: string | null;
+    avatar_url: string | null;
+  };
+}
+
 export const useOpenCalls = () => {
   const queryClient = useQueryClient();
 
@@ -26,7 +51,7 @@ export const useOpenCalls = () => {
       }
 
       console.log('Open calls fetched:', data);
-      return data;
+      return data as OpenCall[];
     },
   });
 
@@ -49,7 +74,7 @@ export const useOpenCalls = () => {
       }
 
       console.log('Admin open calls fetched:', data);
-      return data;
+      return data as OpenCall[];
     },
   });
 
@@ -71,27 +96,11 @@ export const useOpenCalls = () => {
 
       if (error) {
         console.error('Error fetching featured open calls:', error);
-        // If the is_featured column doesn't exist yet, fall back to regular query
-        if (error.message?.includes('is_featured')) {
-          console.log('is_featured column not found, using fallback query');
-          const { data: fallbackData, error: fallbackError } = await supabase
-            .from('open_calls')
-            .select(`
-              *,
-              profiles(first_name, last_name, username, avatar_url)
-            `)
-            .eq('status', 'live')
-            .order('submission_deadline', { ascending: true })
-            .limit(6);
-          
-          if (fallbackError) throw fallbackError;
-          return fallbackData;
-        }
         throw error;
       }
 
       console.log('Featured open calls fetched:', data);
-      return data;
+      return data as OpenCall[];
     },
   });
 
@@ -116,7 +125,7 @@ export const useOpenCalls = () => {
         }
 
         console.log('Open call fetched:', data);
-        return data;
+        return data as OpenCall;
       },
       enabled: !!id,
     });
@@ -174,7 +183,8 @@ export const useOpenCalls = () => {
         .insert({
           ...openCallData,
           host_user_id: user.id,
-          status: 'live' // Default to live for admin-created calls
+          status: 'live',
+          is_featured: openCallData.is_featured || false
         })
         .select()
         .single();
