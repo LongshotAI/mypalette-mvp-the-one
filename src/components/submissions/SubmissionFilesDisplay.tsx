@@ -5,14 +5,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Download, Eye, File, Image, Video } from 'lucide-react';
+import { SubmissionData, SubmissionFile } from '@/types/submission';
 
 interface SubmissionFilesDisplayProps {
-  submissionId: string;
+  submissionData: SubmissionData;
 }
 
-const SubmissionFilesDisplay = ({ submissionId }: SubmissionFilesDisplayProps) => {
+const SubmissionFilesDisplay = ({ submissionData }: SubmissionFilesDisplayProps) => {
   const { getSubmissionFiles } = useSubmissionFiles();
-  const { data: files, isLoading } = getSubmissionFiles(submissionId);
+  const files = getSubmissionFiles(submissionData);
 
   const getFileIcon = (fileType: string) => {
     if (fileType.startsWith('image/')) return <Image className="h-4 w-4" />;
@@ -27,23 +28,6 @@ const SubmissionFilesDisplay = ({ submissionId }: SubmissionFilesDisplayProps) =
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
-
-  if (isLoading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Artwork Files</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="animate-pulse space-y-2">
-            {[...Array(3)].map((_, i) => (
-              <div key={i} className="h-16 bg-gray-200 rounded"></div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
 
   if (!files || files.length === 0) {
     return (

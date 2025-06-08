@@ -31,11 +31,45 @@ export const useSubmissions = () => {
 
         console.log('Submissions fetched:', data);
         
-        // Safe type conversion
-        return (data || []).map(submission => ({
-          ...submission,
-          submission_data: submission.submission_data as SubmissionData
-        })) as Submission[];
+        // Safe type conversion with proper validation
+        return (data || []).map(submission => {
+          let submissionData: SubmissionData;
+          try {
+            const rawData = submission.submission_data;
+            if (rawData && typeof rawData === 'object' && !Array.isArray(rawData)) {
+              submissionData = rawData as SubmissionData;
+            } else {
+              submissionData = {
+                title: '',
+                description: '',
+                medium: '',
+                year: '',
+                dimensions: '',
+                artist_statement: '',
+                image_urls: [],
+                external_links: [],
+                files: []
+              };
+            }
+          } catch (e) {
+            submissionData = {
+              title: '',
+              description: '',
+              medium: '',
+              year: '',
+              dimensions: '',
+              artist_statement: '',
+              image_urls: [],
+              external_links: [],
+              files: []
+            };
+          }
+
+          return {
+            ...submission,
+            submission_data: submissionData
+          } as Submission;
+        });
       },
       enabled: !!openCallId,
     });
@@ -65,11 +99,45 @@ export const useSubmissions = () => {
 
       console.log('User submissions fetched:', data);
       
-      // Safe type conversion
-      return (data || []).map(submission => ({
-        ...submission,
-        submission_data: submission.submission_data as SubmissionData
-      }));
+      // Safe type conversion with proper validation
+      return (data || []).map(submission => {
+        let submissionData: SubmissionData;
+        try {
+          const rawData = submission.submission_data;
+          if (rawData && typeof rawData === 'object' && !Array.isArray(rawData)) {
+            submissionData = rawData as SubmissionData;
+          } else {
+            submissionData = {
+              title: '',
+              description: '',
+              medium: '',
+              year: '',
+              dimensions: '',
+              artist_statement: '',
+              image_urls: [],
+              external_links: [],
+              files: []
+            };
+          }
+        } catch (e) {
+          submissionData = {
+            title: '',
+            description: '',
+            medium: '',
+            year: '',
+            dimensions: '',
+            artist_statement: '',
+            image_urls: [],
+            external_links: [],
+            files: []
+          };
+        }
+
+        return {
+          ...submission,
+          submission_data: submissionData
+        };
+      });
     },
   });
 

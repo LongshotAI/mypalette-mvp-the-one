@@ -42,17 +42,37 @@ export const useSubmissionFiles = () => {
         if (fetchError) throw fetchError;
 
         // Safe type conversion with fallback
-        const currentData = (submission.submission_data as SubmissionData) || {
-          title: '',
-          description: '',
-          medium: '',
-          year: '',
-          dimensions: '',
-          artist_statement: '',
-          image_urls: [],
-          external_links: [],
-          files: []
-        };
+        let currentData: SubmissionData;
+        try {
+          const rawData = submission.submission_data;
+          if (rawData && typeof rawData === 'object' && !Array.isArray(rawData)) {
+            currentData = rawData as SubmissionData;
+          } else {
+            currentData = {
+              title: '',
+              description: '',
+              medium: '',
+              year: '',
+              dimensions: '',
+              artist_statement: '',
+              image_urls: [],
+              external_links: [],
+              files: []
+            };
+          }
+        } catch (e) {
+          currentData = {
+            title: '',
+            description: '',
+            medium: '',
+            year: '',
+            dimensions: '',
+            artist_statement: '',
+            image_urls: [],
+            external_links: [],
+            files: []
+          };
+        }
 
         setUploadProgress(50);
 
@@ -112,17 +132,37 @@ export const useSubmissionFiles = () => {
       if (fetchError) throw fetchError;
 
       // Safe type conversion with fallback
-      const currentData = (submission.submission_data as SubmissionData) || {
-        title: '',
-        description: '',
-        medium: '',
-        year: '',
-        dimensions: '',
-        artist_statement: '',
-        image_urls: [],
-        external_links: [],
-        files: []
-      };
+      let currentData: SubmissionData;
+      try {
+        const rawData = submission.submission_data;
+        if (rawData && typeof rawData === 'object' && !Array.isArray(rawData)) {
+          currentData = rawData as SubmissionData;
+        } else {
+          currentData = {
+            title: '',
+            description: '',
+            medium: '',
+            year: '',
+            dimensions: '',
+            artist_statement: '',
+            image_urls: [],
+            external_links: [],
+            files: []
+          };
+        }
+      } catch (e) {
+        currentData = {
+          title: '',
+          description: '',
+          medium: '',
+          year: '',
+          dimensions: '',
+          artist_statement: '',
+          image_urls: [],
+          external_links: [],
+          files: []
+        };
+      }
 
       // Remove the file from the array
       const updatedFiles = (currentData.files || []).filter(file => file.id !== fileId);

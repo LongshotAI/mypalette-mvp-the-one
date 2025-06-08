@@ -46,11 +46,45 @@ const SubmissionReview = ({ openCallId }: SubmissionReviewProps) => {
 
       if (error) throw error;
       
-      // Safe type conversion
-      return (data || []).map(submission => ({
-        ...submission,
-        submission_data: submission.submission_data as SubmissionData
-      })) as Submission[];
+      // Safe type conversion with proper validation
+      return (data || []).map(submission => {
+        let submissionData: SubmissionData;
+        try {
+          const rawData = submission.submission_data;
+          if (rawData && typeof rawData === 'object' && !Array.isArray(rawData)) {
+            submissionData = rawData as SubmissionData;
+          } else {
+            submissionData = {
+              title: '',
+              description: '',
+              medium: '',
+              year: '',
+              dimensions: '',
+              artist_statement: '',
+              image_urls: [],
+              external_links: [],
+              files: []
+            };
+          }
+        } catch (e) {
+          submissionData = {
+            title: '',
+            description: '',
+            medium: '',
+            year: '',
+            dimensions: '',
+            artist_statement: '',
+            image_urls: [],
+            external_links: [],
+            files: []
+          };
+        }
+
+        return {
+          ...submission,
+          submission_data: submissionData
+        } as Submission;
+      });
     },
   });
 
@@ -79,8 +113,7 @@ const SubmissionReview = ({ openCallId }: SubmissionReviewProps) => {
   });
 
   const getSubmissionData = (submission: Submission): SubmissionData => {
-    const data = submission.submission_data as SubmissionData;
-    return data || {
+    return submission.submission_data || {
       title: '',
       description: '',
       medium: '',
