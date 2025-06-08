@@ -45,7 +45,12 @@ const SubmissionReview = ({ openCallId }: SubmissionReviewProps) => {
         .order('submitted_at', { ascending: false });
 
       if (error) throw error;
-      return (data || []) as Submission[];
+      
+      // Safe type conversion
+      return (data || []).map(submission => ({
+        ...submission,
+        submission_data: submission.submission_data as SubmissionData
+      })) as Submission[];
     },
   });
 

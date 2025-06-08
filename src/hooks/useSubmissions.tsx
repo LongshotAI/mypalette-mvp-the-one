@@ -30,40 +30,48 @@ export const useSubmissions = () => {
         }
 
         console.log('Submissions fetched:', data);
-        return data || [];
+        
+        // Safe type conversion
+        return (data || []).map(submission => ({
+          ...submission,
+          submission_data: submission.submission_data as SubmissionData
+        })) as Submission[];
       },
       enabled: !!openCallId,
     });
   };
 
-  const getUserSubmissions = () => {
-    return useQuery({
-      queryKey: ['user-submissions'],
-      queryFn: async () => {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error('User not authenticated');
+  const getUserSubmissions = useQuery({
+    queryKey: ['user-submissions'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
 
-        console.log('Fetching submissions for user:', user.id);
-        
-        const { data, error } = await supabase
-          .from('submissions')
-          .select(`
-            *,
-            open_calls(title, organization_name, submission_deadline, status)
-          `)
-          .eq('artist_id', user.id)
-          .order('submitted_at', { ascending: false });
+      console.log('Fetching submissions for user:', user.id);
+      
+      const { data, error } = await supabase
+        .from('submissions')
+        .select(`
+          *,
+          open_calls(title, organization_name, submission_deadline, status)
+        `)
+        .eq('artist_id', user.id)
+        .order('submitted_at', { ascending: false });
 
-        if (error) {
-          console.error('Error fetching user submissions:', error);
-          throw error;
-        }
+      if (error) {
+        console.error('Error fetching user submissions:', error);
+        throw error;
+      }
 
-        console.log('User submissions fetched:', data);
-        return data || [];
-      },
-    });
-  };
+      console.log('User submissions fetched:', data);
+      
+      // Safe type conversion
+      return (data || []).map(submission => ({
+        ...submission,
+        submission_data: submission.submission_data as SubmissionData
+      }));
+    },
+  });
 
   const createSubmission = useMutation({
     mutationFn: async ({ openCallId, submissionData }: { 
@@ -103,7 +111,7 @@ export const useSubmissions = () => {
         throw new Error(`Maximum submissions (${openCall?.max_submissions}) reached for this open call`);
       }
 
-      // Create the submission - cast submissionData to Json type for database
+      // Create the submission with proper type casting
       const { data, error } = await supabase
         .from('submissions')
         .insert({
