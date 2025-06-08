@@ -16,6 +16,19 @@ export const isSubmissionData = (data: any): data is SubmissionData => {
   );
 };
 
+export const isSubmissionFile = (file: any): file is SubmissionFile => {
+  return (
+    file &&
+    typeof file === 'object' &&
+    typeof file.id === 'string' &&
+    typeof file.file_name === 'string' &&
+    typeof file.file_url === 'string' &&
+    typeof file.file_type === 'string' &&
+    typeof file.file_size === 'number' &&
+    typeof file.created_at === 'string'
+  );
+};
+
 export const convertToSubmissionData = (rawData: any): SubmissionData => {
   const defaultData: SubmissionData = {
     title: '',
@@ -33,6 +46,12 @@ export const convertToSubmissionData = (rawData: any): SubmissionData => {
     return defaultData;
   }
 
+  // Safely convert files array
+  let files: SubmissionFile[] = [];
+  if (Array.isArray(rawData.files)) {
+    files = rawData.files.filter(isSubmissionFile);
+  }
+
   return {
     title: typeof rawData.title === 'string' ? rawData.title : '',
     description: typeof rawData.description === 'string' ? rawData.description : '',
@@ -40,8 +59,8 @@ export const convertToSubmissionData = (rawData: any): SubmissionData => {
     year: typeof rawData.year === 'string' ? rawData.year : '',
     dimensions: typeof rawData.dimensions === 'string' ? rawData.dimensions : '',
     artist_statement: typeof rawData.artist_statement === 'string' ? rawData.artist_statement : '',
-    image_urls: Array.isArray(rawData.image_urls) ? rawData.image_urls : [],
-    external_links: Array.isArray(rawData.external_links) ? rawData.external_links : [],
-    files: Array.isArray(rawData.files) ? rawData.files : []
+    image_urls: Array.isArray(rawData.image_urls) ? rawData.image_urls.filter((url: any) => typeof url === 'string') : [],
+    external_links: Array.isArray(rawData.external_links) ? rawData.external_links.filter((link: any) => typeof link === 'string') : [],
+    files
   };
 };

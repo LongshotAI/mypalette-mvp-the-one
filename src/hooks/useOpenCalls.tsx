@@ -33,7 +33,7 @@ export const useOpenCalls = () => {
 
   const getOpenCalls = useQuery({
     queryKey: ['open-calls'],
-    queryFn: async () => {
+    queryFn: async (): Promise<OpenCall[]> => {
       console.log('Fetching open calls...');
       
       const { data, error } = await supabase
@@ -57,7 +57,7 @@ export const useOpenCalls = () => {
 
   const getAllOpenCalls = useQuery({
     queryKey: ['admin-open-calls'],
-    queryFn: async () => {
+    queryFn: async (): Promise<OpenCall[]> => {
       console.log('Fetching all open calls for admin...');
       
       const { data, error } = await supabase
@@ -80,7 +80,7 @@ export const useOpenCalls = () => {
 
   const getFeaturedOpenCalls = useQuery({
     queryKey: ['featured-open-calls'],
-    queryFn: async () => {
+    queryFn: async (): Promise<OpenCall[]> => {
       console.log('Fetching featured open calls...');
       
       const { data, error } = await supabase
@@ -107,7 +107,7 @@ export const useOpenCalls = () => {
   const getOpenCallById = (id: string) => {
     return useQuery({
       queryKey: ['open-call', id],
-      queryFn: async () => {
+      queryFn: async (): Promise<OpenCall> => {
         console.log('Fetching open call:', id);
         
         const { data, error } = await supabase
@@ -135,7 +135,7 @@ export const useOpenCalls = () => {
     mutationFn: async ({ id, status, is_featured }: { id: string; status?: string; is_featured?: boolean }) => {
       console.log('Updating open call status:', id, { status, is_featured });
       
-      const updates: any = { updated_at: new Date().toISOString() };
+      const updates: Record<string, any> = { updated_at: new Date().toISOString() };
       if (status !== undefined) updates.status = status;
       if (is_featured !== undefined) updates.is_featured = is_featured;
 
@@ -172,7 +172,7 @@ export const useOpenCalls = () => {
   });
 
   const createOpenCall = useMutation({
-    mutationFn: async (openCallData: any) => {
+    mutationFn: async (openCallData: Record<string, any>) => {
       console.log('Creating open call:', openCallData);
       
       const { data: { user } } = await supabase.auth.getUser();

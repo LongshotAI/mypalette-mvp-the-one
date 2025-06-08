@@ -11,7 +11,7 @@ export const useSubmissions = () => {
   const getSubmissionsByCall = (openCallId: string) => {
     return useQuery({
       queryKey: ['submissions-by-call', openCallId],
-      queryFn: async () => {
+      queryFn: async (): Promise<Submission[]> => {
         if (!openCallId) return [];
 
         console.log('Fetching submissions for open call:', openCallId);
