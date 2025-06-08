@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { SubmissionData, Submission } from '@/types/submission';
+import { convertToSubmissionData } from '@/utils/typeGuards';
 
 export const useSubmissions = () => {
   const queryClient = useQueryClient();
@@ -31,45 +32,10 @@ export const useSubmissions = () => {
 
         console.log('Submissions fetched:', data);
         
-        // Safe type conversion with proper validation
-        return (data || []).map(submission => {
-          let submissionData: SubmissionData;
-          try {
-            const rawData = submission.submission_data;
-            if (rawData && typeof rawData === 'object' && !Array.isArray(rawData)) {
-              submissionData = rawData as SubmissionData;
-            } else {
-              submissionData = {
-                title: '',
-                description: '',
-                medium: '',
-                year: '',
-                dimensions: '',
-                artist_statement: '',
-                image_urls: [],
-                external_links: [],
-                files: []
-              };
-            }
-          } catch (e) {
-            submissionData = {
-              title: '',
-              description: '',
-              medium: '',
-              year: '',
-              dimensions: '',
-              artist_statement: '',
-              image_urls: [],
-              external_links: [],
-              files: []
-            };
-          }
-
-          return {
-            ...submission,
-            submission_data: submissionData
-          } as Submission;
-        });
+        return (data || []).map(submission => ({
+          ...submission,
+          submission_data: convertToSubmissionData(submission.submission_data)
+        })) as Submission[];
       },
       enabled: !!openCallId,
     });
@@ -99,45 +65,10 @@ export const useSubmissions = () => {
 
       console.log('User submissions fetched:', data);
       
-      // Safe type conversion with proper validation
-      return (data || []).map(submission => {
-        let submissionData: SubmissionData;
-        try {
-          const rawData = submission.submission_data;
-          if (rawData && typeof rawData === 'object' && !Array.isArray(rawData)) {
-            submissionData = rawData as SubmissionData;
-          } else {
-            submissionData = {
-              title: '',
-              description: '',
-              medium: '',
-              year: '',
-              dimensions: '',
-              artist_statement: '',
-              image_urls: [],
-              external_links: [],
-              files: []
-            };
-          }
-        } catch (e) {
-          submissionData = {
-            title: '',
-            description: '',
-            medium: '',
-            year: '',
-            dimensions: '',
-            artist_statement: '',
-            image_urls: [],
-            external_links: [],
-            files: []
-          };
-        }
-
-        return {
-          ...submission,
-          submission_data: submissionData
-        };
-      });
+      return (data || []).map(submission => ({
+        ...submission,
+        submission_data: convertToSubmissionData(submission.submission_data)
+      }));
     },
   });
 
@@ -233,7 +164,6 @@ export const useSubmissions = () => {
         .from('submissions')
         .update({ 
           curator_notes: notes,
-          // Add any status-related fields here as needed
         })
         .eq('id', submissionId)
         .select()

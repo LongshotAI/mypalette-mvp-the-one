@@ -13,6 +13,7 @@ import { Eye, Star, MessageSquare, Download, FileText, Image } from 'lucide-reac
 import { toast } from '@/hooks/use-toast';
 import { Submission, SubmissionData, SubmissionFile } from '@/types/submission';
 import { useSubmissions } from '@/hooks/useSubmissions';
+import { convertToSubmissionData } from '@/utils/typeGuards';
 
 interface SubmissionReviewProps {
   openCallId: string;
@@ -46,45 +47,10 @@ const SubmissionReview = ({ openCallId }: SubmissionReviewProps) => {
 
       if (error) throw error;
       
-      // Safe type conversion with proper validation
-      return (data || []).map(submission => {
-        let submissionData: SubmissionData;
-        try {
-          const rawData = submission.submission_data;
-          if (rawData && typeof rawData === 'object' && !Array.isArray(rawData)) {
-            submissionData = rawData as SubmissionData;
-          } else {
-            submissionData = {
-              title: '',
-              description: '',
-              medium: '',
-              year: '',
-              dimensions: '',
-              artist_statement: '',
-              image_urls: [],
-              external_links: [],
-              files: []
-            };
-          }
-        } catch (e) {
-          submissionData = {
-            title: '',
-            description: '',
-            medium: '',
-            year: '',
-            dimensions: '',
-            artist_statement: '',
-            image_urls: [],
-            external_links: [],
-            files: []
-          };
-        }
-
-        return {
-          ...submission,
-          submission_data: submissionData
-        } as Submission;
-      });
+      return (data || []).map(submission => ({
+        ...submission,
+        submission_data: convertToSubmissionData(submission.submission_data)
+      })) as Submission[];
     },
   });
 
@@ -124,16 +90,6 @@ const SubmissionReview = ({ openCallId }: SubmissionReviewProps) => {
       external_links: [],
       files: []
     };
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'selected': return 'bg-green-500';
-      case 'rejected': return 'bg-red-500';
-      case 'under_review': return 'bg-yellow-500';
-      case 'shortlisted': return 'bg-blue-500';
-      default: return 'bg-gray-500';
-    }
   };
 
   const getSubmissionTitle = (submission: Submission): string => {

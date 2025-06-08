@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { SubmissionData, SubmissionFile } from '@/types/submission';
 import { toast } from '@/hooks/use-toast';
+import { convertToSubmissionData } from '@/utils/typeGuards';
 
 export const useSubmissionFiles = () => {
   const [uploadProgress, setUploadProgress] = useState<number>(0);
@@ -41,38 +42,7 @@ export const useSubmissionFiles = () => {
 
         if (fetchError) throw fetchError;
 
-        // Safe type conversion with fallback
-        let currentData: SubmissionData;
-        try {
-          const rawData = submission.submission_data;
-          if (rawData && typeof rawData === 'object' && !Array.isArray(rawData)) {
-            currentData = rawData as SubmissionData;
-          } else {
-            currentData = {
-              title: '',
-              description: '',
-              medium: '',
-              year: '',
-              dimensions: '',
-              artist_statement: '',
-              image_urls: [],
-              external_links: [],
-              files: []
-            };
-          }
-        } catch (e) {
-          currentData = {
-            title: '',
-            description: '',
-            medium: '',
-            year: '',
-            dimensions: '',
-            artist_statement: '',
-            image_urls: [],
-            external_links: [],
-            files: []
-          };
-        }
+        const currentData = convertToSubmissionData(submission.submission_data);
 
         setUploadProgress(50);
 
@@ -131,38 +101,7 @@ export const useSubmissionFiles = () => {
 
       if (fetchError) throw fetchError;
 
-      // Safe type conversion with fallback
-      let currentData: SubmissionData;
-      try {
-        const rawData = submission.submission_data;
-        if (rawData && typeof rawData === 'object' && !Array.isArray(rawData)) {
-          currentData = rawData as SubmissionData;
-        } else {
-          currentData = {
-            title: '',
-            description: '',
-            medium: '',
-            year: '',
-            dimensions: '',
-            artist_statement: '',
-            image_urls: [],
-            external_links: [],
-            files: []
-          };
-        }
-      } catch (e) {
-        currentData = {
-          title: '',
-          description: '',
-          medium: '',
-          year: '',
-          dimensions: '',
-          artist_statement: '',
-          image_urls: [],
-          external_links: [],
-          files: []
-        };
-      }
+      const currentData = convertToSubmissionData(submission.submission_data);
 
       // Remove the file from the array
       const updatedFiles = (currentData.files || []).filter(file => file.id !== fileId);
