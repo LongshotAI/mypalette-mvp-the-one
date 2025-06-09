@@ -1,445 +1,404 @@
 
 import React from 'react';
+import Layout from '@/components/layout/Layout';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { 
-  ArrowRight, 
-  Users, 
   Palette, 
-  Trophy, 
+  Users, 
+  TrendingUp, 
+  Calendar, 
+  ArrowRight, 
   Star,
-  ExternalLink,
   Eye,
-  Calendar,
-  DollarSign,
-  Building
+  Heart,
+  ExternalLink
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import Layout from '@/components/layout/Layout';
-import { useFeaturedContent } from '@/hooks/useFeaturedContent';
-import { usePlatformStats } from '@/hooks/usePlatformStats';
-import { format, differenceInDays } from 'date-fns';
+import { usePortfolios } from '@/hooks/usePortfolios';
+import { useOpenCalls } from '@/hooks/useOpenCalls';
+import { useAIFilm3 } from '@/hooks/useAIFilm3';
+import { format } from 'date-fns';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 
 const Landing = () => {
   const navigate = useNavigate();
-  const { getFeaturedPortfolios, getFeaturedOpenCalls } = useFeaturedContent();
-  const { data: platformStats } = usePlatformStats();
+  const { featuredPortfoliosQuery } = usePortfolios();
+  const { getFeaturedOpenCalls } = useOpenCalls();
+  const { getAnnouncements } = useAIFilm3();
 
-  const featuredPortfolios = getFeaturedPortfolios.data || [];
+  const featuredPortfolios = featuredPortfoliosQuery.data || [];
   const featuredOpenCalls = getFeaturedOpenCalls.data || [];
+  const aiFilm3Announcements = getAnnouncements.data?.slice(0, 3) || [];
 
-  const getDaysUntilDeadline = (deadline: string) => {
-    return differenceInDays(new Date(deadline), new Date());
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
   };
 
-  const getDeadlineBadge = (deadline: string) => {
-    const days = getDaysUntilDeadline(deadline);
-    if (days < 0) return { variant: 'destructive' as const, text: 'Expired' };
-    if (days === 0) return { variant: 'destructive' as const, text: 'Today' };
-    if (days <= 7) return { variant: 'secondary' as const, text: `${days} days left` };
-    return { variant: 'outline' as const, text: `${days} days left` };
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0 }
   };
 
   return (
     <Layout>
-      {/* Hero Section */}
-      <section className="relative bg-gradient-to-br from-primary/10 via-secondary/5 to-accent/10 pt-20 pb-32">
-        <div className="container mx-auto px-4">
+      <div className="min-h-screen">
+        {/* Hero Section */}
+        <section className="relative bg-gradient-to-br from-primary/10 via-primary/5 to-background py-20 overflow-hidden">
           <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            className="text-center max-w-4xl mx-auto"
+            className="container mx-auto px-4 text-center"
+            initial="hidden"
+            animate="visible"
+            variants={containerVariants}
           >
-            <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-              Your Art, Your Story
-            </h1>
-            <p className="text-xl md:text-2xl text-muted-foreground mb-8 leading-relaxed">
-              Connect with galleries, showcase your portfolio, and discover opportunities in the digital art world.
-            </p>
-            
-            {/* Platform Statistics */}
-            {platformStats && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-                className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 max-w-2xl mx-auto"
-              >
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-primary">{platformStats.totalArtists}+</div>
-                  <div className="text-sm text-muted-foreground">Artists</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-primary">{platformStats.totalPortfolios}+</div>
-                  <div className="text-sm text-muted-foreground">Portfolios</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-primary">{platformStats.activeOpenCalls}</div>
-                  <div className="text-sm text-muted-foreground">Open Calls</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-primary">{platformStats.totalArtworks}+</div>
-                  <div className="text-sm text-muted-foreground">Artworks</div>
-                </div>
-              </motion.div>
-            )}
-
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button 
-                size="lg" 
-                onClick={() => navigate('/discover')}
-                className="text-lg px-8 py-6"
-              >
-                <Palette className="mr-2 h-5 w-5" />
+            <motion.h1 
+              className="text-4xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent"
+              variants={itemVariants}
+            >
+              Showcase Your Digital Art
+            </motion.h1>
+            <motion.p 
+              className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto"
+              variants={itemVariants}
+            >
+              Join thousands of digital artists sharing their work, connecting with galleries, 
+              and participating in exhibitions worldwide.
+            </motion.p>
+            <motion.div 
+              className="flex flex-col sm:flex-row gap-4 justify-center"
+              variants={itemVariants}
+            >
+              <Button size="lg" onClick={() => navigate('/discover')}>
                 Explore Art
+                <Palette className="ml-2 h-5 w-5" />
+              </Button>
+              <Button size="lg" variant="outline" onClick={() => navigate('/register')}>
+                Start Creating
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
-              <Button 
-                variant="outline" 
-                size="lg" 
-                onClick={() => navigate('/auth/register')}
-                className="text-lg px-8 py-6"
-              >
-                <Users className="mr-2 h-5 w-5" />
-                Create Portfolio
-              </Button>
-            </div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Featured Portfolios Section */}
-      <section className="py-20 bg-background">
-        <div className="container mx-auto px-4">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-12"
-          >
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Featured Artists</h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Discover exceptional work from our community of talented artists
-            </p>
+            </motion.div>
           </motion.div>
 
-          {getFeaturedPortfolios.isLoading ? (
-            <div className="flex justify-center">
-              <LoadingSpinner size="lg" />
-            </div>
-          ) : featuredPortfolios.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {featuredPortfolios.slice(0, 6).map((featured, index) => {
-                const portfolio = featured.portfolios;
-                if (!portfolio) return null;
+          {/* Floating elements */}
+          <div className="absolute top-20 left-10 w-20 h-20 bg-primary/10 rounded-full blur-xl animate-bounce" style={{ animationDelay: '1s' }} />
+          <div className="absolute bottom-20 right-10 w-32 h-32 bg-primary/5 rounded-full blur-xl animate-pulse" />
+        </section>
 
-                return (
+        {/* Featured Portfolios Section */}
+        <section className="py-16 bg-muted/30">
+          <div className="container mx-auto px-4">
+            <motion.div
+              className="text-center mb-12"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+            >
+              <h2 className="text-3xl font-bold mb-4 flex items-center justify-center gap-2">
+                <Star className="h-8 w-8 text-primary" />
+                Featured Portfolios
+              </h2>
+              <p className="text-muted-foreground">Discover exceptional work from our community</p>
+            </motion.div>
+
+            {featuredPortfoliosQuery.isLoading ? (
+              <div className="flex justify-center">
+                <LoadingSpinner size="lg" />
+              </div>
+            ) : featuredPortfolios.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                {featuredPortfolios.map((portfolio, index) => (
                   <motion.div
-                    key={featured.id}
-                    initial={{ opacity: 0, y: 30 }}
+                    key={portfolio.id}
+                    initial={{ opacity: 0, y: 20 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
                     transition={{ delay: index * 0.1 }}
                   >
-                    <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 group cursor-pointer">
-                      {portfolio.cover_image && (
-                        <div className="aspect-video overflow-hidden">
-                          <img 
-                            src={portfolio.cover_image} 
+                    <Card className="group hover:shadow-lg transition-all duration-300 cursor-pointer overflow-hidden">
+                      <div className="aspect-video bg-gradient-to-br from-primary/20 to-primary/5 relative overflow-hidden">
+                        {portfolio.cover_image ? (
+                          <img
+                            src={portfolio.cover_image}
                             alt={portfolio.title}
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                           />
-                        </div>
-                      )}
-                      <CardHeader>
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <CardTitle className="line-clamp-2 group-hover:text-primary transition-colors">
-                              {portfolio.title}
-                            </CardTitle>
-                            <p className="text-sm text-muted-foreground mt-1">
-                              by {portfolio.profiles?.first_name} {portfolio.profiles?.last_name}
-                            </p>
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Palette className="h-12 w-12 text-primary/40" />
                           </div>
-                          <Badge variant="secondary">
+                        )}
+                        <div className="absolute top-2 right-2">
+                          <Badge variant="default" className="bg-primary/90">
                             <Star className="h-3 w-3 mr-1" />
                             Featured
                           </Badge>
                         </div>
-                      </CardHeader>
-                      <CardContent>
-                        <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
-                          {portfolio.description}
-                        </p>
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                      </div>
+                      
+                      <CardContent className="p-4">
+                        <h3 className="font-semibold mb-2 group-hover:text-primary transition-colors">
+                          {portfolio.title}
+                        </h3>
+                        
+                        <div className="flex items-center gap-2 mb-3">
+                          <Avatar className="h-6 w-6">
+                            <AvatarImage src={portfolio.profiles?.avatar_url} />
+                            <AvatarFallback className="text-xs">
+                              {portfolio.profiles?.first_name?.[0]}{portfolio.profiles?.last_name?.[0]}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="text-sm text-muted-foreground">
+                            {portfolio.profiles?.first_name} {portfolio.profiles?.last_name}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center justify-between text-sm text-muted-foreground">
+                          <div className="flex items-center gap-1">
                             <Eye className="h-4 w-4" />
-                            {portfolio.view_count} views
+                            {portfolio.view_count || 0} views
                           </div>
-                          <Button 
-                            size="sm" 
-                            onClick={() => navigate(`/portfolio/${portfolio.slug}`)}
-                          >
-                            View Portfolio
-                          </Button>
+                          {portfolio.profiles?.artistic_medium && (
+                            <Badge variant="outline" className="text-xs">
+                              {portfolio.profiles.artistic_medium}
+                            </Badge>
+                          )}
                         </div>
                       </CardContent>
                     </Card>
                   </motion.div>
-                );
-              })}
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">No featured portfolios available yet.</p>
+              </div>
+            )}
+
+            <div className="text-center">
+              <Button variant="outline" onClick={() => navigate('/discover')}>
+                View All Portfolios
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
             </div>
-          ) : (
-            <div className="text-center py-12">
-              <Palette className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-xl font-semibold mb-2">No Featured Portfolios Yet</h3>
-              <p className="text-muted-foreground">Featured portfolios will appear here once admins select them.</p>
-            </div>
-          )}
-        </div>
-      </section>
+          </div>
+        </section>
 
-      {/* Featured Open Calls Section */}
-      <section className="py-20 bg-muted/30">
-        <div className="container mx-auto px-4">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-12"
-          >
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Featured Opportunities</h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Discover exciting open calls and exhibitions to showcase your work
-            </p>
-          </motion.div>
+        {/* Featured Open Calls Section */}
+        <section className="py-16">
+          <div className="container mx-auto px-4">
+            <motion.div
+              className="text-center mb-12"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+            >
+              <h2 className="text-3xl font-bold mb-4 flex items-center justify-center gap-2">
+                <Calendar className="h-8 w-8 text-primary" />
+                Featured Open Calls
+              </h2>
+              <p className="text-muted-foreground">Exciting opportunities for artists to showcase their work</p>
+            </motion.div>
 
-          {getFeaturedOpenCalls.isLoading ? (
-            <div className="flex justify-center">
-              <LoadingSpinner size="lg" />
-            </div>
-          ) : featuredOpenCalls.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {featuredOpenCalls.slice(0, 6).map((featured, index) => {
-                const openCall = featured.open_calls;
-                if (!openCall) return null;
-
-                const deadlineBadge = getDeadlineBadge(openCall.submission_deadline);
-
-                return (
+            {getFeaturedOpenCalls.isLoading ? (
+              <div className="flex justify-center">
+                <LoadingSpinner size="lg" />
+              </div>
+            ) : featuredOpenCalls.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                {featuredOpenCalls.slice(0, 3).map((openCall, index) => (
                   <motion.div
-                    key={featured.id}
-                    initial={{ opacity: 0, y: 30 }}
+                    key={openCall.id}
+                    initial={{ opacity: 0, y: 20 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
                     transition={{ delay: index * 0.1 }}
                   >
-                    <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 group cursor-pointer h-full">
-                      {openCall.banner_image && (
-                        <div className="aspect-video overflow-hidden">
-                          <img 
-                            src={openCall.banner_image} 
-                            alt={openCall.title}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                          />
-                        </div>
-                      )}
+                    <Card className="group hover:shadow-lg transition-all duration-300 cursor-pointer h-full">
                       <CardHeader>
-                        <div className="flex items-start justify-between mb-2">
-                          <div className="flex-1">
-                            <CardTitle className="line-clamp-2 group-hover:text-primary transition-colors">
-                              {openCall.title}
-                            </CardTitle>
-                            {openCall.organization_name && (
-                              <div className="flex items-center gap-1 mt-1 text-sm text-muted-foreground">
-                                <Building className="h-3 w-3" />
-                                {openCall.organization_name}
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex flex-col gap-1 items-end">
-                            <Badge variant="secondary">
-                              <Star className="h-3 w-3 mr-1" />
-                              Featured
-                            </Badge>
-                            <Badge variant={deadlineBadge.variant}>
-                              {deadlineBadge.text}
-                            </Badge>
-                          </div>
+                        <div className="flex items-start justify-between">
+                          <CardTitle className="text-lg line-clamp-2 group-hover:text-primary transition-colors">
+                            {openCall.title}
+                          </CardTitle>
+                          <Badge variant="default">
+                            <Star className="h-3 w-3 mr-1" />
+                            Featured
+                          </Badge>
                         </div>
+                        {openCall.organization_name && (
+                          <p className="text-sm text-muted-foreground">{openCall.organization_name}</p>
+                        )}
                       </CardHeader>
-                      <CardContent className="space-y-4">
-                        <p className="text-sm text-muted-foreground line-clamp-3">
+                      
+                      <CardContent>
+                        <p className="text-sm text-muted-foreground line-clamp-3 mb-4">
                           {openCall.description}
                         </p>
-
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between text-sm">
-                            <div className="flex items-center gap-1 text-muted-foreground">
-                              <Calendar className="h-4 w-4" />
-                              Deadline
-                            </div>
+                        
+                        <div className="space-y-2 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Deadline:</span>
                             <span className="font-medium">
                               {format(new Date(openCall.submission_deadline), 'MMM d, yyyy')}
                             </span>
                           </div>
-
-                          <div className="flex items-center justify-between text-sm">
-                            <div className="flex items-center gap-1 text-muted-foreground">
-                              <DollarSign className="h-4 w-4" />
-                              Fee
-                            </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Fee:</span>
                             <span className="font-medium">
                               {openCall.submission_fee === 0 ? 'Free' : `$${openCall.submission_fee}`}
                             </span>
                           </div>
-
-                          {openCall.number_of_winners && (
-                            <div className="flex items-center justify-between text-sm">
-                              <div className="flex items-center gap-1 text-muted-foreground">
-                                <Trophy className="h-4 w-4" />
-                                Winners
-                              </div>
-                              <span className="font-medium">{openCall.number_of_winners}</span>
-                            </div>
-                          )}
                         </div>
-
-                        <Button 
-                          className="w-full"
-                          onClick={() => navigate(`/open-calls/${openCall.id}`)}
-                        >
-                          View Details
-                        </Button>
                       </CardContent>
                     </Card>
                   </motion.div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="text-center py-12">
-              <Trophy className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-xl font-semibold mb-2">No Featured Open Calls Yet</h3>
-              <p className="text-muted-foreground">Featured opportunities will appear here once admins select them.</p>
-            </div>
-          )}
-        </div>
-      </section>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">No featured open calls available yet.</p>
+              </div>
+            )}
 
-      {/* Call to Action Section */}
-      <section className="py-20 bg-gradient-to-r from-primary to-secondary text-primary-foreground">
-        <div className="container mx-auto px-4">
+            <div className="text-center">
+              <Button variant="outline" onClick={() => navigate('/open-calls')}>
+                View All Open Calls
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </section>
+
+        {/* AIFilm3 Announcements Section */}
+        {aiFilm3Announcements.length > 0 && (
+          <section className="py-16 bg-muted/30">
+            <div className="container mx-auto px-4">
+              <motion.div
+                className="text-center mb-12"
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+              >
+                <h2 className="text-3xl font-bold mb-4 flex items-center justify-center gap-2">
+                  🎬 AIFilm3 Festival Updates
+                </h2>
+                <p className="text-muted-foreground">Latest news from the AI Film Festival</p>
+              </motion.div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                {aiFilm3Announcements.map((announcement, index) => (
+                  <motion.div
+                    key={announcement.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: index * 0.1 }}
+                  >
+                    <Card className="h-full">
+                      <CardHeader>
+                        <div className="flex items-start justify-between">
+                          <CardTitle className="text-lg line-clamp-2">
+                            {announcement.title}
+                          </CardTitle>
+                          <Badge variant="outline">
+                            {announcement.announcement_type}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {format(new Date(announcement.publish_date), 'MMM d, yyyy')}
+                        </p>
+                      </CardHeader>
+                      
+                      <CardContent>
+                        <p className="text-sm line-clamp-4">
+                          {announcement.content}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                ))}
+              </div>
+
+              <div className="text-center">
+                <Button variant="outline" onClick={() => navigate('/aifilm3/announcements')}>
+                  View All Updates
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* Platform Stats */}
+        <section className="py-16">
+          <div className="container mx-auto px-4">
+            <motion.div
+              className="grid grid-cols-1 md:grid-cols-3 gap-8"
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+              variants={containerVariants}
+            >
+              <motion.div className="text-center" variants={itemVariants}>
+                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Users className="h-8 w-8 text-primary" />
+                </div>
+                <h3 className="text-2xl font-bold mb-2">Growing Community</h3>
+                <p className="text-muted-foreground">
+                  Join thousands of digital artists sharing their creative journey
+                </p>
+              </motion.div>
+
+              <motion.div className="text-center" variants={itemVariants}>
+                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Palette className="h-8 w-8 text-primary" />
+                </div>
+                <h3 className="text-2xl font-bold mb-2">Professional Portfolios</h3>
+                <p className="text-muted-foreground">
+                  Create stunning portfolios with our customizable templates
+                </p>
+              </motion.div>
+
+              <motion.div className="text-center" variants={itemVariants}>
+                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <TrendingUp className="h-8 w-8 text-primary" />
+                </div>
+                <h3 className="text-2xl font-bold mb-2">Career Growth</h3>
+                <p className="text-muted-foreground">
+                  Connect with galleries, curators, and opportunities worldwide
+                </p>
+              </motion.div>
+            </motion.div>
+          </div>
+        </section>
+
+        {/* Call to Action */}
+        <section className="py-16 bg-primary text-primary-foreground">
           <motion.div
+            className="container mx-auto px-4 text-center"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="text-center max-w-3xl mx-auto"
           >
-            <h2 className="text-3xl md:text-4xl font-bold mb-6">
-              Ready to Share Your Art with the World?
-            </h2>
-            <p className="text-lg mb-8 opacity-90">
-              Join thousands of artists showcasing their work, connecting with galleries, 
-              and participating in exciting opportunities on MyPalette.
+            <h2 className="text-3xl font-bold mb-4">Ready to Share Your Art?</h2>
+            <p className="text-xl mb-8 opacity-90">
+              Create your professional portfolio and connect with the global art community today.
             </p>
-            <Button 
-              size="lg" 
-              variant="secondary"
-              onClick={() => navigate('/auth/register')}
-              className="text-lg px-8 py-6"
-            >
+            <Button size="lg" variant="secondary" onClick={() => navigate('/register')}>
               Get Started Free
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
           </motion.div>
-        </div>
-      </section>
-
-      {/* Footer Links */}
-      <section className="py-12 bg-background border-t">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div>
-              <h3 className="font-semibold mb-4">Platform</h3>
-              <div className="space-y-2">
-                <a href="/discover" className="block text-muted-foreground hover:text-primary transition-colors">
-                  Discover Art
-                </a>
-                <a href="/open-calls" className="block text-muted-foreground hover:text-primary transition-colors">
-                  Open Calls
-                </a>
-                <a href="/education" className="block text-muted-foreground hover:text-primary transition-colors">
-                  Learn
-                </a>
-              </div>
-            </div>
-            <div>
-              <h3 className="font-semibold mb-4">Artists</h3>
-              <div className="space-y-2">
-                <a href="/auth/register" className="block text-muted-foreground hover:text-primary transition-colors">
-                  Create Portfolio
-                </a>
-                <a href="/dashboard" className="block text-muted-foreground hover:text-primary transition-colors">
-                  Dashboard
-                </a>
-                <a href="/host-application" className="block text-muted-foreground hover:text-primary transition-colors">
-                  Host an Open Call
-                </a>
-              </div>
-            </div>
-            <div>
-              <h3 className="font-semibold mb-4">Resources</h3>
-              <div className="space-y-2">
-                <a 
-                  href="https://pixelpalette.co/blog" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="block text-muted-foreground hover:text-primary transition-colors"
-                >
-                  Blog <ExternalLink className="inline h-3 w-3 ml-1" />
-                </a>
-                <a href="/aifilm3/info" className="block text-muted-foreground hover:text-primary transition-colors">
-                  AIFilm3 Festival
-                </a>
-              </div>
-            </div>
-            <div>
-              <h3 className="font-semibold mb-4">Connect</h3>
-              <div className="space-y-2">
-                <a 
-                  href="https://twitter.com/pixelpalette" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="block text-muted-foreground hover:text-primary transition-colors"
-                >
-                  Twitter <ExternalLink className="inline h-3 w-3 ml-1" />
-                </a>
-                <a 
-                  href="https://instagram.com/pixelpalette" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="block text-muted-foreground hover:text-primary transition-colors"
-                >
-                  Instagram <ExternalLink className="inline h-3 w-3 ml-1" />
-                </a>
-                <a 
-                  href="https://discord.gg/pixelpalette" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="block text-muted-foreground hover:text-primary transition-colors"
-                >
-                  Discord <ExternalLink className="inline h-3 w-3 ml-1" />
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+        </section>
+      </div>
     </Layout>
   );
 };

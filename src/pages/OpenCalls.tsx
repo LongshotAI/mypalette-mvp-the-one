@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import { motion } from 'framer-motion';
@@ -15,8 +16,7 @@ import {
   Filter,
   Clock,
   Building,
-  Star,
-  Trophy
+  Star
 } from 'lucide-react';
 import { useOpenCalls } from '@/hooks/useOpenCalls';
 import { useNavigate } from 'react-router-dom';
@@ -185,17 +185,6 @@ const OpenCalls = () => {
                     whileHover={{ y: -4 }}
                   >
                     <Card className="h-full hover:shadow-lg transition-all duration-300 cursor-pointer group">
-                      {/* Display banner image if available */}
-                      {openCall.banner_image && (
-                        <div className="aspect-video overflow-hidden">
-                          <img 
-                            src={openCall.banner_image} 
-                            alt={openCall.title}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                          />
-                        </div>
-                      )}
-                      
                       <CardHeader>
                         <div className="flex items-start justify-between mb-2">
                           <div className="flex-1">
@@ -215,10 +204,10 @@ const OpenCalls = () => {
                               <Clock className="h-3 w-3 mr-1" />
                               {deadlineBadge.text}
                             </Badge>
-                            {/* AIFilm3 badge for partner open calls */}
-                            {openCall.is_aifilm3_partner && (
-                              <Badge variant="default" className="bg-gradient-to-r from-purple-500 to-pink-500">
-                                AIFilm3
+                            {openCall.is_featured && (
+                              <Badge variant="default">
+                                <Star className="h-3 w-3 mr-1" />
+                                Featured
                               </Badge>
                             )}
                           </div>
@@ -248,29 +237,17 @@ const OpenCalls = () => {
                               Submission Fee
                             </div>
                             <span className="font-medium">
-                              {openCall.submission_fee === 0 ? 'Free first, then $2' : `Free first, then $${openCall.submission_fee}`}
+                              {openCall.submission_fee === 0 ? 'Free' : `$${openCall.submission_fee}`}
                             </span>
                           </div>
 
-                          {openCall.number_of_winners && (
-                            <div className="flex items-center justify-between text-sm">
-                              <div className="flex items-center gap-1 text-muted-foreground">
-                                <Trophy className="h-4 w-4" />
-                                Winners Selected
-                              </div>
-                              <span className="font-medium">{openCall.number_of_winners}</span>
+                          <div className="flex items-center justify-between text-sm">
+                            <div className="flex items-center gap-1 text-muted-foreground">
+                              <Users className="h-4 w-4" />
+                              Max Submissions
                             </div>
-                          )}
-
-                          {openCall.prize_details && (
-                            <div className="flex items-center justify-between text-sm">
-                              <div className="flex items-center gap-1 text-muted-foreground">
-                                <Star className="h-4 w-4" />
-                                Prize
-                              </div>
-                              <span className="font-medium text-green-600">{openCall.prize_details}</span>
-                            </div>
-                          )}
+                            <span className="font-medium">{openCall.max_submissions}</span>
+                          </div>
                         </div>
 
                         {/* Action Buttons */}
