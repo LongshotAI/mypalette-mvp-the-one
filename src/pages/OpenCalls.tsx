@@ -204,12 +204,7 @@ const OpenCalls = () => {
                               <Clock className="h-3 w-3 mr-1" />
                               {deadlineBadge.text}
                             </Badge>
-                            {openCall.is_featured && (
-                              <Badge variant="default">
-                                <Star className="h-3 w-3 mr-1" />
-                                Featured
-                              </Badge>
-                            )}
+                            {/* Temporarily removed featured badge until we implement the featured system */}
                           </div>
                         </div>
                       </CardHeader>
