@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -11,11 +10,16 @@ export interface OpenCall {
   organization_website: string | null;
   submission_deadline: string;
   submission_fee: number;
-  max_submissions: number;
+  number_of_winners: number | null;
   submission_requirements: any;
   status: string;
   host_user_id: string | null;
   banner_image: string | null;
+  business_logo: string | null;
+  host_information: string | null;
+  prize_details: string | null;
+  about_host: string | null;
+  is_aifilm3_partner: boolean;
   admin_notes: string | null;
   created_at: string;
   updated_at: string;
@@ -184,10 +188,16 @@ export const useOpenCalls = () => {
           organization_website: openCallData.organization_website,
           submission_deadline: openCallData.submission_deadline || new Date().toISOString(),
           submission_fee: openCallData.submission_fee || 0,
-          max_submissions: openCallData.max_submissions || 100,
+          number_of_winners: openCallData.number_of_winners || 1,
           submission_requirements: openCallData.submission_requirements || {},
           host_user_id: user.id,
-          status: 'live'
+          status: 'live',
+          banner_image: openCallData.banner_image,
+          business_logo: openCallData.business_logo,
+          host_information: openCallData.host_information,
+          prize_details: openCallData.prize_details,
+          about_host: openCallData.about_host,
+          is_aifilm3_partner: openCallData.is_aifilm3_partner || false
         })
         .select()
         .single();
