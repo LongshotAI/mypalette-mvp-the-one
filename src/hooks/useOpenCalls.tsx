@@ -17,7 +17,6 @@ export interface OpenCall {
   host_user_id: string | null;
   banner_image: string | null;
   admin_notes: string | null;
-  is_featured: boolean | null;
   created_at: string;
   updated_at: string;
   profiles?: {
@@ -90,7 +89,6 @@ export const useOpenCalls = () => {
           profiles(first_name, last_name, username, avatar_url)
         `)
         .eq('status', 'live')
-        .eq('is_featured', true)
         .order('submission_deadline', { ascending: true })
         .limit(6);
 
@@ -132,16 +130,15 @@ export const useOpenCalls = () => {
   };
 
   const updateOpenCallStatus = useMutation({
-    mutationFn: async ({ id, status, is_featured }: { id: string; status?: string; is_featured?: boolean }) => {
-      console.log('Updating open call status:', id, { status, is_featured });
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      console.log('Updating open call status:', id, status);
       
-      const updates: Record<string, any> = { updated_at: new Date().toISOString() };
-      if (status !== undefined) updates.status = status;
-      if (is_featured !== undefined) updates.is_featured = is_featured;
-
       const { data, error } = await supabase
         .from('open_calls')
-        .update(updates)
+        .update({ 
+          status,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', id)
         .select()
         .single();
@@ -172,7 +169,7 @@ export const useOpenCalls = () => {
   });
 
   const createOpenCall = useMutation({
-    mutationFn: async (openCallData: Record<string, any>) => {
+    mutationFn: async (openCallData: Partial<OpenCall>) => {
       console.log('Creating open call:', openCallData);
       
       const { data: { user } } = await supabase.auth.getUser();
@@ -181,10 +178,16 @@ export const useOpenCalls = () => {
       const { data, error } = await supabase
         .from('open_calls')
         .insert({
-          ...openCallData,
+          title: openCallData.title || '',
+          description: openCallData.description || '',
+          organization_name: openCallData.organization_name,
+          organization_website: openCallData.organization_website,
+          submission_deadline: openCallData.submission_deadline || new Date().toISOString(),
+          submission_fee: openCallData.submission_fee || 0,
+          max_submissions: openCallData.max_submissions || 100,
+          submission_requirements: openCallData.submission_requirements || {},
           host_user_id: user.id,
-          status: 'live',
-          is_featured: openCallData.is_featured || false
+          status: 'live'
         })
         .select()
         .single();
