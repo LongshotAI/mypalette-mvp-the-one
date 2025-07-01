@@ -6,27 +6,26 @@ import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Upload, X, Image as ImageIcon, Video, AlertCircle, Check } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { Upload, X, Image as ImageIcon, Video, AlertCircle } from 'lucide-react';
+import { useEnhancedStorage } from '@/hooks/useEnhancedStorage';
 import { toast } from '@/hooks/use-toast';
 
 interface EnhancedFileUploadProps {
   onFileUploaded: (fileUrl: string, fileType: 'image' | 'video') => void;
   allowVideo?: boolean;
   maxSizeMB?: number;
-  bucket?: string;
+  category?: 'avatars' | 'artworks' | 'submissions';
 }
 
 const EnhancedFileUpload = ({ 
   onFileUploaded, 
   allowVideo = true, 
   maxSizeMB = 50,
-  bucket = 'artwork-uploads'
+  category = 'artworks'
 }: EnhancedFileUploadProps) => {
-  const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
   const [videoUrl, setVideoUrl] = useState('');
   const [uploadMode, setUploadMode] = useState<'file' | 'youtube'>('file');
+  const { uploadUserFile, uploadProgress, isUploading } = useEnhancedStorage();
 
   const validateYouTubeUrl = (url: string): boolean => {
     const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/;
@@ -39,105 +38,13 @@ const EnhancedFileUpload = ({
     return match ? match[1] : null;
   };
 
-  const compressImage = async (file: File): Promise<File> => {
-    return new Promise((resolve) => {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      const img = new Image();
-      
-      img.onload = () => {
-        // Calculate new dimensions (max 1920px width)
-        const maxWidth = 1920;
-        const ratio = Math.min(maxWidth / img.width, maxWidth / img.height);
-        canvas.width = img.width * ratio;
-        canvas.height = img.height * ratio;
-        
-        // Draw and compress
-        ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
-        canvas.toBlob((blob) => {
-          if (blob) {
-            const compressedFile = new File([blob], file.name, {
-              type: 'image/jpeg',
-              lastModified: Date.now()
-            });
-            resolve(compressedFile);
-          } else {
-            resolve(file);
-          }
-        }, 'image/jpeg', 0.8);
-      };
-      
-      img.src = URL.createObjectURL(file);
-    });
-  };
-
-  const uploadFile = async (file: File) => {
+  const handleFileUpload = async (file: File) => {
     try {
-      setUploading(true);
-      setUploadProgress(0);
-
-      // Get current user
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) {
-        throw new Error('You must be logged in to upload files');
-      }
-
-      // Validate file size
-      if (file.size > maxSizeMB * 1024 * 1024) {
-        throw new Error(`File size must be less than ${maxSizeMB}MB`);
-      }
-
-      let fileToUpload = file;
-      
-      // Compress images
-      if (file.type.startsWith('image/')) {
-        fileToUpload = await compressImage(file);
-        setUploadProgress(30);
-      }
-
-      // Generate unique filename with user folder structure
-      const fileExt = fileToUpload.name.split('.').pop();
-      const fileName = `${user.id}/${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
-
-      setUploadProgress(50);
-
-      // Upload to Supabase Storage
-      const { data, error } = await supabase.storage
-        .from(bucket)
-        .upload(fileName, fileToUpload);
-
-      if (error) {
-        console.error('Upload error:', error);
-        throw new Error(`Upload failed: ${error.message}`);
-      }
-
-      setUploadProgress(80);
-
-      // Get public URL
-      const { data: urlData } = supabase.storage
-        .from(bucket)
-        .getPublicUrl(data.path);
-
-      setUploadProgress(100);
-
-      const fileType = fileToUpload.type.startsWith('image/') ? 'image' : 'video';
-      onFileUploaded(urlData.publicUrl, fileType);
-      
-      toast({
-        title: "Success",
-        description: "File uploaded successfully!"
-      });
-
+      const result = await uploadUserFile.mutateAsync({ file, category });
+      const fileType = file.type.startsWith('image/') ? 'image' : 'video';
+      onFileUploaded(result.url, fileType);
     } catch (error) {
-      console.error('Upload error:', error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to upload file",
-        variant: "destructive"
-      });
-    } finally {
-      setUploading(false);
-      setUploadProgress(0);
+      console.error('Upload failed:', error);
     }
   };
 
@@ -166,7 +73,7 @@ const EnhancedFileUpload = ({
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
     if (file) {
-      uploadFile(file);
+      handleFileUpload(file);
     }
   }, []);
 
@@ -179,7 +86,8 @@ const EnhancedFileUpload = ({
       })
     },
     maxFiles: 1,
-    maxSize: maxSizeMB * 1024 * 1024
+    maxSize: maxSizeMB * 1024 * 1024,
+    disabled: isUploading
   });
 
   return (
@@ -212,12 +120,12 @@ const EnhancedFileUpload = ({
           {...getRootProps()}
           className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors
             ${isDragActive ? 'border-primary bg-primary/5' : 'border-muted-foreground/25 hover:border-primary/50'}
-            ${uploading ? 'pointer-events-none opacity-50' : ''}
+            ${isUploading ? 'pointer-events-none opacity-50' : ''}
           `}
         >
           <input {...getInputProps()} />
           
-          {uploading ? (
+          {isUploading ? (
             <div className="space-y-2">
               <div className="animate-spin mx-auto h-8 w-8 border-2 border-primary border-t-transparent rounded-full" />
               <p className="text-sm text-muted-foreground">Uploading... {uploadProgress}%</p>

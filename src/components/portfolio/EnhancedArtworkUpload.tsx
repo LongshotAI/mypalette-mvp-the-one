@@ -1,11 +1,10 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Upload, Plus, Save } from 'lucide-react';
+import { Plus, Save } from 'lucide-react';
 import EnhancedFileUpload from '@/components/portfolio/EnhancedFileUpload';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -112,14 +111,14 @@ const EnhancedArtworkUpload = ({ portfolioId, onSuccess }: EnhancedArtworkUpload
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* File Upload */}
+          {/* File Upload with Enhanced Storage */}
           <div>
             <Label>Artwork Files</Label>
             <EnhancedFileUpload
               onFileUploaded={handleFileUploaded}
               allowVideo={true}
               maxSizeMB={50}
-              bucket="artwork-uploads"
+              category="artworks"
             />
           </div>
 
