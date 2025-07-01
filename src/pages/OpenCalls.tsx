@@ -15,8 +15,7 @@ import {
   Search,
   Filter,
   Clock,
-  Building,
-  Star
+  Building
 } from 'lucide-react';
 import { useOpenCalls } from '@/hooks/useOpenCalls';
 import { useNavigate } from 'react-router-dom';
@@ -204,12 +203,6 @@ const OpenCalls = () => {
                               <Clock className="h-3 w-3 mr-1" />
                               {deadlineBadge.text}
                             </Badge>
-                            {openCall.is_featured && (
-                              <Badge variant="default">
-                                <Star className="h-3 w-3 mr-1" />
-                                Featured
-                              </Badge>
-                            )}
                           </div>
                         </div>
                       </CardHeader>
