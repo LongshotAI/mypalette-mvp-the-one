@@ -309,11 +309,11 @@ const Landing = () => {
                             {announcement.title}
                           </CardTitle>
                           <Badge variant="outline">
-                            {announcement.announcement_type}
+                            Festival
                           </Badge>
                         </div>
                         <p className="text-sm text-muted-foreground">
-                          {format(new Date(announcement.publish_date), 'MMM d, yyyy')}
+                          {format(new Date(announcement.created_at), 'MMM d, yyyy')}
                         </p>
                       </CardHeader>
                       

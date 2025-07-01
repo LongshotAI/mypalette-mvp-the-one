@@ -7,158 +7,127 @@ export interface AIFilm3Announcement {
   id: string;
   title: string;
   content: string;
-  announcement_type: 'general' | 'deadline' | 'winner' | 'update';
-  is_published: boolean;
-  publish_date: string;
-  author_id: string;
   created_at: string;
-  updated_at: string;
-  profiles?: {
-    first_name: string | null;
-    last_name: string | null;
-    username: string | null;
-  };
 }
 
 export interface AIFilm3Config {
   id: string;
-  festival_name: string;
-  festival_description: string;
-  submission_deadline: string;
-  festival_dates: {
-    start_date: string;
-    end_date: string;
-  };
-  submission_guidelines: string;
-  prizes: string[];
-  judges: string[];
-  is_active: boolean;
-  banner_image?: string;
+  key: string;
+  value: string;
   updated_at: string;
 }
 
 export const useAIFilm3 = () => {
   const queryClient = useQueryClient();
 
-  // Fetch all published announcements using direct table access with error handling
+  // Get all announcements (public access)
   const getAnnouncements = useQuery({
     queryKey: ['aifilm3-announcements'],
-    queryFn: async () => {
+    queryFn: async (): Promise<AIFilm3Announcement[]> => {
       console.log('Fetching AIFilm3 announcements...');
       
-      try {
-        // Try direct query with type assertion since table may not exist in types
-        const { data, error } = await (supabase as any)
-          .from('aifilm3_announcements')
-          .select(`
-            *,
-            profiles(first_name, last_name, username)
-          `)
-          .eq('is_published', true)
-          .order('publish_date', { ascending: false });
+      const { data, error } = await supabase
+        .from('aifilm3_announcements')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-        if (error) {
-          console.error('Error fetching announcements:', error);
-          return [];
-        }
-
-        return (data || []) as AIFilm3Announcement[];
-      } catch (err) {
-        console.error('AIFilm3 announcements table may not exist yet:', err);
-        return [];
+      if (error) {
+        console.error('Error fetching AIFilm3 announcements:', error);
+        throw error;
       }
+
+      console.log('AIFilm3 announcements fetched:', data);
+      return data as AIFilm3Announcement[];
     },
   });
 
-  // Fetch all announcements for admin (including unpublished)
+  // Get all announcements for admin (authenticated access)
   const getAllAnnouncements = useQuery({
-    queryKey: ['aifilm3-admin-announcements'],
-    queryFn: async () => {
+    queryKey: ['admin-aifilm3-announcements'],
+    queryFn: async (): Promise<AIFilm3Announcement[]> => {
       console.log('Fetching all AIFilm3 announcements for admin...');
       
-      try {
-        const { data, error } = await (supabase as any)
-          .from('aifilm3_announcements')
-          .select(`
-            *,
-            profiles(first_name, last_name, username)
-          `)
-          .order('created_at', { ascending: false });
+      const { data, error } = await supabase
+        .from('aifilm3_announcements')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-        if (error) {
-          console.error('Error fetching admin announcements:', error);
-          return [];
-        }
-
-        return (data || []) as AIFilm3Announcement[];
-      } catch (err) {
-        console.error('AIFilm3 announcements table may not exist yet:', err);
-        return [];
+      if (error) {
+        console.error('Error fetching admin AIFilm3 announcements:', error);
+        throw error;
       }
+
+      console.log('Admin AIFilm3 announcements fetched:', data);
+      return data as AIFilm3Announcement[];
     },
   });
 
-  // Fetch festival configuration
+  // Get festival configuration (authenticated access)
   const getFestivalConfig = useQuery({
     queryKey: ['aifilm3-config'],
-    queryFn: async () => {
-      console.log('Fetching AIFilm3 festival configuration...');
+    queryFn: async (): Promise<AIFilm3Config[]> => {
+      console.log('Fetching AIFilm3 config...');
       
-      try {
-        const { data, error } = await (supabase as any)
-          .from('aifilm3_config')
-          .select('*')
-          .eq('is_active', true)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single();
+      const { data, error } = await supabase
+        .from('aifilm3_config')
+        .select('*')
+        .order('key', { ascending: true });
 
-        if (error && error.code !== 'PGRST116') {
-          console.error('Error fetching festival config:', error);
-          return null;
-        }
-
-        return data as AIFilm3Config || null;
-      } catch (err) {
-        console.error('AIFilm3 config table may not exist yet:', err);
-        return null;
+      if (error) {
+        console.error('Error fetching AIFilm3 config:', error);
+        throw error;
       }
+
+      console.log('AIFilm3 config fetched:', data);
+      return data as AIFilm3Config[];
     },
   });
 
-  // Create announcement
+  // Get single config value by key
+  const getConfigValue = (key: string) => {
+    return useQuery({
+      queryKey: ['aifilm3-config-value', key],
+      queryFn: async (): Promise<string | null> => {
+        console.log('Fetching AIFilm3 config value for key:', key);
+        
+        const { data, error } = await supabase
+          .from('aifilm3_config')
+          .select('value')
+          .eq('key', key)
+          .maybeSingle();
+
+        if (error) {
+          console.error('Error fetching AIFilm3 config value:', error);
+          throw error;
+        }
+
+        return data?.value || null;
+      },
+    });
+  };
+
+  // Create new announcement (admin only)
   const createAnnouncement = useMutation({
-    mutationFn: async (announcementData: {
-      title: string;
-      content: string;
-      announcement_type: 'general' | 'deadline' | 'winner' | 'update';
-      is_published: boolean;
-      publish_date: string;
-    }) => {
+    mutationFn: async (announcementData: Omit<AIFilm3Announcement, 'id' | 'created_at'>) => {
       console.log('Creating AIFilm3 announcement:', announcementData);
       
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('User not authenticated');
-
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('aifilm3_announcements')
-        .insert({
-          ...announcementData,
-          author_id: user.id,
-        })
+        .insert(announcementData)
         .select()
         .single();
 
       if (error) {
-        console.error('Error creating announcement:', error);
+        console.error('Error creating AIFilm3 announcement:', error);
         throw error;
       }
 
+      console.log('AIFilm3 announcement created:', data);
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['aifilm3-announcements'] });
-      queryClient.invalidateQueries({ queryKey: ['aifilm3-admin-announcements'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-aifilm3-announcements'] });
       toast({
         title: "Announcement Created",
         description: "AIFilm3 announcement has been created successfully.",
@@ -166,33 +135,27 @@ export const useAIFilm3 = () => {
     },
     onError: (error: any) => {
       toast({
-        title: "Error",
+        title: "Creation Failed",
         description: error.message || "Failed to create announcement.",
         variant: "destructive",
       });
     },
   });
 
-  // Update announcement
+  // Update announcement (admin only)
   const updateAnnouncement = useMutation({
-    mutationFn: async ({ id, updates }: { 
-      id: string; 
-      updates: Partial<AIFilm3Announcement> 
-    }) => {
-      console.log('Updating AIFilm3 announcement:', id, updates);
-
-      const { data, error } = await (supabase as any)
+    mutationFn: async ({ id, ...updateData }: Partial<AIFilm3Announcement> & { id: string }) => {
+      console.log('Updating AIFilm3 announcement:', id, updateData);
+      
+      const { data, error } = await supabase
         .from('aifilm3_announcements')
-        .update({
-          ...updates,
-          updated_at: new Date().toISOString()
-        })
+        .update(updateData)
         .eq('id', id)
         .select()
         .single();
 
       if (error) {
-        console.error('Error updating announcement:', error);
+        console.error('Error updating AIFilm3 announcement:', error);
         throw error;
       }
 
@@ -200,7 +163,7 @@ export const useAIFilm3 = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['aifilm3-announcements'] });
-      queryClient.invalidateQueries({ queryKey: ['aifilm3-admin-announcements'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-aifilm3-announcements'] });
       toast({
         title: "Announcement Updated",
         description: "AIFilm3 announcement has been updated successfully.",
@@ -208,75 +171,33 @@ export const useAIFilm3 = () => {
     },
     onError: (error: any) => {
       toast({
-        title: "Error",
+        title: "Update Failed",
         description: error.message || "Failed to update announcement.",
         variant: "destructive",
       });
     },
   });
 
-  // Update festival configuration
-  const updateFestivalConfig = useMutation({
-    mutationFn: async (configData: Partial<AIFilm3Config>) => {
-      console.log('Updating AIFilm3 festival config:', configData);
-
-      // First deactivate all existing configs
-      await (supabase as any)
-        .from('aifilm3_config')
-        .update({ is_active: false });
-
-      // Then insert new active config
-      const { data, error } = await (supabase as any)
-        .from('aifilm3_config')
-        .insert({
-          ...configData,
-          is_active: true,
-          updated_at: new Date().toISOString()
-        })
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error updating festival config:', error);
-        throw error;
-      }
-
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['aifilm3-config'] });
-      toast({
-        title: "Festival Configuration Updated",
-        description: "AIFilm3 festival settings have been updated successfully.",
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update festival configuration.",
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Delete announcement
+  // Delete announcement (admin only)
   const deleteAnnouncement = useMutation({
     mutationFn: async (id: string) => {
       console.log('Deleting AIFilm3 announcement:', id);
-
-      const { error } = await (supabase as any)
+      
+      const { error } = await supabase
         .from('aifilm3_announcements')
         .delete()
         .eq('id', id);
 
       if (error) {
-        console.error('Error deleting announcement:', error);
+        console.error('Error deleting AIFilm3 announcement:', error);
         throw error;
       }
+
+      return id;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['aifilm3-announcements'] });
-      queryClient.invalidateQueries({ queryKey: ['aifilm3-admin-announcements'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-aifilm3-announcements'] });
       toast({
         title: "Announcement Deleted",
         description: "AIFilm3 announcement has been deleted successfully.",
@@ -284,8 +205,47 @@ export const useAIFilm3 = () => {
     },
     onError: (error: any) => {
       toast({
-        title: "Error",
+        title: "Deletion Failed",
         description: error.message || "Failed to delete announcement.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update festival configuration (admin only)
+  const updateFestivalConfig = useMutation({
+    mutationFn: async (configData: Record<string, string>) => {
+      console.log('Updating AIFilm3 festival config:', configData);
+      
+      const updates = Object.entries(configData).map(([key, value]) => ({
+        key,
+        value,
+      }));
+
+      const { data, error } = await supabase
+        .from('aifilm3_config')
+        .upsert(updates, { onConflict: 'key' })
+        .select();
+
+      if (error) {
+        console.error('Error updating AIFilm3 config:', error);
+        throw error;
+      }
+
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['aifilm3-config'] });
+      queryClient.invalidateQueries({ queryKey: ['aifilm3-config-value'] });
+      toast({
+        title: "Configuration Updated",
+        description: "AIFilm3 festival configuration has been updated successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Update Failed",
+        description: error.message || "Failed to update configuration.",
         variant: "destructive",
       });
     },
@@ -295,9 +255,10 @@ export const useAIFilm3 = () => {
     getAnnouncements,
     getAllAnnouncements,
     getFestivalConfig,
+    getConfigValue,
     createAnnouncement,
     updateAnnouncement,
-    updateFestivalConfig,
     deleteAnnouncement,
+    updateFestivalConfig,
   };
 };

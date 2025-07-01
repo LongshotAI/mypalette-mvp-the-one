@@ -5,22 +5,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { 
   Film, 
   Plus, 
   Edit, 
   Trash2, 
-  CalendarIcon, 
-  Eye, 
   Settings,
   Megaphone,
-  Trophy,
-  Users
+  Calendar
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useAIFilm3 } from '@/hooks/useAIFilm3';
@@ -29,6 +22,7 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 const AIFilm3ManagementPanel = () => {
   const [activeSection, setActiveSection] = useState<'announcements' | 'config'>('announcements');
   const [isCreatingAnnouncement, setIsCreatingAnnouncement] = useState(false);
+  const [editingAnnouncement, setEditingAnnouncement] = useState<string | null>(null);
   const [isEditingConfig, setIsEditingConfig] = useState(false);
   
   const {
@@ -41,113 +35,69 @@ const AIFilm3ManagementPanel = () => {
   } = useAIFilm3();
 
   const announcements = getAllAnnouncements.data || [];
-  const festivalConfig = getFestivalConfig.data;
+  const festivalConfig = getFestivalConfig.data || [];
 
   const [announcementForm, setAnnouncementForm] = useState({
     title: '',
     content: '',
-    announcement_type: 'general' as 'general' | 'deadline' | 'winner' | 'update',
-    is_published: false,
-    publish_date: new Date()
   });
 
-  const [configForm, setConfigForm] = useState({
-    festival_name: '',
-    festival_description: '',
-    submission_deadline: new Date(),
-    festival_dates: {
-      start_date: new Date(),
-      end_date: new Date()
-    },
-    submission_guidelines: '',
-    prizes: [''],
-    judges: [''],
-    is_active: true,
-    banner_image: ''
-  });
+  const [configForm, setConfigForm] = useState<Record<string, string>>({});
 
   React.useEffect(() => {
-    if (festivalConfig) {
-      setConfigForm({
-        festival_name: festivalConfig.festival_name || '',
-        festival_description: festivalConfig.festival_description || '',
-        submission_deadline: new Date(festivalConfig.submission_deadline),
-        festival_dates: {
-          start_date: new Date(festivalConfig.festival_dates.start_date),
-          end_date: new Date(festivalConfig.festival_dates.end_date)
-        },
-        submission_guidelines: festivalConfig.submission_guidelines || '',
-        prizes: festivalConfig.prizes || [''],
-        judges: festivalConfig.judges || [''],
-        is_active: festivalConfig.is_active,
-        banner_image: festivalConfig.banner_image || ''
-      });
+    if (festivalConfig.length > 0) {
+      const configObj = festivalConfig.reduce((acc, config) => {
+        acc[config.key] = config.value;
+        return acc;
+      }, {} as Record<string, string>);
+      setConfigForm(configObj);
     }
   }, [festivalConfig]);
 
   const handleCreateAnnouncement = async () => {
-    await createAnnouncement.mutateAsync({
+    if (!announcementForm.title.trim() || !announcementForm.content.trim()) {
+      return;
+    }
+
+    await createAnnouncement.mutateAsync(announcementForm);
+    
+    setAnnouncementForm({ title: '', content: '' });
+    setIsCreatingAnnouncement(false);
+  };
+
+  const handleUpdateAnnouncement = async (id: string) => {
+    if (!announcementForm.title.trim() || !announcementForm.content.trim()) {
+      return;
+    }
+
+    await updateAnnouncement.mutateAsync({
+      id,
       ...announcementForm,
-      publish_date: announcementForm.publish_date.toISOString()
     });
     
+    setAnnouncementForm({ title: '', content: '' });
+    setEditingAnnouncement(null);
+  };
+
+  const handleEditAnnouncement = (announcement: any) => {
     setAnnouncementForm({
-      title: '',
-      content: '',
-      announcement_type: 'general',
-      is_published: false,
-      publish_date: new Date()
+      title: announcement.title,
+      content: announcement.content,
     });
+    setEditingAnnouncement(announcement.id);
     setIsCreatingAnnouncement(false);
   };
 
   const handleUpdateConfig = async () => {
-    await updateFestivalConfig.mutateAsync({
-      ...configForm,
-      submission_deadline: configForm.submission_deadline.toISOString(),
-      festival_dates: {
-        start_date: configForm.festival_dates.start_date.toISOString(),
-        end_date: configForm.festival_dates.end_date.toISOString()
-      }
-    });
+    await updateFestivalConfig.mutateAsync(configForm);
     setIsEditingConfig(false);
   };
 
-  const addPrize = () => {
+  const handleConfigChange = (key: string, value: string) => {
     setConfigForm(prev => ({
       ...prev,
-      prizes: [...prev.prizes, '']
+      [key]: value,
     }));
-  };
-
-  const addJudge = () => {
-    setConfigForm(prev => ({
-      ...prev,
-      judges: [...prev.judges, '']
-    }));
-  };
-
-  const updatePrize = (index: number, value: string) => {
-    setConfigForm(prev => ({
-      ...prev,
-      prizes: prev.prizes.map((prize, i) => i === index ? value : prize)
-    }));
-  };
-
-  const updateJudge = (index: number, value: string) => {
-    setConfigForm(prev => ({
-      ...prev,
-      judges: prev.judges.map((judge, i) => i === index ? value : judge)
-    }));
-  };
-
-  const getAnnouncementTypeColor = (type: string) => {
-    switch (type) {
-      case 'deadline': return 'destructive';
-      case 'winner': return 'default';
-      case 'update': return 'secondary';
-      default: return 'outline';
-    }
   };
 
   if (getAllAnnouncements.isLoading || getFestivalConfig.isLoading) {
@@ -196,7 +146,11 @@ const AIFilm3ManagementPanel = () => {
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold">Festival Announcements</h3>
             <Button 
-              onClick={() => setIsCreatingAnnouncement(true)}
+              onClick={() => {
+                setIsCreatingAnnouncement(true);
+                setEditingAnnouncement(null);
+                setAnnouncementForm({ title: '', content: '' });
+              }}
               className="flex items-center gap-2"
             >
               <Plus className="h-4 w-4" />
@@ -204,40 +158,23 @@ const AIFilm3ManagementPanel = () => {
             </Button>
           </div>
 
-          {/* Create Announcement Form */}
-          {isCreatingAnnouncement && (
+          {/* Create/Edit Announcement Form */}
+          {(isCreatingAnnouncement || editingAnnouncement) && (
             <Card>
               <CardHeader>
-                <CardTitle>Create New Announcement</CardTitle>
+                <CardTitle>
+                  {editingAnnouncement ? 'Edit Announcement' : 'Create New Announcement'}
+                </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="title">Title</Label>
-                    <Input
-                      id="title"
-                      value={announcementForm.title}
-                      onChange={(e) => setAnnouncementForm(prev => ({ ...prev, title: e.target.value }))}
-                      placeholder="Announcement title"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="type">Type</Label>
-                    <Select 
-                      value={announcementForm.announcement_type} 
-                      onValueChange={(value: any) => setAnnouncementForm(prev => ({ ...prev, announcement_type: value }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="general">General</SelectItem>
-                        <SelectItem value="deadline">Deadline</SelectItem>
-                        <SelectItem value="winner">Winner</SelectItem>
-                        <SelectItem value="update">Update</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                <div>
+                  <Label htmlFor="title">Title</Label>
+                  <Input
+                    id="title"
+                    value={announcementForm.title}
+                    onChange={(e) => setAnnouncementForm(prev => ({ ...prev, title: e.target.value }))}
+                    placeholder="Announcement title"
+                  />
                 </div>
 
                 <div>
@@ -251,39 +188,24 @@ const AIFilm3ManagementPanel = () => {
                   />
                 </div>
 
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      id="published"
-                      checked={announcementForm.is_published}
-                      onCheckedChange={(checked) => setAnnouncementForm(prev => ({ ...prev, is_published: checked }))}
-                    />
-                    <Label htmlFor="published">Publish immediately</Label>
-                  </div>
-
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" className="flex items-center gap-2">
-                        <CalendarIcon className="h-4 w-4" />
-                        {format(announcementForm.publish_date, "PPP")}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <Calendar
-                        mode="single"
-                        selected={announcementForm.publish_date}
-                        onSelect={(date) => date && setAnnouncementForm(prev => ({ ...prev, publish_date: date }))}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-
                 <div className="flex gap-2">
-                  <Button onClick={handleCreateAnnouncement} disabled={createAnnouncement.isPending}>
-                    {createAnnouncement.isPending ? 'Creating...' : 'Create Announcement'}
+                  <Button 
+                    onClick={() => editingAnnouncement ? handleUpdateAnnouncement(editingAnnouncement) : handleCreateAnnouncement()}
+                    disabled={createAnnouncement.isPending || updateAnnouncement.isPending}
+                  >
+                    {(createAnnouncement.isPending || updateAnnouncement.isPending) 
+                      ? (editingAnnouncement ? 'Updating...' : 'Creating...') 
+                      : (editingAnnouncement ? 'Update Announcement' : 'Create Announcement')
+                    }
                   </Button>
-                  <Button variant="outline" onClick={() => setIsCreatingAnnouncement(false)}>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      setIsCreatingAnnouncement(false);
+                      setEditingAnnouncement(null);
+                      setAnnouncementForm({ title: '', content: '' });
+                    }}
+                  >
                     Cancel
                   </Button>
                 </div>
@@ -309,31 +231,25 @@ const AIFilm3ManagementPanel = () => {
                       <div>
                         <CardTitle className="flex items-center gap-2">
                           {announcement.title}
-                          <Badge variant={getAnnouncementTypeColor(announcement.announcement_type)}>
-                            {announcement.announcement_type}
+                          <Badge variant="outline">
+                            <Calendar className="h-3 w-3 mr-1" />
+                            {format(new Date(announcement.created_at), "PPP")}
                           </Badge>
-                          {announcement.is_published ? (
-                            <Badge variant="default">
-                              <Eye className="h-3 w-3 mr-1" />
-                              Published
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline">Draft</Badge>
-                          )}
                         </CardTitle>
-                        <p className="text-sm text-muted-foreground">
-                          By {announcement.profiles?.first_name} {announcement.profiles?.last_name} • 
-                          {format(new Date(announcement.publish_date), "PPP")}
-                        </p>
                       </div>
                       <div className="flex gap-2">
-                        <Button size="sm" variant="outline">
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => handleEditAnnouncement(announcement)}
+                        >
                           <Edit className="h-4 w-4" />
                         </Button>
                         <Button 
                           size="sm" 
                           variant="outline"
                           onClick={() => deleteAnnouncement.mutate(announcement.id)}
+                          disabled={deleteAnnouncement.isPending}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -341,7 +257,7 @@ const AIFilm3ManagementPanel = () => {
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm">{announcement.content}</p>
+                    <p className="text-sm whitespace-pre-wrap">{announcement.content}</p>
                   </CardContent>
                 </Card>
               ))
@@ -367,104 +283,23 @@ const AIFilm3ManagementPanel = () => {
             <CardHeader>
               <CardTitle>Festival Settings</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="festival_name">Festival Name</Label>
+            <CardContent className="space-y-4">
+              {Object.entries(configForm).map(([key, value]) => (
+                <div key={key}>
+                  <Label htmlFor={key} className="capitalize">
+                    {key.replace(/_/g, ' ')}
+                  </Label>
                   <Input
-                    id="festival_name"
-                    value={configForm.festival_name}
-                    onChange={(e) => setConfigForm(prev => ({ ...prev, festival_name: e.target.value }))}
+                    id={key}
+                    value={value}
+                    onChange={(e) => handleConfigChange(key, e.target.value)}
                     disabled={!isEditingConfig}
                   />
                 </div>
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="is_active"
-                    checked={configForm.is_active}
-                    onCheckedChange={(checked) => setConfigForm(prev => ({ ...prev, is_active: checked }))}
-                    disabled={!isEditingConfig}
-                  />
-                  <Label htmlFor="is_active">Festival Active</Label>
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="festival_description">Festival Description</Label>
-                <Textarea
-                  id="festival_description"
-                  value={configForm.festival_description}
-                  onChange={(e) => setConfigForm(prev => ({ ...prev, festival_description: e.target.value }))}
-                  disabled={!isEditingConfig}
-                  rows={3}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="submission_guidelines">Submission Guidelines</Label>
-                <Textarea
-                  id="submission_guidelines"
-                  value={configForm.submission_guidelines}
-                  onChange={(e) => setConfigForm(prev => ({ ...prev, submission_guidelines: e.target.value }))}
-                  disabled={!isEditingConfig}
-                  rows={4}
-                />
-              </div>
-
-              {/* Prizes Section */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <Label className="flex items-center gap-2">
-                    <Trophy className="h-4 w-4" />
-                    Prizes
-                  </Label>
-                  {isEditingConfig && (
-                    <Button size="sm" onClick={addPrize} variant="outline">
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  {configForm.prizes.map((prize, index) => (
-                    <Input
-                      key={index}
-                      value={prize}
-                      onChange={(e) => updatePrize(index, e.target.value)}
-                      placeholder={`Prize ${index + 1}`}
-                      disabled={!isEditingConfig}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              {/* Judges Section */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <Label className="flex items-center gap-2">
-                    <Users className="h-4 w-4" />
-                    Judges
-                  </Label>
-                  {isEditingConfig && (
-                    <Button size="sm" onClick={addJudge} variant="outline">
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  {configForm.judges.map((judge, index) => (
-                    <Input
-                      key={index}
-                      value={judge}
-                      onChange={(e) => updateJudge(index, e.target.value)}
-                      placeholder={`Judge ${index + 1}`}
-                      disabled={!isEditingConfig}
-                    />
-                  ))}
-                </div>
-              </div>
+              ))}
 
               {isEditingConfig && (
-                <div className="flex gap-2">
+                <div className="flex gap-2 pt-4">
                   <Button onClick={handleUpdateConfig} disabled={updateFestivalConfig.isPending}>
                     {updateFestivalConfig.isPending ? 'Saving...' : 'Save Configuration'}
                   </Button>
