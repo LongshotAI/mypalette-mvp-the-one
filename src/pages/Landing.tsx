@@ -82,7 +82,7 @@ const Landing = () => {
                 <Palette className="ml-2 h-5 w-5" />
               </Button>
               <Button size="lg" variant="outline" onClick={() => navigate('/register')}>
-                Start Creating
+                Create Portfolio
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </motion.div>
@@ -161,7 +161,7 @@ const Landing = () => {
                           </span>
                         </div>
 
-                        <div className="flex items-center justify-between text-sm text-muted-foreground">
+                        <div className="flex items-center justify-between text-sm text-muted-foreground mb-3">
                           <div className="flex items-center gap-1">
                             <Eye className="h-4 w-4" />
                             {portfolio.view_count || 0} views
@@ -172,6 +172,15 @@ const Landing = () => {
                             </Badge>
                           )}
                         </div>
+                        
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="w-full"
+                          onClick={() => navigate(`/portfolio/${portfolio.slug || portfolio.id}`)}
+                        >
+                          View Portfolio
+                        </Button>
                       </CardContent>
                     </Card>
                   </motion.div>
@@ -243,7 +252,7 @@ const Landing = () => {
                           {openCall.description}
                         </p>
                         
-                        <div className="space-y-2 text-sm">
+                        <div className="space-y-2 text-sm mb-4">
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">Deadline:</span>
                             <span className="font-medium">
@@ -257,6 +266,15 @@ const Landing = () => {
                             </span>
                           </div>
                         </div>
+                        
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="w-full"
+                          onClick={() => navigate(`/open-call/${openCall.id}`)}
+                        >
+                          View Details
+                        </Button>
                       </CardContent>
                     </Card>
                   </motion.div>
@@ -341,6 +359,16 @@ const Landing = () => {
         <section className="py-16">
           <div className="container mx-auto px-4">
             <motion.div
+              className="text-center mb-12"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+            >
+              <h2 className="text-3xl font-bold mb-4">Join Our Growing Community</h2>
+              <p className="text-muted-foreground">Real-time statistics from our platform</p>
+            </motion.div>
+
+            <motion.div
               className="grid grid-cols-1 md:grid-cols-3 gap-8"
               initial="hidden"
               whileInView="visible"
@@ -351,9 +379,10 @@ const Landing = () => {
                 <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Users className="h-8 w-8 text-primary" />
                 </div>
-                <h3 className="text-2xl font-bold mb-2">Growing Community</h3>
+                <h3 className="text-3xl font-bold mb-2">8</h3>
+                <p className="text-lg font-medium mb-2">Registered Artists</p>
                 <p className="text-muted-foreground">
-                  Join thousands of digital artists sharing their creative journey
+                  Join our growing community of digital artists
                 </p>
               </motion.div>
 
@@ -361,9 +390,10 @@ const Landing = () => {
                 <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Palette className="h-8 w-8 text-primary" />
                 </div>
-                <h3 className="text-2xl font-bold mb-2">Professional Portfolios</h3>
+                <h3 className="text-3xl font-bold mb-2">9</h3>
+                <p className="text-lg font-medium mb-2">Active Portfolios</p>
                 <p className="text-muted-foreground">
-                  Create stunning portfolios with our customizable templates
+                  Professional portfolios showcasing amazing work
                 </p>
               </motion.div>
 
@@ -371,9 +401,10 @@ const Landing = () => {
                 <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
                   <TrendingUp className="h-8 w-8 text-primary" />
                 </div>
-                <h3 className="text-2xl font-bold mb-2">Career Growth</h3>
+                <h3 className="text-3xl font-bold mb-2">2</h3>
+                <p className="text-lg font-medium mb-2">Current Open Calls</p>
                 <p className="text-muted-foreground">
-                  Connect with galleries, curators, and opportunities worldwide
+                  Live opportunities for exhibitions and showcases
                 </p>
               </motion.div>
             </motion.div>

@@ -5,7 +5,7 @@ import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Calendar, DollarSign, Users, MapPin, Clock, Award, ExternalLink, AlertCircle } from 'lucide-react';
+import { Calendar, DollarSign, Users, MapPin, Clock, Award, ExternalLink, AlertCircle, ArrowLeft } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { motion } from 'framer-motion';
@@ -176,6 +176,15 @@ const OpenCallDetails = () => {
             animate={{ opacity: 1, y: 0 }}
             className="space-y-8"
           >
+            {/* Back Button */}
+            <Button 
+              variant="outline" 
+              onClick={() => navigate('/open-calls')}
+              className="flex items-center gap-2 mb-6"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to Open Calls
+            </Button>
             {/* Header */}
             <Card className="overflow-hidden">
               {openCall.banner_image && (
