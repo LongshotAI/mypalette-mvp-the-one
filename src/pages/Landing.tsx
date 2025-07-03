@@ -21,6 +21,7 @@ import { useNavigate } from 'react-router-dom';
 import { usePortfolios } from '@/hooks/usePortfolios';
 import { useOpenCalls } from '@/hooks/useOpenCalls';
 import { useAIFilm3 } from '@/hooks/useAIFilm3';
+import { usePlatformStats } from '@/hooks/usePlatformStats';
 import { format } from 'date-fns';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 
@@ -29,6 +30,7 @@ const Landing = () => {
   const { featuredPortfoliosQuery } = usePortfolios();
   const { getFeaturedOpenCalls } = useOpenCalls();
   const { getAnnouncements } = useAIFilm3();
+  const { data: platformStats, isLoading: statsLoading } = usePlatformStats();
 
   const featuredPortfolios = featuredPortfoliosQuery.data || [];
   const featuredOpenCalls = getFeaturedOpenCalls.data || [];
@@ -81,7 +83,7 @@ const Landing = () => {
                 Explore Art
                 <Palette className="ml-2 h-5 w-5" />
               </Button>
-              <Button size="lg" variant="outline" onClick={() => navigate('/register')}>
+              <Button size="lg" variant="outline" onClick={() => navigate('/auth/register')}>
                 Create Portfolio
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
@@ -379,7 +381,9 @@ const Landing = () => {
                 <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Users className="h-8 w-8 text-primary" />
                 </div>
-                <h3 className="text-3xl font-bold mb-2">8</h3>
+                <h3 className="text-3xl font-bold mb-2">
+                  {statsLoading ? '...' : platformStats?.totalUsers || 0}
+                </h3>
                 <p className="text-lg font-medium mb-2">Registered Artists</p>
                 <p className="text-muted-foreground">
                   Join our growing community of digital artists
@@ -390,7 +394,9 @@ const Landing = () => {
                 <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Palette className="h-8 w-8 text-primary" />
                 </div>
-                <h3 className="text-3xl font-bold mb-2">9</h3>
+                <h3 className="text-3xl font-bold mb-2">
+                  {statsLoading ? '...' : platformStats?.totalPortfolios || 0}
+                </h3>
                 <p className="text-lg font-medium mb-2">Active Portfolios</p>
                 <p className="text-muted-foreground">
                   Professional portfolios showcasing amazing work
@@ -401,7 +407,9 @@ const Landing = () => {
                 <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
                   <TrendingUp className="h-8 w-8 text-primary" />
                 </div>
-                <h3 className="text-3xl font-bold mb-2">2</h3>
+                <h3 className="text-3xl font-bold mb-2">
+                  {statsLoading ? '...' : platformStats?.totalOpenCalls || 0}
+                </h3>
                 <p className="text-lg font-medium mb-2">Current Open Calls</p>
                 <p className="text-muted-foreground">
                   Live opportunities for exhibitions and showcases
@@ -423,7 +431,7 @@ const Landing = () => {
             <p className="text-xl mb-8 opacity-90">
               Create your professional portfolio and connect with the global art community today.
             </p>
-            <Button size="lg" variant="secondary" onClick={() => navigate('/register')}>
+            <Button size="lg" variant="secondary" onClick={() => navigate('/auth/register')}>
               Get Started Free
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>

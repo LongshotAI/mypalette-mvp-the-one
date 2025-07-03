@@ -8,7 +8,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, Plus } from 'lucide-react';
+import { CalendarIcon, Plus, Award } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { format } from 'date-fns';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -24,7 +25,10 @@ const CreateOpenCallDialog = () => {
     organization_name: '',
     organization_website: '',
     submission_fee: 0,
-    max_submissions: 100,
+    num_winners: 1,
+    prize_info: '',
+    about_host: '',
+    aifilm3_partner: false,
     status: 'live'
   });
 
@@ -65,7 +69,10 @@ const CreateOpenCallDialog = () => {
         organization_name: '',
         organization_website: '',
         submission_fee: 0,
-        max_submissions: 100,
+        num_winners: 1,
+        prize_info: '',
+        about_host: '',
+        aifilm3_partner: false,
         status: 'live'
       });
       setSubmissionDeadline(undefined);
@@ -141,6 +148,17 @@ const CreateOpenCallDialog = () => {
             />
           </div>
 
+          <div className="space-y-2">
+            <Label htmlFor="about_host">About the Host</Label>
+            <Textarea
+              id="about_host"
+              value={formData.about_host}
+              onChange={(e) => setFormData({ ...formData, about_host: e.target.value })}
+              rows={3}
+              placeholder="Tell artists about your organization and what makes this opportunity special..."
+            />
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="website">Organization Website</Label>
@@ -173,7 +191,29 @@ const CreateOpenCallDialog = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="prize">Prize Information (Optional)</Label>
+              <Input
+                id="prize"
+                value={formData.prize_info}
+                onChange={(e) => setFormData({ ...formData, prize_info: e.target.value })}
+                placeholder="e.g., $1000 first prize, exhibition opportunity..."
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="winners"># of Winners/Selected Artists</Label>
+              <Input
+                id="winners"
+                type="number"
+                min="1"
+                value={formData.num_winners}
+                onChange={(e) => setFormData({ ...formData, num_winners: parseInt(e.target.value) || 1 })}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="fee">Submission Fee ($)</Label>
               <Input
@@ -183,16 +223,6 @@ const CreateOpenCallDialog = () => {
                 step="0.01"
                 value={formData.submission_fee}
                 onChange={(e) => setFormData({ ...formData, submission_fee: parseFloat(e.target.value) || 0 })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="max">Max Submissions</Label>
-              <Input
-                id="max"
-                type="number"
-                min="1"
-                value={formData.max_submissions}
-                onChange={(e) => setFormData({ ...formData, max_submissions: parseInt(e.target.value) || 100 })}
               />
             </div>
             <div className="space-y-2">
@@ -208,6 +238,18 @@ const CreateOpenCallDialog = () => {
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <Checkbox 
+              id="aifilm3_partner"
+              checked={formData.aifilm3_partner}
+              onCheckedChange={(checked) => setFormData({ ...formData, aifilm3_partner: !!checked })}
+            />
+            <Label htmlFor="aifilm3_partner" className="flex items-center gap-2">
+              <Award className="h-4 w-4 text-primary" />
+              AIFilm3 Partner (Special badge for festival-related calls)
+            </Label>
           </div>
 
           <DialogFooter>

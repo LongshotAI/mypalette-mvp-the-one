@@ -237,9 +237,11 @@ const OpenCalls = () => {
                           <div className="flex items-center justify-between text-sm">
                             <div className="flex items-center gap-1 text-muted-foreground">
                               <Users className="h-4 w-4" />
-                              Max Submissions
+                              Winners Selected
                             </div>
-                            <span className="font-medium">{openCall.max_submissions}</span>
+                            <span className="font-medium">
+                              {openCall.num_winners || 1} {openCall.num_winners === 1 ? 'winner' : 'winners'}
+                            </span>
                           </div>
                         </div>
 

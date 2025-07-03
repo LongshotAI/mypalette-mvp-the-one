@@ -334,15 +334,21 @@ export type Database = {
       }
       open_calls: {
         Row: {
+          about_host: string | null
           admin_notes: string | null
+          aifilm3_partner: boolean | null
           banner_image: string | null
+          cover_image: string | null
           created_at: string | null
           description: string
           host_user_id: string | null
           id: string
+          logo_image: string | null
           max_submissions: number | null
+          num_winners: number | null
           organization_name: string | null
           organization_website: string | null
+          prize_info: string | null
           status: string | null
           submission_deadline: string
           submission_fee: number | null
@@ -351,15 +357,21 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          about_host?: string | null
           admin_notes?: string | null
+          aifilm3_partner?: boolean | null
           banner_image?: string | null
+          cover_image?: string | null
           created_at?: string | null
           description: string
           host_user_id?: string | null
           id?: string
+          logo_image?: string | null
           max_submissions?: number | null
+          num_winners?: number | null
           organization_name?: string | null
           organization_website?: string | null
+          prize_info?: string | null
           status?: string | null
           submission_deadline: string
           submission_fee?: number | null
@@ -368,15 +380,21 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          about_host?: string | null
           admin_notes?: string | null
+          aifilm3_partner?: boolean | null
           banner_image?: string | null
+          cover_image?: string | null
           created_at?: string | null
           description?: string
           host_user_id?: string | null
           id?: string
+          logo_image?: string | null
           max_submissions?: number | null
+          num_winners?: number | null
           organization_name?: string | null
           organization_website?: string | null
+          prize_info?: string | null
           status?: string | null
           submission_deadline?: string
           submission_fee?: number | null

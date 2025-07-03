@@ -176,15 +176,17 @@ const OpenCallDetails = () => {
             animate={{ opacity: 1, y: 0 }}
             className="space-y-8"
           >
-            {/* Back Button */}
-            <Button 
-              variant="outline" 
-              onClick={() => navigate('/open-calls')}
-              className="flex items-center gap-2 mb-6"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back to Open Calls
-            </Button>
+            {/* Back Button - Prominent at top left */}
+            <div className="mb-6">
+              <Button 
+                variant="outline" 
+                onClick={() => navigate('/open-calls')}
+                className="flex items-center gap-2"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Back to Open Calls
+              </Button>
+            </div>
             {/* Header */}
             <Card className="overflow-hidden">
               {openCall.banner_image && (
@@ -218,6 +220,12 @@ const OpenCallDetails = () => {
                     <Badge variant={isExpired ? "destructive" : openCall.status === 'live' ? "default" : "secondary"}>
                       {isExpired ? 'Expired' : openCall.status === 'live' ? 'Live' : openCall.status}
                     </Badge>
+                    {openCall.aifilm3_partner && (
+                      <Badge variant="default" className="bg-gradient-to-r from-purple-600 to-blue-600">
+                        <Award className="h-3 w-3 mr-1" />
+                        AIFilm3 Partner
+                      </Badge>
+                    )}
                     {!isExpired && daysLeft <= 7 && (
                       <Badge variant="outline" className="text-orange-600 border-orange-600">
                         {daysLeft} days left
@@ -280,6 +288,39 @@ const OpenCallDetails = () => {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Prize Information */}
+            {openCall.prize_info && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Award className="h-5 w-5 text-primary" />
+                    Prize Information
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground">
+                    {openCall.prize_info}
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* About the Host */}
+            {openCall.about_host && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>About the Host</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="prose max-w-none">
+                    <p className="text-muted-foreground whitespace-pre-wrap">
+                      {openCall.about_host}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Requirements */}
             {openCall.submission_requirements && (

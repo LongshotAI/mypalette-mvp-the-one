@@ -12,6 +12,12 @@ export interface OpenCall {
   submission_deadline: string;
   submission_fee: number;
   max_submissions: number;
+  num_winners: number | null;
+  prize_info: string | null;
+  about_host: string | null;
+  aifilm3_partner: boolean | null;
+  cover_image: string | null;
+  logo_image: string | null;
   submission_requirements: any;
   status: string;
   host_user_id: string | null;
@@ -184,7 +190,11 @@ export const useOpenCalls = () => {
           organization_website: openCallData.organization_website,
           submission_deadline: openCallData.submission_deadline || new Date().toISOString(),
           submission_fee: openCallData.submission_fee || 0,
-          max_submissions: openCallData.max_submissions || 100,
+          max_submissions: -1, // Unlimited submissions by default
+          num_winners: openCallData.num_winners || 1,
+          prize_info: openCallData.prize_info,
+          about_host: openCallData.about_host,
+          aifilm3_partner: openCallData.aifilm3_partner || false,
           submission_requirements: openCallData.submission_requirements || {},
           host_user_id: user.id,
           status: 'live'
