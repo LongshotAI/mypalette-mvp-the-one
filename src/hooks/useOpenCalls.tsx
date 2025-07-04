@@ -195,8 +195,6 @@ export const useOpenCalls = () => {
           prize_info: openCallData.prize_info,
           about_host: openCallData.about_host,
           aifilm3_partner: openCallData.aifilm3_partner || false,
-          cover_image: openCallData.cover_image,
-          logo_image: openCallData.logo_image,
           submission_requirements: openCallData.submission_requirements || {},
           host_user_id: user.id,
           status: 'live'
