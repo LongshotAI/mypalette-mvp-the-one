@@ -5,7 +5,7 @@ import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Calendar, DollarSign, Users, MapPin, Clock, Award, ExternalLink, AlertCircle, ArrowLeft } from 'lucide-react';
+import { Calendar, DollarSign, Users, ExternalLink, AlertCircle, ArrowLeft, Award, Building } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { motion } from 'framer-motion';
@@ -64,8 +64,7 @@ const OpenCallDetails = () => {
       const { data, error } = await supabase
         .from('submissions')
         .select('id', { count: 'exact' })
-        .eq('open_call_id', id)
-        .eq('payment_status', 'paid');
+        .eq('open_call_id', id);
 
       if (error) {
         console.error('Error fetching submission count:', error);
@@ -181,41 +180,60 @@ const OpenCallDetails = () => {
               <Button 
                 variant="outline" 
                 onClick={() => navigate('/open-calls')}
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 hover:bg-primary hover:text-white transition-colors"
               >
                 <ArrowLeft className="h-4 w-4" />
                 Back to Open Calls
               </Button>
             </div>
-            {/* Header */}
+
+            {/* Header with Cover Image */}
             <Card className="overflow-hidden">
-              {openCall.banner_image && (
-                <div className="aspect-video bg-gradient-to-br from-primary/20 to-secondary/20">
+              {openCall.cover_image && (
+                <div className="aspect-video bg-gradient-to-br from-primary/20 to-secondary/20 relative">
                   <img 
-                    src={openCall.banner_image} 
+                    src={openCall.cover_image} 
                     alt={openCall.title}
                     className="w-full h-full object-cover"
                   />
+                  <div className="absolute inset-0 bg-black/20" />
                 </div>
               )}
-              <CardHeader>
+              
+              <CardHeader className="relative">
                 <div className="flex justify-between items-start">
-                  <div>
-                    <CardTitle className="text-3xl mb-2">{openCall.title}</CardTitle>
-                    <p className="text-muted-foreground">
-                      Organized by {openCall.organization_name || openCall.profiles?.first_name}
-                    </p>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-4 mb-2">
+                      {openCall.logo_image && (
+                        <div className="w-16 h-16 bg-white rounded-lg p-2 shadow-md">
+                          <img 
+                            src={openCall.logo_image} 
+                            alt={`${openCall.organization_name} logo`}
+                            className="w-full h-full object-contain"
+                          />
+                        </div>
+                      )}
+                      <div>
+                        <CardTitle className="text-3xl mb-2">{openCall.title}</CardTitle>
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <Building className="h-4 w-4" />
+                          <span>Organized by {openCall.organization_name || openCall.profiles?.first_name}</span>
+                        </div>
+                      </div>
+                    </div>
+                    
                     {openCall.organization_website && (
                       <a 
                         href={openCall.organization_website}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-sm text-primary hover:underline mt-1"
+                        className="inline-flex items-center gap-1 text-sm text-primary hover:underline mt-2"
                       >
                         Visit Website <ExternalLink className="h-3 w-3" />
                       </a>
                     )}
                   </div>
+                  
                   <div className="flex flex-col gap-2">
                     <Badge variant={isExpired ? "destructive" : openCall.status === 'live' ? "default" : "secondary"}>
                       {isExpired ? 'Expired' : openCall.status === 'live' ? 'Live' : openCall.status}
@@ -234,10 +252,13 @@ const OpenCallDetails = () => {
                   </div>
                 </div>
               </CardHeader>
+              
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-5 w-5 text-muted-foreground" />
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                      <Calendar className="h-5 w-5 text-primary" />
+                    </div>
                     <div>
                       <p className="font-medium">Deadline</p>
                       <p className="text-sm text-muted-foreground">
@@ -246,22 +267,26 @@ const OpenCallDetails = () => {
                     </div>
                   </div>
                   
-                  <div className="flex items-center gap-2">
-                    <DollarSign className="h-5 w-5 text-muted-foreground" />
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-green-500/10 rounded-full flex items-center justify-center">
+                      <DollarSign className="h-5 w-5 text-green-500" />
+                    </div>
                     <div>
                       <p className="font-medium">Submission Fee</p>
                       <p className="text-sm text-muted-foreground">
-                        Free first, then ${openCall.submission_fee || 2}
+                        {openCall.submission_fee === 0 ? 'Free' : `$${openCall.submission_fee}`}
                       </p>
                     </div>
                   </div>
                   
-                  <div className="flex items-center gap-2">
-                    <Users className="h-5 w-5 text-muted-foreground" />
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-blue-500/10 rounded-full flex items-center justify-center">
+                      <Users className="h-5 w-5 text-blue-500" />
+                    </div>
                     <div>
-                      <p className="font-medium">Submissions</p>
+                      <p className="font-medium">Winners Selected</p>
                       <p className="text-sm text-muted-foreground">
-                        {submissionCount || 0} / {openCall.max_submissions || 100}
+                        {openCall.num_winners || 1} {openCall.num_winners === 1 ? 'winner' : 'winners'}
                       </p>
                     </div>
                   </div>
@@ -282,7 +307,7 @@ const OpenCallDetails = () => {
               </CardHeader>
               <CardContent>
                 <div className="prose max-w-none">
-                  <p className="text-muted-foreground whitespace-pre-wrap">
+                  <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">
                     {openCall.description}
                   </p>
                 </div>
@@ -299,7 +324,7 @@ const OpenCallDetails = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-muted-foreground">
+                  <p className="text-muted-foreground leading-relaxed">
                     {openCall.prize_info}
                   </p>
                 </CardContent>
@@ -310,11 +335,14 @@ const OpenCallDetails = () => {
             {openCall.about_host && (
               <Card>
                 <CardHeader>
-                  <CardTitle>About the Host</CardTitle>
+                  <CardTitle className="flex items-center gap-2">
+                    <Building className="h-5 w-5" />
+                    About the Host
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="prose max-w-none">
-                    <p className="text-muted-foreground whitespace-pre-wrap">
+                    <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">
                       {openCall.about_host}
                     </p>
                   </div>
@@ -322,21 +350,58 @@ const OpenCallDetails = () => {
               </Card>
             )}
 
+            {/* Submission Info */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Submission Information</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="p-4 bg-gray-50 rounded-lg">
+                    <h4 className="font-medium mb-2">Current Submissions</h4>
+                    <p className="text-2xl font-bold text-primary">{submissionCount || 0}</p>
+                    <p className="text-sm text-muted-foreground">Total submissions received</p>
+                  </div>
+                  
+                  <div className="p-4 bg-gray-50 rounded-lg">
+                    <h4 className="font-medium mb-2">Submission Limit</h4>
+                    <p className="text-2xl font-bold text-green-600">Unlimited</p>
+                    <p className="text-sm text-muted-foreground">Per artist during open period</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Requirements */}
-            {openCall.submission_requirements && (
+            {openCall.submission_requirements && Object.keys(openCall.submission_requirements).length > 0 && (
               <Card>
                 <CardHeader>
-                  <CardTitle>Requirements</CardTitle>
+                  <CardTitle>Submission Requirements</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <ul className="space-y-2">
+                  <ul className="space-y-3">
                     {Object.values(openCall.submission_requirements as any).map((req: any, index) => (
-                      <li key={index} className="text-sm flex items-start gap-2">
-                        <span className="w-1 h-1 rounded-full bg-primary mt-2 flex-shrink-0"></span>
-                        {req}
+                      <li key={index} className="flex items-start gap-3">
+                        <span className="w-2 h-2 rounded-full bg-primary mt-2 flex-shrink-0"></span>
+                        <span className="text-muted-foreground">{req}</span>
                       </li>
                     ))}
                   </ul>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Action Section */}
+            {!isExpired && openCall.status === 'live' && (
+              <Card className="bg-primary/5 border-primary/20">
+                <CardContent className="py-8 text-center">
+                  <h3 className="text-xl font-semibold mb-2">Ready to Submit?</h3>
+                  <p className="text-muted-foreground mb-6">
+                    Join {submissionCount || 0} other artists who have already submitted their work.
+                  </p>
+                  <Button size="lg" onClick={handleSubmit} className="px-8">
+                    Submit Your Work
+                  </Button>
                 </CardContent>
               </Card>
             )}

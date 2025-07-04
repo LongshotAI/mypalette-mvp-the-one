@@ -8,17 +8,21 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, Plus, Award } from 'lucide-react';
+import { CalendarIcon, Plus, Award, Upload, X, Image } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { format } from 'date-fns';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { useEnhancedStorage } from '@/hooks/useEnhancedStorage';
+import { Progress } from '@/components/ui/progress';
 
 const CreateOpenCallDialog = () => {
   const [open, setOpen] = useState(false);
   const [submissionDeadline, setSubmissionDeadline] = useState<Date>();
+  const [coverImageFile, setCoverImageFile] = useState<File | null>(null);
+  const [logoImageFile, setLogoImageFile] = useState<File | null>(null);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -34,17 +38,42 @@ const CreateOpenCallDialog = () => {
 
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { uploadHostAsset, uploadProgress, isUploading } = useEnhancedStorage();
 
   const createOpenCall = useMutation({
     mutationFn: async (data: any) => {
       console.log('Creating open call:', data);
       
+      let coverImageUrl = '';
+      let logoImageUrl = '';
+
+      // Upload cover image if provided
+      if (coverImageFile) {
+        const coverResult = await uploadHostAsset.mutateAsync({
+          file: coverImageFile,
+          category: 'covers'
+        });
+        coverImageUrl = coverResult.url;
+      }
+
+      // Upload logo image if provided
+      if (logoImageFile) {
+        const logoResult = await uploadHostAsset.mutateAsync({
+          file: logoImageFile,
+          category: 'logos'
+        });
+        logoImageUrl = logoResult.url;
+      }
+
       const { data: result, error } = await supabase
         .from('open_calls')
         .insert({
           ...data,
           host_user_id: user?.id,
-          submission_deadline: submissionDeadline?.toISOString()
+          submission_deadline: submissionDeadline?.toISOString(),
+          cover_image: coverImageUrl || null,
+          logo_image: logoImageUrl || null,
+          max_submissions: -1 // Unlimited submissions
         })
         .select()
         .single();
@@ -58,24 +87,14 @@ const CreateOpenCallDialog = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['open-calls'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-open-calls'] });
+      queryClient.invalidateQueries({ queryKey: ['featured-open-calls'] });
       toast({
         title: "Open Call Created",
         description: "The open call has been created successfully.",
       });
       setOpen(false);
-      setFormData({
-        title: '',
-        description: '',
-        organization_name: '',
-        organization_website: '',
-        submission_fee: 0,
-        num_winners: 1,
-        prize_info: '',
-        about_host: '',
-        aifilm3_partner: false,
-        status: 'live'
-      });
-      setSubmissionDeadline(undefined);
+      resetForm();
     },
     onError: (error: any) => {
       toast({
@@ -85,6 +104,24 @@ const CreateOpenCallDialog = () => {
       });
     },
   });
+
+  const resetForm = () => {
+    setFormData({
+      title: '',
+      description: '',
+      organization_name: '',
+      organization_website: '',
+      submission_fee: 0,
+      num_winners: 1,
+      prize_info: '',
+      about_host: '',
+      aifilm3_partner: false,
+      status: 'live'
+    });
+    setSubmissionDeadline(undefined);
+    setCoverImageFile(null);
+    setLogoImageFile(null);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -99,6 +136,34 @@ const CreateOpenCallDialog = () => {
     createOpenCall.mutate(formData);
   };
 
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>, type: 'cover' | 'logo') => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (file.size > 50 * 1024 * 1024) { // 50MB limit
+        toast({
+          title: "File too large",
+          description: "Please select a file smaller than 50MB.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (type === 'cover') {
+        setCoverImageFile(file);
+      } else {
+        setLogoImageFile(file);
+      }
+    }
+  };
+
+  const removeFile = (type: 'cover' | 'logo') => {
+    if (type === 'cover') {
+      setCoverImageFile(null);
+    } else {
+      setLogoImageFile(null);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -107,7 +172,7 @@ const CreateOpenCallDialog = () => {
           Create Open Call
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Create New Open Call</DialogTitle>
           <DialogDescription>
@@ -115,35 +180,39 @@ const CreateOpenCallDialog = () => {
           </DialogDescription>
         </DialogHeader>
         
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Basic Information */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="title">Title</Label>
+              <Label htmlFor="title">Title *</Label>
               <Input
                 id="title"
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                placeholder="Enter open call title"
                 required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="organization">Organization</Label>
+              <Label htmlFor="organization">Organization *</Label>
               <Input
                 id="organization"
                 value={formData.organization_name}
                 onChange={(e) => setFormData({ ...formData, organization_name: e.target.value })}
+                placeholder="Your organization name"
                 required
               />
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
+            <Label htmlFor="description">Description *</Label>
             <Textarea
               id="description"
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               rows={4}
+              placeholder="Describe your open call, theme, and what you're looking for..."
               required
             />
           </div>
@@ -159,6 +228,105 @@ const CreateOpenCallDialog = () => {
             />
           </div>
 
+          {/* Images Upload Section */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Cover Image */}
+            <div className="space-y-2">
+              <Label>Cover Image (Optional)</Label>
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
+                {coverImageFile ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                      <div className="flex items-center space-x-2">
+                        <Image className="h-4 w-4" />
+                        <span className="text-sm font-medium">{coverImageFile.name}</span>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeFile('cover')}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center">
+                    <Upload className="h-8 w-8 mx-auto text-gray-400 mb-2" />
+                    <Label htmlFor="cover-upload" className="cursor-pointer">
+                      <span className="text-sm font-medium text-primary hover:text-primary/80">
+                        Upload cover image
+                      </span>
+                      <p className="text-xs text-gray-500 mt-1">PNG, JPG up to 50MB</p>
+                    </Label>
+                    <Input
+                      id="cover-upload"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => handleFileSelect(e, 'cover')}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Logo Image */}
+            <div className="space-y-2">
+              <Label>Organization Logo (Optional)</Label>
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
+                {logoImageFile ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                      <div className="flex items-center space-x-2">
+                        <Image className="h-4 w-4" />
+                        <span className="text-sm font-medium">{logoImageFile.name}</span>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeFile('logo')}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center">
+                    <Upload className="h-8 w-8 mx-auto text-gray-400 mb-2" />
+                    <Label htmlFor="logo-upload" className="cursor-pointer">
+                      <span className="text-sm font-medium text-primary hover:text-primary/80">
+                        Upload logo
+                      </span>
+                      <p className="text-xs text-gray-500 mt-1">PNG, JPG up to 50MB</p>
+                    </Label>
+                    <Input
+                      id="logo-upload"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => handleFileSelect(e, 'logo')}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Upload Progress */}
+          {isUploading && (
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>Uploading images...</span>
+                <span>{uploadProgress}%</span>
+              </div>
+              <Progress value={uploadProgress} className="h-2" />
+            </div>
+          )}
+
+          {/* Details */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="website">Organization Website</Label>
@@ -171,7 +339,7 @@ const CreateOpenCallDialog = () => {
               />
             </div>
             <div className="space-y-2">
-              <Label>Submission Deadline</Label>
+              <Label>Submission Deadline *</Label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button variant="outline" className="w-full justify-start text-left font-normal">
@@ -193,7 +361,7 @@ const CreateOpenCallDialog = () => {
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="prize">Prize Information (Optional)</Label>
+              <Label htmlFor="prize">Prize Information</Label>
               <Input
                 id="prize"
                 value={formData.prize_info}
@@ -256,8 +424,11 @@ const CreateOpenCallDialog = () => {
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={createOpenCall.isPending}>
-              {createOpenCall.isPending ? 'Creating...' : 'Create Open Call'}
+            <Button 
+              type="submit" 
+              disabled={createOpenCall.isPending || isUploading}
+            >
+              {createOpenCall.isPending || isUploading ? 'Creating...' : 'Create Open Call'}
             </Button>
           </DialogFooter>
         </form>
