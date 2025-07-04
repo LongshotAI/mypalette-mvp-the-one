@@ -13,10 +13,8 @@ import {
   Award, 
   Eye, 
   MessageSquare, 
-  Download, 
   CheckCircle, 
   XCircle,
-  Star,
   Mail,
   Users
 } from 'lucide-react';
@@ -56,28 +54,33 @@ const OpenCallCurationPanel = ({ openCallId, numWinners, onClose }: OpenCallCura
   const [curationNotes, setCurationNotes] = useState<Record<string, string>>({});
   const queryClient = useQueryClient();
 
-  const { data: submissions, isLoading } = useQuery({
+  const { data: submissions = [], isLoading, error } = useQuery({
     queryKey: ['open-call-submissions', openCallId],
     queryFn: async () => {
       console.log('Fetching submissions for curation:', openCallId);
       
-      const { data, error } = await supabase
-        .from('submissions')
-        .select(`
-          *,
-          profiles(first_name, last_name, username, avatar_url),
-          artworks(title, image_url, description)
-        `)
-        .eq('open_call_id', openCallId)
-        .eq('payment_status', 'paid')
-        .order('submitted_at', { ascending: false });
+      try {
+        const { data, error } = await supabase
+          .from('submissions')
+          .select(`
+            *,
+            profiles(first_name, last_name, username, avatar_url),
+            artworks(title, image_url, description)
+          `)
+          .eq('open_call_id', openCallId)
+          .eq('payment_status', 'paid')
+          .order('submitted_at', { ascending: false });
 
-      if (error) {
-        console.error('Error fetching submissions:', error);
-        throw error;
+        if (error) {
+          console.error('Error fetching submissions:', error);
+          throw error;
+        }
+
+        return (data as Submission[]) || [];
+      } catch (err) {
+        console.error('Failed to fetch submissions:', err);
+        return [];
       }
-
-      return data as Submission[];
     },
   });
 
@@ -129,30 +132,30 @@ const OpenCallCurationPanel = ({ openCallId, numWinners, onClose }: OpenCallCura
   };
 
   const handleBulkSelection = () => {
-    const topSubmissions = submissions?.slice(0, numWinners).map(s => s.id) || [];
+    const topSubmissions = submissions.slice(0, numWinners).map(s => s.id);
     setSelectedSubmissions(new Set(topSubmissions));
   };
 
   const saveCuration = async () => {
-    const updates = Array.from(selectedSubmissions).map(submissionId => {
-      const notes = curationNotes[submissionId];
-      return updateSubmissionSelection.mutateAsync({
-        submissionId,
-        isSelected: true,
-        notes
-      });
-    });
-
-    // Also mark unselected submissions
-    const unselectedUpdates = submissions
-      ?.filter(s => !selectedSubmissions.has(s.id))
-      .map(s => updateSubmissionSelection.mutateAsync({
-        submissionId: s.id,
-        isSelected: false,
-        notes: curationNotes[s.id]
-      })) || [];
-
     try {
+      const updates = Array.from(selectedSubmissions).map(submissionId => {
+        const notes = curationNotes[submissionId];
+        return updateSubmissionSelection.mutateAsync({
+          submissionId,
+          isSelected: true,
+          notes
+        });
+      });
+
+      // Also mark unselected submissions
+      const unselectedUpdates = submissions
+        .filter(s => !selectedSubmissions.has(s.id))
+        .map(s => updateSubmissionSelection.mutateAsync({
+          submissionId: s.id,
+          isSelected: false,
+          notes: curationNotes[s.id]
+        }));
+
       await Promise.all([...updates, ...unselectedUpdates]);
       toast({
         title: "Curation Complete",
@@ -161,12 +164,17 @@ const OpenCallCurationPanel = ({ openCallId, numWinners, onClose }: OpenCallCura
       onClose();
     } catch (error) {
       console.error('Error saving curation:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save curation. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
   const exportWinnerEmails = () => {
     const winnerEmails = submissions
-      ?.filter(s => selectedSubmissions.has(s.id))
+      .filter(s => selectedSubmissions.has(s.id))
       .map(s => `${s.profiles?.first_name} ${s.profiles?.last_name} <${s.profiles?.username}@email.com>`)
       .join('\n');
     
@@ -187,7 +195,18 @@ const OpenCallCurationPanel = ({ openCallId, numWinners, onClose }: OpenCallCura
     );
   }
 
-  const paidSubmissions = submissions?.filter(s => s.payment_status === 'paid') || [];
+  if (error) {
+    return (
+      <div className="text-center py-8">
+        <p className="text-red-600">Error loading submissions for curation</p>
+        <Button onClick={() => window.location.reload()} className="mt-4">
+          Retry
+        </Button>
+      </div>
+    );
+  }
+
+  const paidSubmissions = submissions.filter(s => s.payment_status === 'paid');
 
   return (
     <div className="space-y-6">
@@ -237,91 +256,99 @@ const OpenCallCurationPanel = ({ openCallId, numWinners, onClose }: OpenCallCura
           <CardTitle>Submissions for Curation</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-12">Select</TableHead>
-                <TableHead>Artist</TableHead>
-                <TableHead>Artwork</TableHead>
-                <TableHead>Submitted</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Notes</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {paidSubmissions.map((submission) => (
-                <TableRow key={submission.id} className={selectedSubmissions.has(submission.id) ? 'bg-green-50' : ''}>
-                  <TableCell>
-                    <Checkbox
-                      checked={selectedSubmissions.has(submission.id)}
-                      onCheckedChange={() => handleSubmissionToggle(submission.id)}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage src={submission.profiles?.avatar_url} />
-                        <AvatarFallback>
-                          {submission.profiles?.first_name?.[0]}{submission.profiles?.last_name?.[0]}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="font-medium">
-                          {submission.profiles?.first_name} {submission.profiles?.last_name}
-                        </p>
-                        <p className="text-sm text-muted-foreground">@{submission.profiles?.username}</p>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <img 
-                        src={submission.artworks?.image_url} 
-                        alt={submission.artworks?.title}
-                        className="w-12 h-12 object-cover rounded"
-                      />
-                      <div>
-                        <p className="font-medium">{submission.artworks?.title}</p>
-                        <p className="text-sm text-muted-foreground line-clamp-1">
-                          {submission.artworks?.description}
-                        </p>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <span className="text-sm">{new Date(submission.submitted_at).toLocaleDateString()}</span>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={submission.is_selected ? 'default' : 'secondary'}>
-                      {submission.is_selected ? 'Selected' : 'Not Selected'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Textarea
-                      placeholder="Add curator notes..."
-                      value={curationNotes[submission.id] || ''}
-                      onChange={(e) => setCurationNotes(prev => ({
-                        ...prev,
-                        [submission.id]: e.target.value
-                      }))}
-                      className="min-h-[60px] text-sm"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-1">
-                      <Button variant="outline" size="sm">
-                        <Eye className="h-3 w-3" />
-                      </Button>
-                      <Button variant="outline" size="sm">
-                        <MessageSquare className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  </TableCell>
+          {paidSubmissions.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">No paid submissions found for this open call.</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-12">Select</TableHead>
+                  <TableHead>Artist</TableHead>
+                  <TableHead>Artwork</TableHead>
+                  <TableHead>Submitted</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Notes</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {paidSubmissions.map((submission) => (
+                  <TableRow key={submission.id} className={selectedSubmissions.has(submission.id) ? 'bg-green-50' : ''}>
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedSubmissions.has(submission.id)}
+                        onCheckedChange={() => handleSubmissionToggle(submission.id)}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={submission.profiles?.avatar_url} />
+                          <AvatarFallback>
+                            {submission.profiles?.first_name?.[0]}{submission.profiles?.last_name?.[0]}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-medium">
+                            {submission.profiles?.first_name} {submission.profiles?.last_name}
+                          </p>
+                          <p className="text-sm text-muted-foreground">@{submission.profiles?.username}</p>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        {submission.artworks?.image_url && (
+                          <img 
+                            src={submission.artworks.image_url} 
+                            alt={submission.artworks.title}
+                            className="w-12 h-12 object-cover rounded"
+                          />
+                        )}
+                        <div>
+                          <p className="font-medium">{submission.artworks?.title || 'Untitled'}</p>
+                          <p className="text-sm text-muted-foreground line-clamp-1">
+                            {submission.artworks?.description || 'No description'}
+                          </p>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm">{new Date(submission.submitted_at).toLocaleDateString()}</span>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={submission.is_selected ? 'default' : 'secondary'}>
+                        {submission.is_selected ? 'Selected' : 'Not Selected'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Textarea
+                        placeholder="Add curator notes..."
+                        value={curationNotes[submission.id] || ''}
+                        onChange={(e) => setCurationNotes(prev => ({
+                          ...prev,
+                          [submission.id]: e.target.value
+                        }))}
+                        className="min-h-[60px] text-sm"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-1">
+                        <Button variant="outline" size="sm">
+                          <Eye className="h-3 w-3" />
+                        </Button>
+                        <Button variant="outline" size="sm">
+                          <MessageSquare className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     </div>

@@ -1,21 +1,17 @@
+
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { ThemeProvider } from "@/components/theme-provider"
-import { QueryClient } from '@tanstack/react-query';
+import { ThemeProvider } from "next-themes"
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from "@/components/ui/toaster"
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ErrorBoundary } from 'react-error-boundary'
 
-import Home from './pages/Home';
-import About from './pages/About';
-import Contact from './pages/Contact';
+import Landing from './pages/Landing';
 import Dashboard from './pages/Dashboard';
-import Portfolio from './pages/Portfolio';
 import OpenCalls from './pages/OpenCalls';
-import AuthLogin from './pages/auth/AuthLogin';
-import AuthRegister from './pages/auth/AuthRegister';
-import AuthForgotPassword from './pages/auth/AuthForgotPassword';
-import AuthResetPassword from './pages/auth/AuthResetPassword';
+import OpenCallDetails from './pages/OpenCallDetails';
+import PortfolioView from './pages/PortfolioView';
 import AdminRoute from '@/components/auth/AdminRoute';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminUsers from './pages/admin/AdminUsers';
@@ -23,30 +19,54 @@ import AdminOpenCalls from './pages/admin/AdminOpenCalls';
 import AdminAnalytics from './pages/admin/AdminAnalytics';
 import ConsolidatedAdminDashboard from './pages/admin/ConsolidatedAdminDashboard';
 
+// Create QueryClient instance
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      refetchOnWindowFocus: false,
+    },
+  },
+});
+
+// Error fallback component
+function ErrorFallback({error, resetErrorBoundary}: {error: Error, resetErrorBoundary: () => void}) {
+  return (
+    <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="text-center">
+        <h2 className="text-2xl font-bold text-red-600 mb-4">Something went wrong</h2>
+        <p className="text-gray-600 mb-4">{error.message}</p>
+        <button 
+          onClick={resetErrorBoundary}
+          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+        >
+          Try again
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function App() {
   return (
-    <ErrorBoundary>
+    <ErrorBoundary
+      FallbackComponent={ErrorFallback}
+      onReset={() => window.location.reload()}
+    >
       <AuthProvider>
-        <ThemeProvider defaultTheme="light" storageKey="mypalette-ui-theme">
-          <QueryClient>
+        <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
+          <QueryClientProvider client={queryClient}>
             <BrowserRouter>
               <div className="min-h-screen bg-background font-sans antialiased">
                 <Routes>
                   {/* Public Routes */}
-                  <Route path="/" element={<Home />} />
-                  <Route path="/about" element={<About />} />
-                  <Route path="/contact" element={<Contact />} />
+                  <Route path="/" element={<Landing />} />
                   <Route path="/open-calls" element={<OpenCalls />} />
-
-                  {/* Auth Routes */}
-                  <Route path="/auth/login" element={<AuthLogin />} />
-                  <Route path="/auth/register" element={<AuthRegister />} />
-                  <Route path="/auth/forgot-password" element={<AuthForgotPassword />} />
-                  <Route path="/auth/reset-password" element={<AuthResetPassword />} />
+                  <Route path="/open-calls/:id" element={<OpenCallDetails />} />
 
                   {/* User Routes */}
                   <Route path="/dashboard" element={<Dashboard />} />
-                  <Route path="/portfolio/:username" element={<Portfolio />} />
+                  <Route path="/portfolio/:username" element={<PortfolioView />} />
                   
                   {/* Admin Routes */}
                   <Route path="/admin" element={
@@ -78,7 +98,7 @@ function App() {
               </div>
               <Toaster />
             </BrowserRouter>
-          </QueryClient>
+          </QueryClientProvider>
         </ThemeProvider>
       </AuthProvider>
     </ErrorBoundary>

@@ -1,13 +1,12 @@
 
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Download, Search, Filter, DollarSign, FileText } from 'lucide-react';
+import { Download, Search, DollarSign, FileText } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 
@@ -32,12 +31,12 @@ const TransactionTrackingPanel = () => {
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'paid' | 'failed' | 'refunded'>('all');
   const [typeFilter, setTypeFilter] = useState<'all' | 'submission_fee' | 'template_purchase'>('all');
 
-  const { data: transactions, isLoading } = useQuery({
+  const { data: transactions = [], isLoading, error } = useQuery({
     queryKey: ['admin-transactions', statusFilter, typeFilter],
     queryFn: async () => {
       console.log('Fetching transactions for admin...');
       
-      // Mock data for now - replace with actual transaction table query
+      // Mock data for now - replace with actual transaction table query when available
       const mockTransactions: Transaction[] = [
         {
           id: '1',
@@ -74,7 +73,7 @@ const TransactionTrackingPanel = () => {
     refetchInterval: 30000, // Refetch every 30 seconds
   });
 
-  const filteredTransactions = transactions?.filter(transaction => {
+  const filteredTransactions = transactions.filter(transaction => {
     const matchesSearch = 
       transaction.profiles?.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       transaction.profiles?.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -85,7 +84,7 @@ const TransactionTrackingPanel = () => {
     const matchesType = typeFilter === 'all' || transaction.type === typeFilter;
     
     return matchesSearch && matchesStatus && matchesType;
-  }) || [];
+  });
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -106,12 +105,10 @@ const TransactionTrackingPanel = () => {
   };
 
   const exportTransactions = (format: 'csv' | 'xlsx') => {
-    // Implementation for exporting transactions
     console.log(`Exporting transactions as ${format}`);
   };
 
   const downloadInvoice = (transactionId: string) => {
-    // Implementation for downloading invoice PDF
     console.log(`Downloading invoice for transaction ${transactionId}`);
   };
 
@@ -119,6 +116,14 @@ const TransactionTrackingPanel = () => {
     return (
       <div className="flex items-center justify-center py-8">
         <LoadingSpinner size="lg" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-8">
+        <p className="text-red-600">Error loading transactions</p>
       </div>
     );
   }
