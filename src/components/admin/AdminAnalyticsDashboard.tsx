@@ -3,6 +3,8 @@ import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BarChart3, TrendingUp, Users, Activity } from 'lucide-react';
+import AnalyticsDashboard from '@/components/analytics/AnalyticsDashboard';
+import RealTimeAnalytics from './RealTimeAnalytics';
 
 const AdminAnalyticsDashboard = () => {
   return (
@@ -36,55 +38,7 @@ const AdminAnalyticsDashboard = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-muted-foreground">Total Users</p>
-                        <p className="text-2xl font-bold">1,247</p>
-                      </div>
-                      <Users className="h-6 w-6 text-blue-500" />
-                    </div>
-                  </CardContent>
-                </Card>
-                
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-muted-foreground">Active Users</p>
-                        <p className="text-2xl font-bold">847</p>
-                      </div>
-                      <Activity className="h-6 w-6 text-green-500" />
-                    </div>
-                  </CardContent>
-                </Card>
-                
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-muted-foreground">Total Portfolios</p>
-                        <p className="text-2xl font-bold">523</p>
-                      </div>
-                      <BarChart3 className="h-6 w-6 text-purple-500" />
-                    </div>
-                  </CardContent>
-                </Card>
-                
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-muted-foreground">Open Calls</p>
-                        <p className="text-2xl font-bold">12</p>
-                      </div>
-                      <TrendingUp className="h-6 w-6 text-orange-500" />
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
+              <AnalyticsDashboard />
             </CardContent>
           </Card>
         </TabsContent>
@@ -101,7 +55,7 @@ const AdminAnalyticsDashboard = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-muted-foreground">Real-time analytics components would be implemented here.</p>
+              <RealTimeAnalytics />
             </CardContent>
           </Card>
         </TabsContent>
@@ -118,7 +72,7 @@ const AdminAnalyticsDashboard = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-muted-foreground">Detailed analytics components would be implemented here.</p>
+              <AnalyticsDashboard />
             </CardContent>
           </Card>
         </TabsContent>
