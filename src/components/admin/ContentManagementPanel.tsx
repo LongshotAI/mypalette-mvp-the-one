@@ -160,24 +160,34 @@ const ContentManagementPanel = () => {
                       </div>
                       
                       <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-2">
-                          <label className="text-sm">Public:</label>
-                          <Switch
-                            checked={portfolio.is_public}
-                            onCheckedChange={(checked) => 
-                              updatePortfolioVisibility.mutate({ id: portfolio.id, is_public: checked })
-                            }
-                          />
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <label className="text-sm">Featured:</label>
-                          <Switch
-                            checked={portfolio.is_featured}
-                            onCheckedChange={(checked) => 
-                              updatePortfolioFeatured.mutate({ id: portfolio.id, is_featured: checked })
-                            }
-                          />
-                        </div>
+                         <div className="flex items-center gap-2">
+                           <label className="text-sm font-medium">Public:</label>
+                           <Switch
+                             checked={portfolio.is_public}
+                             onCheckedChange={(checked) => {
+                               updatePortfolioVisibility.mutate({ id: portfolio.id, is_public: checked });
+                               toast({
+                                 title: checked ? "Portfolio Made Public" : "Portfolio Made Private",
+                                 description: `${portfolio.title} is now ${checked ? 'visible to everyone' : 'private'}.`,
+                               });
+                             }}
+                             disabled={updatePortfolioVisibility.isPending}
+                           />
+                         </div>
+                         <div className="flex items-center gap-2">
+                           <label className="text-sm font-medium">Featured:</label>
+                           <Switch
+                             checked={portfolio.is_featured}
+                             onCheckedChange={(checked) => {
+                               updatePortfolioFeatured.mutate({ id: portfolio.id, is_featured: checked });
+                               toast({
+                                 title: checked ? "Portfolio Featured" : "Portfolio Unfeatured",
+                                 description: `${portfolio.title} ${checked ? 'will appear on the landing page' : 'removed from landing page'}.`,
+                               });
+                             }}
+                             disabled={updatePortfolioFeatured.isPending}
+                           />
+                         </div>
                         <Button size="sm" variant="outline" asChild>
                           <a href={`/portfolio/${portfolio.slug}`} target="_blank">
                             <Eye className="h-4 w-4" />
@@ -230,12 +240,17 @@ const ContentManagementPanel = () => {
                       
                       <div className="flex items-center gap-2">
                         <div className="flex items-center gap-2">
-                          <label className="text-sm">Featured:</label>
+                          <label className="text-sm font-medium">Featured:</label>
                           <Switch
                             checked={artwork.is_featured}
-                            onCheckedChange={(checked) => 
-                              updateArtworkFeatured.mutate({ id: artwork.id, is_featured: checked })
-                            }
+                            onCheckedChange={(checked) => {
+                              updateArtworkFeatured.mutate({ id: artwork.id, is_featured: checked });
+                              toast({
+                                title: checked ? "Artwork Featured" : "Artwork Unfeatured",
+                                description: `${artwork.title} ${checked ? 'will appear in featured sections' : 'removed from featured sections'}.`,
+                              });
+                            }}
+                            disabled={updateArtworkFeatured.isPending}
                           />
                         </div>
                       </div>

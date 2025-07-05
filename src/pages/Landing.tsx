@@ -273,7 +273,7 @@ const Landing = () => {
                           variant="outline" 
                           size="sm" 
                           className="w-full"
-                          onClick={() => navigate(`/open-call/${openCall.id}`)}
+                          onClick={() => navigate(`/open-calls/${openCall.id}`)}
                         >
                           View Details
                         </Button>

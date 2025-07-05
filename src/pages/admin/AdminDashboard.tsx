@@ -32,6 +32,7 @@ import { useAnalytics } from '@/hooks/useAnalytics';
 import { useUserAnalytics } from '@/hooks/useUserAnalytics';
 import { useAuth } from '@/contexts/AuthContext';
 import PerformanceOptimizer from '@/components/performance/PerformanceOptimizer';
+import LaunchReadinessChecker from '@/components/testing/LaunchReadinessChecker';
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
@@ -345,6 +346,17 @@ const AdminDashboard = () => {
                 </CardHeader>
                 <CardContent>
                   <AdminDebugInfo />
+                </CardContent>
+              </Card>
+
+              {/* Launch Readiness Assessment */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Launch Readiness Assessment</CardTitle>
+                  <CardDescription>Comprehensive pre-launch system check</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <LaunchReadinessChecker />
                 </CardContent>
               </Card>
 

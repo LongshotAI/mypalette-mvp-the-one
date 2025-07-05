@@ -387,6 +387,29 @@ const HostApplicationManagement = () => {
                             </TabsContent>
                             
                             <TabsContent value="review" className="space-y-4">
+                              {/* Review Status */}
+                              <div className="p-4 bg-muted/30 rounded-lg">
+                                <div className="flex items-center justify-between mb-4">
+                                  <h4 className="font-semibold">Application Status</h4>
+                                  <Badge className={getStatusColor(selectedApplication.application_status)}>
+                                    <StatusIcon className="h-3 w-3 mr-1" />
+                                    {selectedApplication.application_status}
+                                  </Badge>
+                                </div>
+                                
+                                {selectedApplication.reviewed_at && (
+                                  <div className="text-sm">
+                                    <p><strong>Reviewed:</strong> {new Date(selectedApplication.reviewed_at).toLocaleDateString()}</p>
+                                    {selectedApplication.admin_notes && (
+                                      <div className="mt-2">
+                                        <strong>Admin Notes:</strong>
+                                        <p className="text-muted-foreground mt-1">{selectedApplication.admin_notes}</p>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+
                               <div>
                                 <Label htmlFor="reviewNotes">Review Notes</Label>
                                 <Textarea

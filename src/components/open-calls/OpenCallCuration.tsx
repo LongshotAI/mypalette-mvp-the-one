@@ -131,9 +131,13 @@ const OpenCallCuration = ({ openCallId, openCall }: OpenCallCurationProps) => {
       return;
     }
 
+    // Show confirmation before finalizing
+    if (!confirm(`Are you sure you want to finalize curation with ${selectedWinners.length} selected winner(s)? This action cannot be undone.`)) {
+      return;
+    }
+
     setIsSubmitting(true);
     finalizeCuration.mutate();
-    setIsSubmitting(false);
   };
 
   const handleSelectionChange = (selectedIds: string[]) => {
