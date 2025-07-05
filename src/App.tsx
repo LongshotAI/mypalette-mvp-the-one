@@ -20,6 +20,7 @@ import ProfileSettings from '@/pages/ProfileSettings';
 import Discover from '@/pages/Discover';
 import OpenCalls from '@/pages/OpenCalls';
 import OpenCallDetails from '@/pages/OpenCallDetails';
+import OpenCallCurationPage from '@/pages/OpenCallCurationPage';
 import SubmissionForm from '@/pages/SubmissionForm';
 import HostApplication from '@/pages/HostApplication';
 import Education from '@/pages/Education';
@@ -116,6 +117,11 @@ function App() {
                 <Route path="/host-application" element={
                   <ProtectedRoute>
                     <HostApplication />
+                  </ProtectedRoute>
+                } />
+                <Route path="/open-calls/:callId/curate" element={
+                  <ProtectedRoute>
+                    <OpenCallCurationPage />
                   </ProtectedRoute>
                 } />
                 

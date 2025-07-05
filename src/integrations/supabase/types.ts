@@ -940,6 +940,32 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_host_application: {
+        Args: {
+          p_applicant_id: string
+          p_organization_name: string
+          p_organization_type: string
+          p_contact_email: string
+          p_proposed_title: string
+          p_proposed_description: string
+          p_proposed_deadline: string
+          p_experience_description: string
+          p_curatorial_statement: string
+          p_website_url?: string
+          p_phone?: string
+          p_address?: string
+          p_proposed_theme?: string
+          p_proposed_exhibition_dates?: string
+          p_proposed_venue?: string
+          p_proposed_budget?: number
+          p_proposed_prize_amount?: number
+          p_target_submissions?: number
+          p_previous_exhibitions?: string
+          p_technical_requirements?: string
+          p_marketing_plan?: string
+        }
+        Returns: string
+      }
       create_notification: {
         Args: {
           p_user_id: string

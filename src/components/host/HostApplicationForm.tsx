@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CalendarIcon, Building, Mail, Phone, MapPin } from 'lucide-react';
 import { useHostApplications, HostApplicationData } from '@/hooks/useHostApplications';
+import { toast } from '@/hooks/use-toast';
 
 const HostApplicationForm = () => {
   const { createHostApplication } = useHostApplications();
@@ -38,6 +39,19 @@ const HostApplicationForm = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate required fields
+    if (!formData.organizationName || !formData.organizationType || !formData.contactEmail || 
+        !formData.proposedTitle || !formData.proposedDescription || !formData.proposedDeadline ||
+        !formData.experienceDescription || !formData.curatorialStatement) {
+      toast({
+        title: "Missing Required Fields",
+        description: "Please fill in all required fields marked with *",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -67,6 +81,11 @@ const HostApplicationForm = () => {
       });
     } catch (error) {
       console.error('Failed to submit application:', error);
+      toast({
+        title: "Application Submission Failed",
+        description: error instanceof Error ? error.message : "Please try again or contact support",
+        variant: "destructive"
+      });
     } finally {
       setIsSubmitting(false);
     }

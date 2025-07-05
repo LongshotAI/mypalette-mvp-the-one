@@ -11,6 +11,8 @@ import { Eye, Search, Filter, Award, Calendar, Palette } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Submission, SubmissionData } from '@/types/submission';
 import { convertToSubmissionData } from '@/utils/typeGuards';
+import { useAuth } from '@/contexts/AuthContext';
+import { useAdminCheck } from '@/hooks/useAdminCheck';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 
 interface SubmissionsListProps {
@@ -32,6 +34,30 @@ const SubmissionsList = ({
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedSubmissions, setSelectedSubmissions] = useState<string[]>([]);
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
+  
+  const { user } = useAuth();
+  const { data: adminRole } = useAdminCheck();
+  const isAdmin = adminRole === 'admin';
+
+  // Check if user is host of this open call
+  const { data: openCall } = useQuery({
+    queryKey: ['open-call-host-check', openCallId],
+    queryFn: async () => {
+      if (!user) return null;
+      const { data, error } = await supabase
+        .from('open_calls')
+        .select('host_user_id')
+        .eq('id', openCallId)
+        .single();
+      
+      if (error) return null;
+      return data;
+    },
+    enabled: !!user && !!openCallId,
+  });
+
+  const isHost = user && openCall?.host_user_id === user.id;
+  const canViewPaymentStatus = isAdmin || isHost || allowSelection; // Curation mode also needs payment status
 
   const { data: submissions, isLoading } = useQuery({
     queryKey: ['submissions-list', openCallId],
@@ -128,8 +154,12 @@ const SubmissionsList = ({
         <div className="flex gap-2 text-sm">
           <Badge variant="outline">Total: {stats.total}</Badge>
           <Badge className="bg-green-500">Selected: {stats.selected}</Badge>
-          <Badge className="bg-blue-500">Paid: {stats.paid}</Badge>
-          <Badge className="bg-purple-500">Free: {stats.free}</Badge>
+          {canViewPaymentStatus && (
+            <>
+              <Badge className="bg-blue-500">Paid: {stats.paid}</Badge>
+              <Badge className="bg-purple-500">Free: {stats.free}</Badge>
+            </>
+          )}
         </div>
       </div>
 
@@ -157,8 +187,12 @@ const SubmissionsList = ({
                   <SelectItem value="all">All Submissions</SelectItem>
                   <SelectItem value="selected">Selected</SelectItem>
                   <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="paid">Paid</SelectItem>
-                  <SelectItem value="free">Free</SelectItem>
+                  {canViewPaymentStatus && (
+                    <>
+                      <SelectItem value="paid">Paid</SelectItem>
+                      <SelectItem value="free">Free</SelectItem>
+                    </>
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -226,9 +260,11 @@ const SubmissionsList = ({
                             Selected
                           </Badge>
                         )}
-                        <Badge className={getStatusColor(submission)}>
-                          {submission.payment_status}
-                        </Badge>
+                        {canViewPaymentStatus && (
+                          <Badge className={getStatusColor(submission)}>
+                            {submission.payment_status}
+                          </Badge>
+                        )}
                       </div>
                     </div>
                   </CardHeader>
@@ -300,9 +336,11 @@ const SubmissionsList = ({
                                 </div>
                                 <div>
                                   <h4 className="font-semibold mb-2">Submission Details</h4>
-                                  <p className="text-sm">
-                                    <strong>Status:</strong> {selectedSubmission.payment_status}
-                                  </p>
+                                  {canViewPaymentStatus && (
+                                    <p className="text-sm">
+                                      <strong>Status:</strong> {selectedSubmission.payment_status}
+                                    </p>
+                                  )}
                                   <p className="text-sm">
                                     <strong>Medium:</strong> {getSubmissionData(selectedSubmission).medium}
                                   </p>

@@ -5,9 +5,10 @@ import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Calendar, DollarSign, Users, MapPin, Clock, Award, ExternalLink, AlertCircle, ArrowLeft } from 'lucide-react';
+import { Calendar, DollarSign, Users, MapPin, Clock, Award, ExternalLink, AlertCircle, ArrowLeft, Crown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAdminCheck } from '@/hooks/useAdminCheck';
 import { motion } from 'framer-motion';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import SubmissionsList from '@/components/open-calls/SubmissionsList';
@@ -16,6 +17,8 @@ const OpenCallDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { data: adminRole } = useAdminCheck();
+  const isAdmin = adminRole === 'admin';
 
   // Validate UUID format
   const isValidUUID = (uuid: string) => {
@@ -54,6 +57,8 @@ const OpenCallDetails = () => {
     },
     enabled: !!id,
   });
+
+  const isHost = user && openCall && openCall.host_user_id === user.id;
 
   const { data: submissionCount } = useQuery({
     queryKey: ['submission-count', id],
@@ -280,6 +285,17 @@ const OpenCallDetails = () => {
                 {!isExpired && openCall.status === 'live' && (
                   <Button size="lg" className="w-full md:w-auto" onClick={handleSubmit}>
                     Submit Your Work
+                  </Button>
+                )}
+                
+                {(isExpired || openCall.status === 'under_curation') && (isHost || isAdmin) && (
+                  <Button 
+                    size="lg" 
+                    className="w-full md:w-auto bg-yellow-500 hover:bg-yellow-600"
+                    onClick={() => navigate(`/open-calls/${id}/curate`)}
+                  >
+                    <Crown className="h-4 w-4 mr-2" />
+                    Curate Submissions
                   </Button>
                 )}
               </CardContent>
