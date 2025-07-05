@@ -1,3 +1,4 @@
+
 import Layout from '@/components/layout/Layout';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,6 +10,8 @@ import SearchFilters, { SearchFilters as SearchFiltersType } from '@/components/
 import ArtistCard from '@/components/discover/ArtistCard';
 import PortfolioCard from '@/components/portfolio/PortfolioCard';
 import { useDiscovery } from '@/hooks/useDiscovery';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 const Discover = () => {
   const {
@@ -26,10 +29,52 @@ const Discover = () => {
     currentPage
   } = useDiscovery();
 
+  // Fetch actual featured content for the Featured tab
+  const { data: featuredContent, isLoading: featuredContentLoading } = useQuery({
+    queryKey: ['featured-discover-content'],
+    queryFn: async () => {
+      console.log('Loading featured content for discover page...');
+      
+      const [featuredArtistsResponse, featuredPortfoliosResponse] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('*')
+          .not('username', 'is', null)
+          .not('avatar_url', 'is', null)
+          .order('created_at', { ascending: false })
+          .limit(8),
+        supabase
+          .from('portfolios')
+          .select(`
+            *,
+            profiles!inner (
+              username,
+              first_name,
+              last_name,
+              avatar_url,
+              artistic_medium
+            )
+          `)
+          .eq('is_public', true)
+          .eq('is_featured', true)
+          .order('view_count', { ascending: false })
+          .limit(8)
+      ]);
+
+      const result = {
+        featuredArtists: featuredArtistsResponse.data || [],
+        featuredPortfolios: featuredPortfoliosResponse.data || []
+      };
+
+      console.log('Featured content loaded for discover:', result);
+      return result;
+    },
+  });
+
   const [activeView, setActiveView] = useState<'search' | 'featured' | 'trending'>('featured');
 
   // Determine loading state based on active view
-  const loading = activeView === 'featured' ? featuredLoading : 
+  const loading = activeView === 'featured' ? featuredContentLoading : 
                  activeView === 'search' ? artistsLoading : 
                  portfoliosLoading;
 
@@ -136,55 +181,86 @@ const Discover = () => {
   );
 
   const renderFeaturedContent = () => (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="text-center">
         <h2 className="text-2xl font-bold mb-2">Featured Content</h2>
-        <p className="text-muted-foreground">Discover amazing artists and portfolios</p>
+        <p className="text-muted-foreground">Handpicked artists and portfolios showcasing exceptional work</p>
       </div>
       
-      {featuredData ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                Featured Artists
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-primary">
-                {featuredData.artists}
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Artists to discover
-              </p>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Palette className="h-5 w-5" />
-                Featured Portfolios
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-primary">
-                {featuredData.portfolios}
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Portfolios to explore
-              </p>
-            </CardContent>
-          </Card>
+      {featuredContentLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {[...Array(8)].map((_, i) => (
+            <div key={i} className="h-80 bg-muted animate-pulse rounded-lg" />
+          ))}
         </div>
       ) : (
-        <div className="text-center py-12">
-          <div className="w-16 h-16 mx-auto mb-4 bg-primary/10 rounded-full flex items-center justify-center">
-            <Star className="h-8 w-8 text-primary/60" />
-          </div>
-          <h3 className="text-lg font-semibold mb-2">Loading featured content...</h3>
-        </div>
+        <>
+          {/* Featured Portfolios Section */}
+          {featuredContent?.featuredPortfolios && featuredContent.featuredPortfolios.length > 0 && (
+            <div className="space-y-6">
+              <div className="flex items-center gap-2">
+                <Palette className="h-6 w-6 text-primary" />
+                <h3 className="text-xl font-semibold">Featured Portfolios</h3>
+                <Badge variant="secondary">{featuredContent.featuredPortfolios.length}</Badge>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {featuredContent.featuredPortfolios.map((portfolio) => {
+                  const transformedPortfolio = {
+                    ...portfolio,
+                    profiles: {
+                      ...portfolio.profiles,
+                      artistic_medium: portfolio.profiles?.artistic_medium || null
+                    }
+                  };
+                  
+                  return (
+                    <PortfolioCard
+                      key={portfolio.id}
+                      portfolio={transformedPortfolio}
+                      showActions={false}
+                      showPublicActions={true}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Featured Artists Section */}
+          {featuredContent?.featuredArtists && featuredContent.featuredArtists.length > 0 && (
+            <div className="space-y-6">
+              <div className="flex items-center gap-2">
+                <Users className="h-6 w-6 text-primary" />
+                <h3 className="text-xl font-semibold">Featured Artists</h3>
+                <Badge variant="secondary">{featuredContent.featuredArtists.length}</Badge>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {featuredContent.featuredArtists.map((artist) => (
+                  <ArtistCard
+                    key={artist.id}
+                    artist={artist}
+                    onFollowChange={updateFollowStatus}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Empty State */}
+          {(!featuredContent?.featuredPortfolios?.length && !featuredContent?.featuredArtists?.length) && (
+            <div className="text-center py-12">
+              <div className="w-16 h-16 mx-auto mb-4 bg-primary/10 rounded-full flex items-center justify-center">
+                <Star className="h-8 w-8 text-primary/60" />
+              </div>
+              <h3 className="text-lg font-semibold mb-2">No featured content yet</h3>
+              <p className="text-muted-foreground">
+                Check back soon for featured artists and portfolios!
+              </p>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
