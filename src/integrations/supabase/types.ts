@@ -891,6 +891,50 @@ export type Database = {
         }
         Relationships: []
       }
+      user_submission_payments: {
+        Row: {
+          created_at: string | null
+          free_submissions_used: number
+          id: string
+          open_call_id: string
+          paid_submissions: number
+          submission_count: number
+          total_paid: number
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          free_submissions_used?: number
+          id?: string
+          open_call_id: string
+          paid_submissions?: number
+          submission_count?: number
+          total_paid?: number
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          free_submissions_used?: number
+          id?: string
+          open_call_id?: string
+          paid_submissions?: number
+          submission_count?: number
+          total_paid?: number
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_submission_payments_open_call_id_fkey"
+            columns: ["open_call_id"]
+            isOneToOne: false
+            referencedRelation: "open_calls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -923,6 +967,14 @@ export type Database = {
         Args: { p_user_id: string; p_open_call_id: string }
         Returns: number
       }
+      get_user_submission_pricing: {
+        Args: { p_user_id: string; p_open_call_id: string }
+        Returns: {
+          free_remaining: number
+          paid_count: number
+          next_submission_cost: number
+        }[]
+      }
       increment_portfolio_views: {
         Args: { portfolio_id: string }
         Returns: undefined
@@ -947,6 +999,10 @@ export type Database = {
       }
       track_user_event: {
         Args: { p_event_type: string; p_event_data?: Json }
+        Returns: undefined
+      }
+      update_submission_payment_tracking: {
+        Args: { p_user_id: string; p_open_call_id: string; p_is_free: boolean }
         Returns: undefined
       }
       update_submission_status: {

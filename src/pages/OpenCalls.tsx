@@ -191,10 +191,17 @@ const OpenCalls = () => {
                               {openCall.title}
                             </CardTitle>
                             {openCall.organization_name && (
-                              <div className="flex items-center gap-1 mt-1 text-sm text-muted-foreground">
-                                <Building className="h-3 w-3" />
-                                {openCall.organization_name}
-                              </div>
+                            <div className="flex items-center gap-1 mt-1 text-sm text-muted-foreground">
+                              <Building className="h-3 w-3" />
+                              {openCall.organization_name}
+                              {openCall.logo_image && (
+                                <img 
+                                  src={openCall.logo_image} 
+                                  alt={`${openCall.organization_name} logo`}
+                                  className="h-4 w-4 object-cover rounded ml-1"
+                                />
+                              )}
+                            </div>
                             )}
                           </div>
                           
@@ -208,6 +215,17 @@ const OpenCalls = () => {
                       </CardHeader>
                       
                       <CardContent className="space-y-4">
+                        {/* Show cover image if available */}
+                        {openCall.cover_image && (
+                          <div className="aspect-video w-full mb-4">
+                            <img 
+                              src={openCall.cover_image} 
+                              alt={openCall.title}
+                              className="w-full h-full object-cover rounded-lg"
+                            />
+                          </div>
+                        )}
+
                         <p className="text-sm text-muted-foreground line-clamp-3">
                           {openCall.description}
                         </p>
@@ -224,23 +242,23 @@ const OpenCalls = () => {
                             </span>
                           </div>
 
-                          <div className="flex items-center justify-between text-sm">
+                           <div className="flex items-center justify-between text-sm">
                             <div className="flex items-center gap-1 text-muted-foreground">
                               <DollarSign className="h-4 w-4" />
                               Submission Fee
                             </div>
                             <span className="font-medium">
-                              {openCall.submission_fee === 0 ? 'Free' : `$${openCall.submission_fee}`}
+                              1 free, then $2 each
                             </span>
                           </div>
 
                           <div className="flex items-center justify-between text-sm">
                             <div className="flex items-center gap-1 text-muted-foreground">
                               <Users className="h-4 w-4" />
-                              Winners Selected
+                              Artists Selected
                             </div>
                             <span className="font-medium">
-                              {openCall.num_winners || 1} {openCall.num_winners === 1 ? 'winner' : 'winners'}
+                              {openCall.num_winners || 1} {openCall.num_winners === 1 ? 'artist' : 'artists'}
                             </span>
                           </div>
                         </div>

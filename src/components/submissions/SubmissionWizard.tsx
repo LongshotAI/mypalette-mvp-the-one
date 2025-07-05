@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { ArrowLeft, ArrowRight, Check } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, DollarSign, AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import SubmissionFormFields from '@/components/submissions/SubmissionFormFields';
 import { useSubmissions } from '@/hooks/useSubmissions';
 import { useOpenCalls } from '@/hooks/useOpenCalls';
+import { useSubmissionPricing, formatPricingDisplay } from '@/hooks/useSubmissionPricing';
 import { toast } from '@/hooks/use-toast';
 import { SubmissionData } from '@/types/submission';
 
@@ -31,6 +33,7 @@ const SubmissionWizard = ({ openCallId, onSuccess }: SubmissionWizardProps) => {
 
   const { createSubmission } = useSubmissions();
   const { getOpenCallById } = useOpenCalls();
+  const { pricingInfo, isLoadingPricing, updatePricing } = useSubmissionPricing(openCallId);
   const openCallQuery = getOpenCallById(openCallId);
 
   const steps = [
@@ -77,24 +80,39 @@ const SubmissionWizard = ({ openCallId, onSuccess }: SubmissionWizardProps) => {
   const handleSubmit = async () => {
     if (!validateCurrentStep()) return;
 
+    // Check if user can submit based on pricing
+    if (!pricingInfo?.canSubmit) {
+      toast({
+        title: "Submission Limit Reached",
+        description: "You have reached the maximum number of submissions (6) for this open call.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       console.log('Submitting artwork to open call:', openCallId, submissionData);
+      
+      // Determine if this is a free submission
+      const isFreeSubmission = (pricingInfo?.freeRemaining || 0) > 0;
+      
+      // Update pricing tracking first
+      await updatePricing.mutateAsync({ isFreebies: isFreeSubmission });
       
       const result = await createSubmission.mutateAsync({
         openCallId,
         submissionData
       });
 
-      if (result.paymentRequired) {
+      if (!isFreeSubmission && pricingInfo?.nextSubmissionCost && pricingInfo.nextSubmissionCost > 0) {
         toast({
           title: "Payment Required",
-          description: "Please complete payment to finalize your submission.",
+          description: `Your submission fee of $${pricingInfo.nextSubmissionCost} has been processed.`,
         });
-        // Handle payment flow here if needed
       } else {
         toast({
-          title: "Submission Successful",
+          title: "Free Submission Successful",
           description: "Your artwork has been submitted successfully!",
         });
       }
@@ -114,7 +132,7 @@ const SubmissionWizard = ({ openCallId, onSuccess }: SubmissionWizardProps) => {
     }
   };
 
-  if (openCallQuery.isLoading) {
+  if (openCallQuery.isLoading || isLoadingPricing) {
     return (
       <div className="text-center py-8">
         <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
@@ -138,7 +156,33 @@ const SubmissionWizard = ({ openCallId, onSuccess }: SubmissionWizardProps) => {
       {/* Header */}
       <div className="text-center">
         <h1 className="text-3xl font-bold mb-2">Submit to "{openCall.title}"</h1>
-        <p className="text-muted-foreground">{openCall.organization_name}</p>
+        <p className="text-muted-foreground mb-4">{openCall.organization_name}</p>
+        
+        {/* Pricing Info */}
+        {pricingInfo && (
+          <Card className="mb-6">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-center gap-3">
+                <DollarSign className="h-5 w-5 text-primary" />
+                <div className="text-center">
+                  <p className="font-medium">{formatPricingDisplay(pricingInfo)}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {pricingInfo.totalSubmissions} of 6 total submissions used
+                  </p>
+                </div>
+              </div>
+              
+              {!pricingInfo.canSubmit && (
+                <Alert variant="destructive" className="mt-4">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    You have reached the maximum of 6 submissions for this open call.
+                  </AlertDescription>
+                </Alert>
+              )}
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Progress */}
@@ -252,8 +296,14 @@ const SubmissionWizard = ({ openCallId, onSuccess }: SubmissionWizardProps) => {
             <ArrowRight className="h-4 w-4 ml-2" />
           </Button>
         ) : (
-          <Button onClick={handleSubmit} disabled={isSubmitting}>
-            {isSubmitting ? 'Submitting...' : 'Submit Artwork'}
+          <Button 
+            onClick={handleSubmit} 
+            disabled={isSubmitting || !pricingInfo?.canSubmit}
+          >
+            {isSubmitting ? 'Submitting...' : 
+             pricingInfo?.freeRemaining ? 'Submit Artwork (Free)' : 
+             pricingInfo?.nextSubmissionCost ? `Submit Artwork ($${pricingInfo.nextSubmissionCost})` :
+             'Submit Artwork'}
           </Button>
         )}
       </div>

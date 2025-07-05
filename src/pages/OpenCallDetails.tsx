@@ -189,10 +189,10 @@ const OpenCallDetails = () => {
             </div>
             {/* Header */}
             <Card className="overflow-hidden">
-              {openCall.banner_image && (
+              {(openCall.banner_image || openCall.cover_image) && (
                 <div className="aspect-video bg-gradient-to-br from-primary/20 to-secondary/20">
                   <img 
-                    src={openCall.banner_image} 
+                    src={openCall.banner_image || openCall.cover_image} 
                     alt={openCall.title}
                     className="w-full h-full object-cover"
                   />
@@ -202,9 +202,18 @@ const OpenCallDetails = () => {
                 <div className="flex justify-between items-start">
                   <div>
                     <CardTitle className="text-3xl mb-2">{openCall.title}</CardTitle>
-                    <p className="text-muted-foreground">
-                      Organized by {openCall.organization_name || openCall.profiles?.first_name}
-                    </p>
+                    <div className="flex items-center gap-3 mb-2">
+                      <p className="text-muted-foreground">
+                        Organized by {openCall.organization_name || openCall.profiles?.first_name}
+                      </p>
+                      {openCall.logo_image && (
+                        <img 
+                          src={openCall.logo_image} 
+                          alt={`${openCall.organization_name} logo`}
+                          className="h-8 w-8 object-cover rounded border"
+                        />
+                      )}
+                    </div>
                     {openCall.organization_website && (
                       <a 
                         href={openCall.organization_website}
@@ -251,7 +260,7 @@ const OpenCallDetails = () => {
                     <div>
                       <p className="font-medium">Submission Fee</p>
                       <p className="text-sm text-muted-foreground">
-                        Free first, then ${openCall.submission_fee || 2}
+                        1 free submission, then $2 each (max 6 total)
                       </p>
                     </div>
                   </div>

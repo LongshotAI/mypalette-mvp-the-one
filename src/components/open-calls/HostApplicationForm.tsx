@@ -6,12 +6,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar, DollarSign, Users, Building } from 'lucide-react';
+import { Calendar, DollarSign, Users, Building, Upload, Image, X } from 'lucide-react';
 import { useHostApplications } from '@/hooks/useHostApplications';
 import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 const HostApplicationForm = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const [isUploadingCover, setIsUploadingCover] = useState(false);
   const [formData, setFormData] = useState({
     organizationName: '',
     organizationType: '',
@@ -27,15 +30,86 @@ const HostApplicationForm = () => {
     proposedVenue: '',
     proposedBudget: 0,
     proposedPrizeAmount: 0,
-    targetSubmissions: 100,
+    targetSubmissions: 3,
     experienceDescription: '',
     previousExhibitions: '',
     curatorialStatement: '',
     technicalRequirements: '',
-    marketingPlan: ''
+    marketingPlan: '',
+    logoImage: '',
+    coverImage: ''
   });
 
   const { createHostApplication } = useHostApplications();
+
+  // Image upload handlers
+  const handleImageUpload = async (file: File, type: 'logo' | 'cover') => {
+    const maxSize = 5 * 1024 * 1024; // 5MB limit
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    
+    if (!allowedTypes.includes(file.type)) {
+      toast({
+        title: "Invalid File Type",
+        description: "Please upload a JPEG, PNG, or WebP image.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (file.size > maxSize) {
+      toast({
+        title: "File Too Large",
+        description: "Please upload an image smaller than 5MB.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const setUploading = type === 'logo' ? setIsUploadingLogo : setIsUploadingCover;
+    const bucket = 'host_assets';
+    
+    setUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${type}-${Date.now()}.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from(bucket)
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from(bucket)
+        .getPublicUrl(fileName);
+
+      setFormData(prev => ({
+        ...prev,
+        [type === 'logo' ? 'logoImage' : 'coverImage']: publicUrl
+      }));
+
+      toast({
+        title: "Upload Successful",
+        description: `${type === 'logo' ? 'Logo' : 'Cover'} image uploaded successfully.`,
+      });
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast({
+        title: "Upload Failed",
+        description: "Failed to upload image. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const removeImage = (type: 'logo' | 'cover') => {
+    setFormData(prev => ({
+      ...prev,
+      [type === 'logo' ? 'logoImage' : 'coverImage']: ''
+    }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,12 +144,14 @@ const HostApplicationForm = () => {
         proposedVenue: '',
         proposedBudget: 0,
         proposedPrizeAmount: 0,
-        targetSubmissions: 100,
+        targetSubmissions: 3,
         experienceDescription: '',
         previousExhibitions: '',
         curatorialStatement: '',
         technicalRequirements: '',
-        marketingPlan: ''
+        marketingPlan: '',
+        logoImage: '',
+        coverImage: ''
       });
     } catch (error) {
       console.error('Failed to submit host application:', error);
@@ -175,6 +251,103 @@ const HostApplicationForm = () => {
                 placeholder="Full address of your organization"
                 rows={2}
               />
+            </div>
+
+            {/* Logo and Cover Image Upload */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label>Organization Logo (Optional)</Label>
+                <div className="mt-2">
+                  {formData.logoImage ? (
+                    <div className="relative">
+                      <img 
+                        src={formData.logoImage} 
+                        alt="Organization logo" 
+                        className="w-full h-32 object-cover rounded-lg border"
+                      />
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        className="absolute top-2 right-2"
+                        onClick={() => removeImage('logo')}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div 
+                      className="border-2 border-dashed rounded-lg p-6 text-center hover:border-primary cursor-pointer transition-colors"
+                      onClick={() => document.getElementById('logo-upload')?.click()}
+                    >
+                      <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                      <p className="text-sm text-muted-foreground">
+                        Click to upload logo
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Max 5MB • JPEG, PNG, WebP
+                      </p>
+                    </div>
+                  )}
+                  <input
+                    id="logo-upload"
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleImageUpload(file, 'logo');
+                    }}
+                    className="hidden"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label>Cover Image (Optional)</Label>
+                <div className="mt-2">
+                  {formData.coverImage ? (
+                    <div className="relative">
+                      <img 
+                        src={formData.coverImage} 
+                        alt="Cover image" 
+                        className="w-full h-32 object-cover rounded-lg border"
+                      />
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        className="absolute top-2 right-2"
+                        onClick={() => removeImage('cover')}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div 
+                      className="border-2 border-dashed rounded-lg p-6 text-center hover:border-primary cursor-pointer transition-colors"
+                      onClick={() => document.getElementById('cover-upload')?.click()}
+                    >
+                      <Image className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                      <p className="text-sm text-muted-foreground">
+                        Click to upload cover
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Max 5MB • JPEG, PNG, WebP
+                      </p>
+                    </div>
+                  )}
+                  <input
+                    id="cover-upload"
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleImageUpload(file, 'cover');
+                    }}
+                    className="hidden"
+                  />
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -286,16 +459,21 @@ const HostApplicationForm = () => {
                   placeholder="5000"
                 />
               </div>
-              <div>
-                <Label htmlFor="targetSubmissions">Expected Submissions</Label>
-                <Input
-                  id="targetSubmissions"
-                  type="number"
-                  value={formData.targetSubmissions}
-                  onChange={(e) => setFormData({ ...formData, targetSubmissions: parseInt(e.target.value) || 100 })}
-                  placeholder="100"
-                />
-              </div>
+                <div>
+                  <Label htmlFor="targetSubmissions">Number of Artists Selected</Label>
+                  <Input
+                    id="targetSubmissions"
+                    type="number"
+                    value={formData.targetSubmissions}
+                    onChange={(e) => setFormData({ ...formData, targetSubmissions: parseInt(e.target.value) || 3 })}
+                    placeholder="3"
+                    min="1"
+                    max="100"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    How many artists will you select as winners?
+                  </p>
+                </div>
             </div>
           </CardContent>
         </Card>
