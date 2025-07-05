@@ -1,11 +1,13 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Eye, Edit, Trash2, ExternalLink, Globe, Lock } from 'lucide-react';
+import { Eye, Edit, Trash2, ExternalLink, Globe, Lock, Share2, Heart, User } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import type { Portfolio } from '@/hooks/usePortfolios';
 
 interface PortfolioCardProps {
@@ -13,14 +15,20 @@ interface PortfolioCardProps {
   onDelete?: (portfolioId: string) => void;
   onEdit?: (portfolio: Portfolio) => void;
   showActions?: boolean;
+  showPublicActions?: boolean; // New prop for public actions (like, share, follow)
 }
 
 const PortfolioCard: React.FC<PortfolioCardProps> = ({
   portfolio,
   onDelete,
   onEdit,
-  showActions = false
+  showActions = false,
+  showPublicActions = false
 }) => {
+  const [isLiked, setIsLiked] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [likeCount, setLikeCount] = useState(0);
+
   const handleDelete = () => {
     if (onDelete && portfolio.id) {
       onDelete(portfolio.id);
@@ -30,6 +38,116 @@ const PortfolioCard: React.FC<PortfolioCardProps> = ({
   const handleEdit = () => {
     if (onEdit) {
       onEdit(portfolio);
+    }
+  };
+
+  const handleShare = async () => {
+    const portfolioUrl = `${window.location.origin}/portfolio/${portfolio.slug}`;
+    
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: portfolio.title,
+          text: portfolio.description,
+          url: portfolioUrl,
+        });
+      } catch (error) {
+        console.log('Share cancelled');
+      }
+    } else {
+      // Fallback to clipboard
+      navigator.clipboard.writeText(portfolioUrl);
+      toast({
+        title: "Link Copied",
+        description: "Portfolio link copied to clipboard!",
+      });
+    }
+  };
+
+  const handleLike = async () => {
+    if (!portfolio.id) return;
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Authentication Required",
+          description: "Please log in to like portfolios.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (isLiked) {
+        // Remove like
+        await supabase
+          .from('portfolio_likes')
+          .delete()
+          .eq('portfolio_id', portfolio.id)
+          .eq('user_id', user.id);
+        setIsLiked(false);
+        setLikeCount(prev => Math.max(0, prev - 1));
+      } else {
+        // Add like
+        await supabase
+          .from('portfolio_likes')
+          .insert({
+            portfolio_id: portfolio.id,
+            user_id: user.id,
+            like_type: 'like'
+          });
+        setIsLiked(true);
+        setLikeCount(prev => prev + 1);
+      }
+    } catch (error) {
+      console.error('Error toggling like:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update like status.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleFollowArtist = async () => {
+    if (!portfolio.user_id) return;
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Authentication Required",
+          description: "Please log in to follow artists.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (isFollowing) {
+        // Unfollow
+        await supabase
+          .from('follows')
+          .delete()
+          .eq('follower_id', user.id)
+          .eq('following_id', portfolio.user_id);
+        setIsFollowing(false);
+      } else {
+        // Follow
+        await supabase
+          .from('follows')
+          .insert({
+            follower_id: user.id,
+            following_id: portfolio.user_id
+          });
+        setIsFollowing(true);
+      }
+    } catch (error) {
+      console.error('Error toggling follow:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update follow status.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -122,38 +240,89 @@ const PortfolioCard: React.FC<PortfolioCardProps> = ({
           </div>
 
           {/* Actions */}
-          {showActions && (
-            <div className="flex gap-2">
-              <Button asChild variant="outline" size="sm" className="flex-1">
-                <Link to={`/portfolio/${portfolio.slug}`}>
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  View
-                </Link>
-              </Button>
-              
-              {onEdit ? (
-                <Button variant="outline" size="sm" className="flex-1" onClick={handleEdit}>
-                  <Edit className="h-4 w-4 mr-2" />
-                  Edit
-                </Button>
-              ) : (
-                <Button asChild variant="outline" size="sm" className="flex-1">
-                  <Link to={`/portfolio/${portfolio.slug}/edit`}>
-                    <Edit className="h-4 w-4 mr-2" />
-                    Edit
-                  </Link>
-                </Button>
+          {(showActions || showPublicActions) && (
+            <div className="space-y-2">
+              {/* Public Actions */}
+              {showPublicActions && (
+                <div className="flex gap-2">
+                  <Button asChild variant="outline" size="sm" className="flex-1">
+                    <Link to={`/portfolio/${portfolio.slug}`}>
+                      <Eye className="h-4 w-4 mr-2" />
+                      View
+                    </Link>
+                  </Button>
+                  
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={handleShare}
+                    className="flex-1"
+                  >
+                    <Share2 className="h-4 w-4 mr-2" />
+                    Share
+                  </Button>
+                </div>
               )}
               
-              {onDelete && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleDelete}
-                  className="text-destructive hover:text-destructive"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+              {showPublicActions && (
+                <div className="flex gap-2">
+                  <Button 
+                    variant={isLiked ? "default" : "outline"}
+                    size="sm"
+                    onClick={handleLike}
+                    className="flex-1"
+                  >
+                    <Heart className={`h-4 w-4 mr-2 ${isLiked ? 'fill-current' : ''}`} />
+                    Like {likeCount > 0 && `(${likeCount})`}
+                  </Button>
+                  
+                  <Button 
+                    variant={isFollowing ? "default" : "outline"}
+                    size="sm"
+                    onClick={handleFollowArtist}
+                    className="flex-1"
+                  >
+                    <User className={`h-4 w-4 mr-2 ${isFollowing ? 'fill-current' : ''}`} />
+                    {isFollowing ? 'Following' : 'Follow'}
+                  </Button>
+                </div>
+              )}
+
+              {/* Owner Actions */}
+              {showActions && (
+                <div className="flex gap-2">
+                  <Button asChild variant="outline" size="sm" className="flex-1">
+                    <Link to={`/portfolio/${portfolio.slug}`}>
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      View
+                    </Link>
+                  </Button>
+                  
+                  {onEdit ? (
+                    <Button variant="outline" size="sm" className="flex-1" onClick={handleEdit}>
+                      <Edit className="h-4 w-4 mr-2" />
+                      Edit
+                    </Button>
+                  ) : (
+                    <Button asChild variant="outline" size="sm" className="flex-1">
+                      <Link to={`/portfolio/${portfolio.slug}/edit`}>
+                        <Edit className="h-4 w-4 mr-2" />
+                        Edit
+                      </Link>
+                    </Button>
+                  )}
+                  
+                  {onDelete && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleDelete}
+                      className="text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
               )}
             </div>
           )}

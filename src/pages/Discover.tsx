@@ -116,6 +116,7 @@ const Discover = () => {
                 key={portfolio.id}
                 portfolio={transformedPortfolio}
                 showActions={false}
+                showPublicActions={true} // Enable public actions
               />
             );
           })}

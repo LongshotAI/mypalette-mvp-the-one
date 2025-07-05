@@ -6,45 +6,40 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Calendar, Users, Trophy, Film, Clock, ArrowRight, Bell } from 'lucide-react';
+import { useAIFilm3 } from '@/hooks/useAIFilm3';
+import LoadingSpinner from '@/components/ui/LoadingSpinner';
 
 const AIFilm3Announcements = () => {
-  // This will be connected to admin system in the future
-  const announcements = [
+  const { getAnnouncements } = useAIFilm3();
+  const { data: liveAnnouncements = [], isLoading } = getAnnouncements;
+
+  // Transform live announcements to match expected format or use fallback
+  const displayAnnouncements = liveAnnouncements.length > 0 ? liveAnnouncements.map(announcement => ({
+    ...announcement,
+    category: 'Announcement',
+    urgent: false,
+    excerpt: announcement.content.substring(0, 120) + '...',
+    date: announcement.created_at
+  })) : [
     {
-      id: 1,
+      id: '1',
       title: "Festival Registration Now Open",
-      date: "2024-03-01",
+      created_at: "2024-03-01",
       category: "Registration",
       urgent: true,
       excerpt: "Submit your AI-generated films for consideration in the third annual AIFilm3 festival.",
-      content: "We're excited to announce that registration for AIFilm3 is now officially open! This year's festival promises to be our most ambitious yet, featuring groundbreaking AI-generated films from creators around the world."
+      content: "We're excited to announce that registration for AIFilm3 is now officially open! This year's festival promises to be our most ambitious yet, featuring groundbreaking AI-generated films from creators around the world.",
+      date: "2024-03-01"
     },
     {
-      id: 2,
-      title: "Keynote Speaker Announcement",
-      date: "2024-02-28",
+      id: '2',
+      title: "Keynote Speaker Announcement", 
+      created_at: "2024-02-28",
       category: "Event",
       urgent: false,
       excerpt: "Renowned AI researcher Dr. Sarah Chen to deliver opening keynote on the future of AI in cinema.",
-      content: "We're thrilled to announce that Dr. Sarah Chen, leading AI researcher and cinema technology pioneer, will be delivering our opening keynote address."
-    },
-    {
-      id: 3,
-      title: "New Category: Interactive AI Experiences",
-      date: "2024-02-25",
-      category: "Categories",
-      urgent: false,
-      excerpt: "Introducing a new competition category for interactive and immersive AI-powered film experiences.",
-      content: "This year we're expanding our competition to include interactive AI experiences, virtual reality films, and immersive storytelling projects."
-    },
-    {
-      id: 4,
-      title: "Early Bird Pricing Extended",
-      date: "2024-02-20",
-      category: "Pricing",
-      urgent: false,
-      excerpt: "Due to popular demand, we're extending our early bird submission pricing through March 15th.",
-      content: "Great news for filmmakers! We've extended our early bird pricing deadline to give more creators the opportunity to submit their work at reduced rates."
+      content: "We're thrilled to announce that Dr. Sarah Chen, leading AI researcher and cinema technology pioneer, will be delivering our opening keynote address.",
+      date: "2024-02-28"
     }
   ];
 
@@ -102,8 +97,13 @@ const AIFilm3Announcements = () => {
         {/* Announcements Section */}
         <section className="py-8 px-4">
           <div className="container mx-auto max-w-4xl">
-            <div className="space-y-6">
-              {announcements.map((announcement) => (
+            {isLoading ? (
+              <div className="flex justify-center py-12">
+                <LoadingSpinner size="lg" />
+              </div>
+            ) : (
+              <div className="space-y-6">
+                 {displayAnnouncements.map((announcement) => (
                 <Card key={announcement.id} className={`transition-all hover:shadow-lg ${announcement.urgent ? 'ring-2 ring-red-200 dark:ring-red-800' : ''}`}>
                   <CardHeader>
                     <div className="flex items-start justify-between">
@@ -139,7 +139,8 @@ const AIFilm3Announcements = () => {
                   </CardContent>
                 </Card>
               ))}
-            </div>
+              </div>
+            )}
 
             {/* Subscription CTA */}
             <Card className="mt-12 bg-gradient-to-r from-purple-500 to-blue-500 text-white border-0">

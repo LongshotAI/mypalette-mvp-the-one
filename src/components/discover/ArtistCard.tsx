@@ -1,12 +1,14 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { MapPin, Palette, Calendar, Users, Heart } from 'lucide-react';
+import { MapPin, Palette, Calendar, Users, Heart, Share2, Eye, User } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ArtistCardProps {
   artist: {
@@ -29,6 +31,8 @@ interface ArtistCardProps {
 }
 
 const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onFollowChange }) => {
+  const [isFollowing, setIsFollowing] = useState(artist.is_following || false);
+  
   const displayName = artist.first_name && artist.last_name 
     ? `${artist.first_name} ${artist.last_name}`
     : artist.username || 'Unknown Artist';
@@ -37,8 +41,71 @@ const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onFollowChange }) => {
     ? `${artist.first_name[0]}${artist.last_name[0]}`
     : artist.username?.[0]?.toUpperCase() || 'U';
 
-  const handleFollow = () => {
-    onFollowChange(artist.id, !artist.is_following);
+  const handleFollow = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Authentication Required",
+          description: "Please log in to follow artists.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const newFollowState = !isFollowing;
+      
+      onFollowChange(artist.id, newFollowState);
+      setIsFollowing(newFollowState);
+
+      // Update the database
+      if (newFollowState) {
+        await supabase
+          .from('follows')
+          .insert({
+            follower_id: user.id,
+            following_id: artist.id
+          });
+      } else {
+        await supabase
+          .from('follows')
+          .delete()
+          .eq('follower_id', user.id)
+          .eq('following_id', artist.id);
+      }
+    } catch (error) {
+      console.error('Error toggling follow:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update follow status.",
+        variant: "destructive",
+      });
+      // Revert the state if there was an error
+      setIsFollowing(isFollowing);
+    }
+  };
+
+  const handleShare = async () => {
+    const artistUrl = `${window.location.origin}/artist/${artist.username}`;
+    
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `${displayName} - MyPalette Artist`,
+          text: artist.bio || `Check out ${displayName}'s amazing artwork on MyPalette`,
+          url: artistUrl,
+        });
+      } catch (error) {
+        console.log('Share cancelled');
+      }
+    } else {
+      // Fallback to clipboard
+      navigator.clipboard.writeText(artistUrl);
+      toast({
+        title: "Link Copied",
+        description: "Artist profile link copied to clipboard!",
+      });
+    }
   };
 
   return (
@@ -127,19 +194,32 @@ const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onFollowChange }) => {
           </div>
 
           {/* Actions */}
-          <div className="flex space-x-2">
-            <Button asChild variant="outline" size="sm" className="flex-1">
-              <Link to={`/artist/${artist.username}`}>
-                View Profile
-              </Link>
-            </Button>
+          <div className="space-y-2">
+            <div className="flex space-x-2">
+              <Button asChild variant="outline" size="sm" className="flex-1">
+                <Link to={`/artist/${artist.username}`}>
+                  <Eye className="h-4 w-4 mr-2" />
+                  View Profile
+                </Link>
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleShare}
+                className="min-w-0"
+              >
+                <Share2 className="h-4 w-4" />
+              </Button>
+            </div>
+            
             <Button 
-              variant={artist.is_following ? "default" : "outline"}
+              variant={isFollowing ? "default" : "outline"}
               size="sm"
               onClick={handleFollow}
-              className="min-w-0"
+              className="w-full"
             >
-              <Heart className={`h-4 w-4 ${artist.is_following ? 'fill-current' : ''}`} />
+              <Heart className={`h-4 w-4 mr-2 ${isFollowing ? 'fill-current' : ''}`} />
+              {isFollowing ? 'Following' : 'Follow Artist'}
             </Button>
           </div>
         </CardContent>

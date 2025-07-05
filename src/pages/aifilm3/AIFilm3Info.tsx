@@ -6,8 +6,29 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Calendar, Users, Trophy, Film, ExternalLink } from 'lucide-react';
+import { useAIFilm3 } from '@/hooks/useAIFilm3';
+import LoadingSpinner from '@/components/ui/LoadingSpinner';
 
 const AIFilm3Info = () => {
+  const { getFestivalConfig } = useAIFilm3();
+  const { data: config = [], isLoading } = getFestivalConfig;
+
+  // Convert config array to object for easier access
+  const configData = config.reduce((acc, item) => {
+    acc[item.key] = item.value;
+    return acc;
+  }, {} as Record<string, string>);
+
+  if (isLoading) {
+    return (
+      <Layout>
+        <div className="min-h-screen flex items-center justify-center">
+          <LoadingSpinner size="lg" />
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-950 dark:to-blue-950">
