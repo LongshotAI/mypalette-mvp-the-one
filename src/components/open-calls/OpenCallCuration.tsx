@@ -41,6 +41,9 @@ const OpenCallCuration = ({ openCallId, openCall }: OpenCallCurationProps) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
+      console.log('Starting curation process for:', openCallId);
+      console.log('Selected winners:', selectedWinners);
+
       // Update selected submissions as winners
       if (selectedWinners.length > 0) {
         const { error: submissionError } = await supabase
@@ -48,7 +51,11 @@ const OpenCallCuration = ({ openCallId, openCall }: OpenCallCurationProps) => {
           .update({ is_selected: true })
           .in('id', selectedWinners);
 
-        if (submissionError) throw submissionError;
+        if (submissionError) {
+          console.error('Error updating submissions:', submissionError);
+          throw new Error(`Failed to update submissions: ${submissionError.message}`);
+        }
+        console.log('Successfully updated selected submissions');
       }
 
       // Update open call status to curated
@@ -60,21 +67,30 @@ const OpenCallCuration = ({ openCallId, openCall }: OpenCallCurationProps) => {
         })
         .eq('id', openCallId);
 
-      if (openCallError) throw openCallError;
+      if (openCallError) {
+        console.error('Error updating open call:', openCallError);
+        throw new Error(`Failed to update open call: ${openCallError.message}`);
+      }
+      console.log('Successfully updated open call status');
 
-      // Log curation action
-      const { error: logError } = await supabase
-        .from('submission_curation')
-        .insert({
-          submission_id: selectedWinners[0] || openCallId, // Use first winner or open call ID
-          curator_id: user.id,
-          curator_type: 'admin',
-          action: 'finalize_curation',
-          notes: `Selected ${selectedWinners.length} winners for "${openCall.title}". ${curationNotes}`
-        });
-
-      if (logError) {
-        console.warn('Failed to log curation action:', logError);
+      // Log curation action (non-critical)
+      try {
+        if (selectedWinners.length > 0) {
+          for (const winnerId of selectedWinners) {
+            await supabase
+              .from('submission_curation')
+              .insert({
+                submission_id: winnerId,
+                curator_id: user.id,
+                curator_type: 'admin',
+                action: 'finalize_curation',
+                notes: `Selected as winner for "${openCall.title}". ${curationNotes}`
+              });
+          }
+        }
+        console.log('Successfully logged curation actions');
+      } catch (logError) {
+        console.warn('Failed to log curation action (non-critical):', logError);
         // Don't throw - this is non-critical
       }
     },
@@ -87,9 +103,10 @@ const OpenCallCuration = ({ openCallId, openCall }: OpenCallCurationProps) => {
       });
     },
     onError: (error) => {
+      console.error('Curation failed:', error);
       toast({
         title: "Curation Failed",
-        description: error instanceof Error ? error.message : "Failed to complete curation.",
+        description: error instanceof Error ? error.message : "Failed to complete curation. Please try again.",
         variant: "destructive"
       });
     }

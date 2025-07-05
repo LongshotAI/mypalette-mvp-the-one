@@ -248,6 +248,7 @@ export type Database = {
           id: string
           max_submissions: number | null
           organization_name: string
+          organization_type: string
           organization_website: string | null
           reviewed_at: string | null
           reviewed_by: string | null
@@ -268,6 +269,7 @@ export type Database = {
           id?: string
           max_submissions?: number | null
           organization_name: string
+          organization_type?: string
           organization_website?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
@@ -288,6 +290,7 @@ export type Database = {
           id?: string
           max_submissions?: number | null
           organization_name?: string
+          organization_type?: string
           organization_website?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
