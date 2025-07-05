@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { motion } from 'framer-motion';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import SubmissionsList from '@/components/open-calls/SubmissionsList';
 
 const OpenCallDetails = () => {
   const { id } = useParams();
@@ -349,6 +350,21 @@ const OpenCallDetails = () => {
                 </CardContent>
               </Card>
             )}
+
+            {/* Submissions Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Submissions</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <SubmissionsList 
+                  openCallId={id!} 
+                  openCallTitle={openCall.title}
+                  showFilters={true}
+                  allowSelection={false}
+                />
+              </CardContent>
+            </Card>
           </motion.div>
         </div>
       </div>

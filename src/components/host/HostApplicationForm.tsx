@@ -82,10 +82,10 @@ const HostApplicationForm = () => {
         <CardHeader>
           <CardTitle className="text-2xl flex items-center gap-2">
             <Building className="h-6 w-6" />
-            Host an Open Call
+            Want to Partner with Us?
           </CardTitle>
           <p className="text-muted-foreground">
-            Apply to host your own open call on our platform. All applications are reviewed by our team.
+            Host your own open call on MyPalette! Apply to become a partner and showcase your vision to our vibrant artist community. All applications are reviewed by our team.
           </p>
         </CardHeader>
         <CardContent>
